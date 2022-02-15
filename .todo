@@ -4,4 +4,5 @@
 	? decide meta-data fields
 
 - lock-file for strict bulk installations
-
+- handle pkg version switching
+- provide version and pkg protection
