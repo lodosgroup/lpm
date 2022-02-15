@@ -1,0 +1,7 @@
+? decide packaging standards
+	- json as db
+	- ar as root archive, tar as inner
+	? decide meta-data fields
+
+- lock-file for strict bulk installations
+
