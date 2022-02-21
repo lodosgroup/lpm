@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use crate::version::VersionStruct;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Meta {
@@ -25,15 +26,6 @@ pub struct Checksums {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct VersionStruct {
-    pub readable_format: String,
-    pub major: u8,
-    pub minior: u8,
-    pub patch: u8,
-    pub tag: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct DependencyStruct {
     pub name: String,
     pub version: VersionStruct,
@@ -46,13 +38,7 @@ pub struct SuggestionStruct {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct System {
-    pub lod_version: VersionStruct,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 pub struct ChecksumFileStruct {
     pub path: String,
     pub checksum: String,
 }
-

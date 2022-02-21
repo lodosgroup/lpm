@@ -1,3 +1,5 @@
 #![forbid(unsafe_code)]
 
-pub mod pkg;
+pub mod version;
+pub mod meta;
+pub mod system;
