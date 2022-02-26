@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 ar = "0.9"
 tar = "0.4"
+parser = { path = "../parser" }
