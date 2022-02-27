@@ -10,6 +10,7 @@ use parser::{
     system::System,
     ParserTasks,
 };
+use xz2::read::XzDecoder;
 
 use crate::{ExtractionTasks, EXTRACTION_OUTPUT_PATH};
 
@@ -69,6 +70,24 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
             copy(&mut entry, &mut output_file)
                 .expect(&format!("Failed to copy {:?}.", output_path));
         }
+
+        Ok(())
+    }
+
+    fn extract_meta_and_program(&self) -> Result<(), std::io::Error> {
+        let pkg_dir = EXTRACTION_OUTPUT_PATH.to_string()
+            + "/"
+            + self.path.file_stem().unwrap().to_str().unwrap();
+
+        let tar_file_path = pkg_dir.clone() + "/meta.tar.xz";
+        let tar_file = File::open(tar_file_path)?;
+        let mut archive = tar::Archive::new(XzDecoder::new(tar_file));
+        archive.unpack(&pkg_dir)?;
+
+        let tar_file_path = pkg_dir.clone() + "/program.tar.xz";
+        let tar_file = File::open(tar_file_path)?;
+        let mut archive = tar::Archive::new(XzDecoder::new(tar_file));
+        archive.unpack(&pkg_dir)?;
 
         Ok(())
     }
