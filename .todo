@@ -1,3 +1,4 @@
+- provide package validations (missing files, checksums, etc)
 ? decide packaging standards
 	- json as db
 	- ar as root archive, tar as inner
