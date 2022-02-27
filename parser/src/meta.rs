@@ -53,6 +53,7 @@ macro_rules! impl_parser_tasks {
                     fs::read_to_string(path).unwrap_or_else(|_| panic!("{} could not found.", path));
 
                 serde_json::from_str(&data_as_str)
+                    //.unwrap()
                     .unwrap_or_else(|_| panic!("Failed to parse package meta."))
             }
         })+
