@@ -1,5 +1,7 @@
-use serde::Deserialize;
 use crate::version::VersionStruct;
+use crate::ParserTasks;
+use serde::Deserialize;
+use std::fs;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Meta {
@@ -42,3 +44,19 @@ pub struct ChecksumFileStruct {
     pub path: String,
     pub checksum: String,
 }
+
+macro_rules! impl_parser_tasks {
+    ($($t:ty),+) => {
+        $(impl ParserTasks for $t {
+            fn deserialize(path: &str) -> Self {
+                let data_as_str =
+                    fs::read_to_string(path).unwrap_or_else(|_| panic!("{} could not found.", path));
+
+                serde_json::from_str(&data_as_str)
+                    .unwrap_or_else(|_| panic!("Failed to parse package meta."))
+            }
+        })+
+    }
+}
+
+impl_parser_tasks!(Meta, Checksums);
