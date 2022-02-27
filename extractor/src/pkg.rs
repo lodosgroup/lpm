@@ -8,6 +8,7 @@ use std::{
 use parser::{
     meta::{Checksums, Meta},
     system::System,
+    ParserTasks,
 };
 
 use crate::{ExtractionTasks, EXTRACTION_OUTPUT_PATH};
@@ -18,10 +19,21 @@ pub struct LodPkg<'a> {
     pub system: Option<System>,
 }
 
+#[derive(Debug)]
 pub struct MetaDir {
     pub path: String,
     pub meta: Meta,
     pub checksums: Checksums,
+}
+
+impl MetaDir {
+    pub fn new(str_path: &str) -> Self {
+        Self {
+            path: String::from(str_path),
+            meta: Meta::deserialize(str_path),
+            checksums: Checksums::deserialize(str_path),
+        }
+    }
 }
 
 impl<'a> LodPkg<'a> {
@@ -58,5 +70,10 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
         }
 
         Ok(())
+    }
+
+    fn read_pkg_data(&mut self) {
+        self.meta_dir = Some(MetaDir::new(self.path.to_str().unwrap()));
+        self.system = Some(System::deserialize(self.path.to_str().unwrap()));
     }
 }
