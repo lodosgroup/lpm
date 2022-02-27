@@ -30,8 +30,8 @@ impl MetaDir {
     pub fn new(str_path: &str) -> Self {
         Self {
             path: String::from(str_path),
-            meta: Meta::deserialize(str_path),
-            checksums: Checksums::deserialize(str_path),
+            meta: Meta::deserialize(&(str_path.to_owned() + "/meta.json")),
+            checksums: Checksums::deserialize(&(str_path.to_owned() + "/checksums.json")),
         }
     }
 }
@@ -56,6 +56,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
             let filename = from_utf8(entry.header().identifier())
                 .expect("Package has a file that has non-utf8 name.");
             let mut output_path = EXTRACTION_OUTPUT_PATH.to_string()
+                + "/"
                 + self.path.file_stem().unwrap().to_str().unwrap();
 
             create_dir_all(output_path.clone())?;
@@ -73,7 +74,14 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
     }
 
     fn read_pkg_data(&mut self) {
-        self.meta_dir = Some(MetaDir::new(self.path.to_str().unwrap()));
-        self.system = Some(System::deserialize(self.path.to_str().unwrap()));
+        let pkg_dir = EXTRACTION_OUTPUT_PATH.to_string()
+            + "/"
+            + self.path.file_stem().unwrap().to_str().unwrap();
+
+        let meta_dir = pkg_dir.clone() + "/meta";
+        let system_json = pkg_dir + "/system.json";
+
+        self.meta_dir = Some(MetaDir::new(&meta_dir));
+        self.system = Some(System::deserialize(&system_json));
     }
 }
