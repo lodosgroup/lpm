@@ -1,5 +1,5 @@
 use std::{
-    fs::{create_dir_all, File},
+    fs::{create_dir_all, remove_dir_all, File},
     io::copy,
     path::Path,
     str::from_utf8,
@@ -48,6 +48,15 @@ impl<'a> LodPkg<'a> {
 }
 
 impl<'a> ExtractionTasks for LodPkg<'a> {
+    fn start_extraction(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.half_extract()?;
+        self.extract_meta_and_program()?;
+        self.read_pkg_data();
+        self.cleanup()?;
+
+        Ok(())
+    }
+
     fn half_extract(&self) -> Result<(), std::io::Error> {
         let input_file = File::open(self.path).expect("Package could not opened.");
         let mut archive = ar::Archive::new(input_file);
@@ -102,5 +111,14 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
 
         self.meta_dir = Some(MetaDir::new(&meta_dir));
         self.system = Some(System::deserialize(&system_json));
+    }
+
+    fn cleanup(&self) -> Result<(), std::io::Error> {
+        let pkg_dir = EXTRACTION_OUTPUT_PATH.to_string()
+            + "/"
+            + self.path.file_stem().unwrap().to_str().unwrap();
+
+        remove_dir_all(pkg_dir)?;
+        Ok(())
     }
 }
