@@ -10,3 +10,4 @@ ar = "0.9"
 tar = { version = "0.4", default-features = false }
 xz2 = "0.1"
 parser = { path = "../parser" }
+lpm_io = { path = "../io", package = "io" }

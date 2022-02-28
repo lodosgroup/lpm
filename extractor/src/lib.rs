@@ -10,5 +10,6 @@ pub trait ExtractionTasks {
     fn half_extract(&self) -> Result<(), std::io::Error>;
     fn extract_meta_and_program(&self) -> Result<(), std::io::Error>;
     fn read_pkg_data(&mut self);
+    fn install_program(&self) -> Result<(), std::io::Error>;
     fn cleanup(&self) -> Result<(), std::io::Error>;
 }

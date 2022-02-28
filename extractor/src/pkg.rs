@@ -5,6 +5,7 @@ use std::{
     str::from_utf8,
 };
 
+use lpm_io::file::copy_recursively;
 use parser::{
     meta::{Checksums, Meta},
     system::System,
@@ -52,6 +53,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
         self.half_extract()?;
         self.extract_meta_and_program()?;
         self.read_pkg_data();
+        self.install_program()?;
         self.cleanup()?;
 
         Ok(())
@@ -111,6 +113,17 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
 
         self.meta_dir = Some(MetaDir::new(&meta_dir));
         self.system = Some(System::deserialize(&system_json));
+    }
+
+    fn install_program(&self) -> Result<(), std::io::Error> {
+        let src = EXTRACTION_OUTPUT_PATH.to_string()
+            + "/"
+            + self.path.file_stem().unwrap().to_str().unwrap()
+            + "/program/";
+
+        copy_recursively(&src, "/")?;
+
+        Ok(())
     }
 
     fn cleanup(&self) -> Result<(), std::io::Error> {
