@@ -13,8 +13,6 @@ use parser::{
 };
 use xz2::read::XzDecoder;
 
-use crate::{ExtractionTasks, EXTRACTION_OUTPUT_PATH};
-
 pub struct LodPkg<'a> {
     pub path: &'a Path,
     pub meta_dir: Option<MetaDir>,
@@ -48,7 +46,7 @@ impl<'a> LodPkg<'a> {
     }
 }
 
-impl<'a> ExtractionTasks for LodPkg<'a> {
+impl<'a> super::ExtractionTasks for LodPkg<'a> {
     fn start_extraction(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.half_extract()?;
         self.extract_meta_and_program()?;
@@ -67,7 +65,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
             let mut entry = entry.expect("Failed on parsing archive entry.");
             let filename = from_utf8(entry.header().identifier())
                 .expect("Package has a file that has non-utf8 name.");
-            let mut output_path = EXTRACTION_OUTPUT_PATH.to_string()
+            let mut output_path = super::EXTRACTION_OUTPUT_PATH.to_string()
                 + "/"
                 + self.path.file_stem().unwrap().to_str().unwrap();
 
@@ -86,7 +84,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
     }
 
     fn extract_meta_and_program(&self) -> Result<(), std::io::Error> {
-        let pkg_dir = EXTRACTION_OUTPUT_PATH.to_string()
+        let pkg_dir = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
             + self.path.file_stem().unwrap().to_str().unwrap();
 
@@ -104,7 +102,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
     }
 
     fn read_pkg_data(&mut self) {
-        let pkg_dir = EXTRACTION_OUTPUT_PATH.to_string()
+        let pkg_dir = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
             + self.path.file_stem().unwrap().to_str().unwrap();
 
@@ -116,7 +114,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
     }
 
     fn install_program(&self) -> Result<(), std::io::Error> {
-        let src = EXTRACTION_OUTPUT_PATH.to_string()
+        let src = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
             + self.path.file_stem().unwrap().to_str().unwrap()
             + "/program/";
@@ -127,7 +125,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
     }
 
     fn cleanup(&self) -> Result<(), std::io::Error> {
-        let pkg_dir = EXTRACTION_OUTPUT_PATH.to_string()
+        let pkg_dir = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
             + self.path.file_stem().unwrap().to_str().unwrap();
 
