@@ -3,6 +3,7 @@
 const EXTRACTION_OUTPUT_PATH: &str = "/var/cache/lpm";
 
 pub mod pkg;
+pub mod extraction;
 
 pub trait ExtractionTasks {
     fn start_extraction(&mut self) -> Result<(), Box<dyn std::error::Error>>;
