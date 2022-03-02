@@ -1,9 +1,7 @@
 [workspace]
 members = [
     "main",
-	"cli",
 	"db",
 	"extractor",
-    "builder",
     "parser"
 ]
