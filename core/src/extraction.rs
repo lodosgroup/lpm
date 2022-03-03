@@ -5,11 +5,13 @@ use std::{
     str::from_utf8,
 };
 
-use lpm_io::file::copy_recursively;
 use parser::{system::System, ParserTasks};
 use xz2::read::XzDecoder;
 
-use crate::pkg::{LodPkg, MetaDir};
+use crate::{
+    pkg::{LodPkg, MetaDir},
+    InstallationTasks,
+};
 
 impl<'a> super::ExtractionTasks for LodPkg<'a> {
     fn start_extraction(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -76,17 +78,6 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
 
         self.meta_dir = Some(MetaDir::new(&meta_dir));
         self.system = Some(System::deserialize(&system_json));
-    }
-
-    fn install_program(&self) -> Result<(), std::io::Error> {
-        let src = super::EXTRACTION_OUTPUT_PATH.to_string()
-            + "/"
-            + self.path.file_stem().unwrap().to_str().unwrap()
-            + "/program/";
-
-        copy_recursively(&src, "/")?;
-
-        Ok(())
     }
 
     fn cleanup(&self) -> Result<(), std::io::Error> {
