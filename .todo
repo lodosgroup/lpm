@@ -1,4 +1,5 @@
 - provide package validations (missing files, checksums, etc)
+- provide error handling crate
 ? decide packaging standards
 	- json as db
 	- ar as root archive, tar as inner
