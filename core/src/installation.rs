@@ -1,8 +1,17 @@
 use lpm_io::file::copy_recursively;
 
-use crate::pkg::LodPkg;
+use crate::{pkg::LodPkg, ExtractionTasks, ValidationTasks};
 
 impl<'a> super::InstallationTasks for LodPkg<'a> {
+    fn start_installation(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.start_extraction()?;
+        self.checksum_validation()?;
+        self.install_program()?;
+        self.cleanup()?;
+
+        Ok(())
+    }
+
     fn install_program(&self) -> Result<(), std::io::Error> {
         let src = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"

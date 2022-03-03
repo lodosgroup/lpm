@@ -8,18 +8,13 @@ use std::{
 use parser::{system::System, ParserTasks};
 use xz2::read::XzDecoder;
 
-use crate::{
-    pkg::{LodPkg, MetaDir},
-    InstallationTasks,
-};
+use crate::pkg::{LodPkg, MetaDir};
 
 impl<'a> super::ExtractionTasks for LodPkg<'a> {
     fn start_extraction(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.half_extract()?;
         self.extract_meta_and_program()?;
         self.read_pkg_data();
-        self.install_program()?;
-        self.cleanup()?;
 
         Ok(())
     }

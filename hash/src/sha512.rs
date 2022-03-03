@@ -212,7 +212,6 @@ const fn sha512_transform(
 }
 
 #[inline]
-///const `SHA512` algorithm implementation
 pub const fn sha512(input: &[u8]) -> [u8; RESULT_SIZE] {
     let mut state = INIT_STATE;
     let mut cursor = 0;
@@ -283,7 +282,6 @@ pub const fn sha512(input: &[u8]) -> [u8; RESULT_SIZE] {
     ]
 }
 
-///`Sha512` algorithm implementation
 pub struct Sha512 {
     state: [u64; STATE_SIZE],
     len: u64,
@@ -291,7 +289,6 @@ pub struct Sha512 {
 }
 
 impl Sha512 {
-    ///Creates new instance
     pub const fn new() -> Self {
         Self {
             state: INIT_STATE,
@@ -300,12 +297,10 @@ impl Sha512 {
         }
     }
 
-    ///Resets algorithm's state.
     pub fn reset(&mut self) {
         *self = Self::new();
     }
 
-    ///Hashes input
     pub const fn const_update(mut self, input: &[u8]) -> Self {
         let num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
         self.len += input.len() as u64;
@@ -348,7 +343,6 @@ impl Sha512 {
         self
     }
 
-    ///Hashes input
     pub fn update(&mut self, input: &[u8]) {
         let mut num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
         self.len += input.len() as u64;
@@ -380,7 +374,6 @@ impl Sha512 {
         }
     }
 
-    ///Finalizes algorithm, returning the hash.
     pub const fn const_result(mut self) -> [u8; RESULT_SIZE] {
         let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
 
@@ -438,7 +431,6 @@ impl Sha512 {
         ]
     }
 
-    ///Finalizes algorithm, returning the hash.
     pub fn result(&mut self) -> [u8; RESULT_SIZE] {
         let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
 

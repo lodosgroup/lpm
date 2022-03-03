@@ -14,15 +14,13 @@ pub struct HmacKey<D: Digest> {
 
 impl<D: Digest> HmacKey<D> {
     pub fn new(secret: &[u8]) -> Self {
-        let mut inner: D::BlockType = unsafe {
-            core::mem::MaybeUninit::zeroed().assume_init()
-        };
+        let mut inner: D::BlockType = unsafe { core::mem::MaybeUninit::zeroed().assume_init() };
         let key = inner.as_mut();
 
         if secret.len() <= key.len() {
             key[..secret.len()].copy_from_slice(secret);
         } else {
-        let mut algo = D::new();
+            let mut algo = D::new();
             algo.update(secret);
             let hash = algo.result();
             let hash = hash.as_ref();
@@ -34,9 +32,7 @@ impl<D: Digest> HmacKey<D> {
             *byte ^= 0x36;
         }
 
-        Self {
-            key: inner,
-        }
+        Self { key: inner }
     }
 
     pub fn sign(&self, input: &[u8]) -> D::OutputType {

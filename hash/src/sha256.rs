@@ -272,7 +272,6 @@ const fn sha256_transform(
     ]
 }
 
-///const `SHA256` algorithm implementation
 pub const fn sha256(input: &[u8]) -> [u8; RESULT_SIZE] {
     let mut state = INIT_STATE;
     let mut cursor = 0;
@@ -330,7 +329,6 @@ pub const fn sha256(input: &[u8]) -> [u8; RESULT_SIZE] {
     ]
 }
 
-///`Sha256` algorithm implementation
 pub struct Sha256 {
     state: [u32; STATE_SIZE],
     len: u64,
@@ -338,7 +336,6 @@ pub struct Sha256 {
 }
 
 impl Sha256 {
-    ///Creates new instance
     pub const fn new() -> Self {
         Self {
             state: INIT_STATE,
@@ -347,12 +344,10 @@ impl Sha256 {
         }
     }
 
-    ///Resets algorithm's state.
     pub fn reset(&mut self) {
         *self = Self::new();
     }
 
-    ///Hashes input
     pub const fn const_update(mut self, input: &[u8]) -> Self {
         let num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
         self.len += input.len() as u64;
@@ -395,7 +390,6 @@ impl Sha256 {
         self
     }
 
-    ///Hashes input
     pub fn update(&mut self, input: &[u8]) {
         let mut num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
         self.len += input.len() as u64;
@@ -427,7 +421,6 @@ impl Sha256 {
         }
     }
 
-    ///Finalizes algorithm, returning the hash.
     pub const fn const_result(mut self) -> [u8; RESULT_SIZE] {
         let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
 
@@ -472,7 +465,6 @@ impl Sha256 {
         ]
     }
 
-    ///Finalizes algorithm, returning the hash.
     pub fn result(&mut self) -> [u8; RESULT_SIZE] {
         let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
 
