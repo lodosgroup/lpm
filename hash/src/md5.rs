@@ -1,6 +1,5 @@
 const BLOCK_SIZE: usize = 64;
 const STATE_SIZE: usize = 4;
-const RESULT_SIZE: usize = 16;
 const INIT_STATE: [u32; STATE_SIZE] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476];
 
 const S11: u32 = 7;
@@ -257,7 +256,13 @@ const fn md5_transform(
     state
 }
 
-pub const fn md5(input: &[u8]) -> [u8; 16] {
+#[inline(always)]
+pub fn digest_to_hex_string(dgst: &[u8; 16]) -> String {
+    let str_vec: Vec<String> = dgst.iter().map(|b| format!("{:02x}", b)).collect();
+    str_vec.join("")
+}
+
+pub const fn digest(input: &[u8]) -> [u8; 16] {
     let mut state = INIT_STATE;
     let mut cursor = 0;
 
@@ -309,307 +314,48 @@ pub const fn md5(input: &[u8]) -> [u8; 16] {
     ]
 }
 
-pub struct Md5 {
-    state: [u32; STATE_SIZE],
-    len: u64,
-    buffer: [u8; BLOCK_SIZE],
-}
-
-impl Md5 {
-    const RESULT_SIZE: usize = RESULT_SIZE;
-    const BLOCK_SIZE: usize = BLOCK_SIZE;
-
-    pub const fn new() -> Self {
-        Self {
-            state: INIT_STATE,
-            len: 0,
-            buffer: [0; Self::BLOCK_SIZE],
-        }
-    }
-
-    pub fn reset(&mut self) {
-        *self = Self::new();
-    }
-
-    pub const fn const_update(mut self, input: &[u8]) -> Self {
-        let num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-        self.len += input.len() as u64;
-
-        let mut cursor = 0;
-
-        if num > 0 {
-            let block_num = BLOCK_SIZE - num;
-
-            if input.len() < block_num {
-                let mut idx = 0;
-                while idx < input.len() {
-                    self.buffer[num + idx] = input[idx];
-                    idx += 1;
-                }
-                return self;
-            }
-
-            let mut idx = 0;
-            while idx < block_num {
-                self.buffer[num + idx] = input[idx];
-                idx += 1;
-            }
-            self.state = md5_transform(self.state, 0, &self.buffer);
-            cursor += block_num
-        }
-
-        while input.len() - cursor >= BLOCK_SIZE {
-            self.state = md5_transform(self.state, cursor, input);
-            cursor += BLOCK_SIZE;
-        }
-
-        let remains = input.len() - cursor;
-        let mut idx = 0;
-        while idx < remains {
-            self.buffer[idx] = input[cursor + idx];
-            idx += 1;
-        }
-
-        self
-    }
-
-    pub fn update(&mut self, input: &[u8]) {
-        let mut num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-        self.len += input.len() as u64;
-
-        let mut cursor = 0;
-
-        if num > 0 {
-            let buffer = &mut self.buffer[num..];
-            num = BLOCK_SIZE - num;
-
-            if input.len() < num {
-                buffer[..input.len()].copy_from_slice(input);
-                return;
-            }
-
-            buffer.copy_from_slice(&input[..num]);
-            self.state = md5_transform(self.state, 0, &self.buffer);
-            cursor += num
-        }
-
-        while input.len() - cursor >= BLOCK_SIZE {
-            self.state = md5_transform(self.state, cursor, input);
-            cursor += BLOCK_SIZE;
-        }
-
-        let remains = input.len() - cursor;
-        if remains > 0 {
-            self.buffer[..remains].copy_from_slice(&input[cursor..]);
-        }
-    }
-
-    pub const fn const_result(mut self) -> [u8; Self::RESULT_SIZE] {
-        let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-
-        self.buffer[pos] = 0x80;
-        pos += 1;
-
-        while pos != (BLOCK_SIZE - core::mem::size_of::<u64>()) {
-            pos &= BLOCK_SIZE - 1;
-
-            if pos == 0 {
-                self.state = md5_transform(self.state, 0, &self.buffer);
-            }
-
-            self.buffer[pos] = 0;
-            pos += 1;
-        }
-
-        let len = self.len.wrapping_shl(3).to_le_bytes();
-        self.buffer[pos] = len[0];
-        self.buffer[pos + 1] = len[1];
-        self.buffer[pos + 2] = len[2];
-        self.buffer[pos + 3] = len[3];
-        self.buffer[pos + 4] = len[4];
-        self.buffer[pos + 5] = len[5];
-        self.buffer[pos + 6] = len[6];
-        self.buffer[pos + 7] = len[7];
-
-        self.state = md5_transform(self.state, 0, &self.buffer);
-
-        let a = self.state[0].to_le_bytes();
-        let b = self.state[1].to_le_bytes();
-        let c = self.state[2].to_le_bytes();
-        let d = self.state[3].to_le_bytes();
-        [
-            a[0], a[1], a[2], a[3], b[0], b[1], b[2], b[3], c[0], c[1], c[2], c[3], d[0], d[1],
-            d[2], d[3],
-        ]
-    }
-
-    pub fn result(&mut self) -> [u8; Self::RESULT_SIZE] {
-        let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-
-        self.buffer[pos] = 0x80;
-        pos += 1;
-
-        while pos != (BLOCK_SIZE - core::mem::size_of::<u64>()) {
-            pos &= BLOCK_SIZE - 1;
-
-            if pos == 0 {
-                self.state = md5_transform(self.state, 0, &self.buffer);
-            }
-
-            self.buffer[pos] = 0;
-            pos += 1;
-        }
-
-        let len = self.len.wrapping_shl(3).to_le_bytes();
-        self.buffer[pos] = len[0];
-        self.buffer[pos + 1] = len[1];
-        self.buffer[pos + 2] = len[2];
-        self.buffer[pos + 3] = len[3];
-        self.buffer[pos + 4] = len[4];
-        self.buffer[pos + 5] = len[5];
-        self.buffer[pos + 6] = len[6];
-        self.buffer[pos + 7] = len[7];
-
-        self.state = md5_transform(self.state, 0, &self.buffer);
-
-        let a = self.state[0].to_le_bytes();
-        let b = self.state[1].to_le_bytes();
-        let c = self.state[2].to_le_bytes();
-        let d = self.state[3].to_le_bytes();
-        [
-            a[0], a[1], a[2], a[3], b[0], b[1], b[2], b[3], c[0], c[1], c[2], c[3], d[0], d[1],
-            d[2], d[3],
-        ]
-    }
-}
-
-impl super::Digest for Md5 {
-    type OutputType = [u8; Self::RESULT_SIZE];
-    type BlockType = [u8; BLOCK_SIZE];
-
-    #[inline(always)]
-    fn new() -> Self {
-        Self::new()
-    }
-
-    #[inline(always)]
-    fn reset(&mut self) {
-        self.reset();
-    }
-
-    #[inline(always)]
-    fn update(&mut self, input: &[u8]) {
-        self.update(input);
-    }
-
-    #[inline(always)]
-    fn result(&mut self) -> Self::OutputType {
-        self.result()
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    extern crate alloc;
+    use crate::md5::digest_to_hex_string;
 
-    use alloc::string::{String, ToString};
-
-    use super::*;
-
-    fn digest_to_hex(input: [u8; RESULT_SIZE]) -> String {
-        crate::DigestFmt(input).to_string()
-    }
+    use super::digest;
 
     #[test]
-    fn test_simple() {
-        let tests = [
-            ("", "d41d8cd98f00b204e9800998ecf8427e"),
-            ("a", "0cc175b9c0f1b6a831c399e269772661"),
-            ("abc", "900150983cd24fb0d6963f7d28e17f72"),
-            ("message digest", "f96b697d7cb7938d525a2f31aaf161d0"),
-            (
-                "abcdefghijklmnopqrstuvwxyz",
-                "c3fcd3d76192e4007dfb496cca67e13b",
-            ),
-            (
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-                "d174ab98d277d9f5a5611c2c9f419d9f",
-            ),
-            (
-                "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
-                "57edf4a22be3c955ac49da2e2107b67a",
-            ),
+    fn test_digest_and_hex() {
+        let x = b"";
+        let x_byte_array = [
+            212, 29, 140, 217, 143, 0, 178, 4, 233, 128, 9, 152, 236, 248, 66, 126,
         ];
+        let x_md5_str = String::from("d41d8cd98f00b204e9800998ecf8427e");
 
-        let mut md5 = Md5::new();
-        let mut chunked_md5 = Md5::new();
-        for (data, ref expected) in tests.iter() {
-            let data = data.as_bytes();
-
-            let mut chunked_const = Md5::new();
-            md5.update(data);
-            for chunk in data.chunks(10) {
-                chunked_md5.update(chunk);
-                chunked_const = chunked_const.const_update(chunk);
-            }
-
-            let hash = digest_to_hex(md5.result());
-            let const_hash = digest_to_hex(super::md5(data));
-            let chunked_hash = digest_to_hex(chunked_md5.result());
-            let const_chunked_hash = digest_to_hex(chunked_const.const_result());
-            let const_hash_stateful = digest_to_hex(Md5::new().const_update(data).const_result());
-
-            assert_eq!(const_hash.len(), hash.len());
-            assert_eq!(hash, *expected);
-            assert_eq!(hash, const_hash);
-            assert_eq!(hash, chunked_hash);
-            assert_eq!(hash, const_chunked_hash);
-            assert_eq!(hash, const_hash_stateful);
-
-            md5.reset();
-            chunked_md5.reset();
-        }
-    }
-
-    #[test]
-    fn test_hmac() {
-        let tests: [(&'static [u8], &'static [u8], &'static str); 8] = [
-            (b"", b"", "74e6f7298a9c2d168935f58c001bad88"),
-            (
-                b"key",
-                b"The quick brown fox jumps over the lazy dog",
-                "80070713463e7749b90c2dc24911e275",
-            ),
-            (
-                b"Jefe",
-                b"what do ya want for nothing?",
-                "750c783e6ab0b503eaa86e310a5db738",
-            ),
-            (&[0xAA; 16], &[0xDD; 50], "56be34521d144c88dbb8c733f0e8b3f6"),
-            (&[0x0B; 16], b"Hi There", "9294727a3638bb1c13f48ef8158bfc9d"),
-            (
-                &[0x0C; 16],
-                b"Test With Truncation",
-                "56461ef2342edc00f9bab995690efd4c",
-            ),
-            (
-                &[0xAA; 80],
-                b"Test Using Larger Than Block-Size Key - Hash Key First",
-                "6b1ab7fe4bd7bf8f0b62e6ce61b9d0cd",
-            ),
-            (
-                &[0xAA; 80],
-                b"Test Using Larger Than Block-Size Key and Larger Than One Block-Size Data",
-                "6f630fad67cda0ee1fb1f562db3aa53e",
-            ),
+        let y = b"Onur Ozkan - LodPM Core Developer & Maintainer";
+        let y_byte_array = [
+            17, 230, 112, 153, 23, 106, 170, 130, 229, 233, 218, 223, 217, 37, 240, 118,
         ];
+        let y_md5_str = String::from("11e67099176aaa82e5e9dadfd925f076");
 
-        for (key, data, ref expected) in tests.iter() {
-            let hash = crate::hmac::<Md5>(data, key);
-            let hash = digest_to_hex(hash);
+        let z = b"Kebab is the best food!!1";
+        let z_byte_array = [
+            235, 59, 232, 35, 95, 245, 111, 129, 3, 5, 251, 183, 8, 233, 53, 167,
+        ];
+        let z_md5_str = String::from("eb3be8235ff56f810305fbb708e935a7");
 
-            assert_eq!(hash.len(), hash.len());
-            assert_eq!(hash, *expected);
-        }
+        let t = b"coulda, woulda, shoulda";
+        let t_byte_array = [
+            169, 95, 210, 71, 168, 35, 38, 122, 252, 65, 44, 32, 59, 127, 128, 86,
+        ];
+        let t_md5_str = String::from("a95fd247a823267afc412c203b7f8056");
+
+        assert!(digest(x) == x_byte_array);
+        assert!(digest_to_hex_string(&digest(x)) == x_md5_str);
+
+        assert!(digest(y) == y_byte_array);
+        assert!(digest_to_hex_string(&digest(y)) == y_md5_str);
+
+        assert!(digest(z) == z_byte_array);
+        assert!(digest_to_hex_string(&digest(z)) == z_md5_str);
+
+        assert!(digest(t) == t_byte_array);
+        assert!(digest_to_hex_string(&digest(t)) == t_md5_str);
     }
 }

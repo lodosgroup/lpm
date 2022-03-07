@@ -71,8 +71,7 @@ impl<T: AsRef<[u8]>> core::fmt::Display for DigestFmt<T> {
     }
 }
 
-mod md5;
-pub use md5::{md5, Md5};
+pub mod md5;
 
 mod sha256;
 pub use sha256::{sha256, Sha256};
