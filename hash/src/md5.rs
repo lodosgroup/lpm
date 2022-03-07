@@ -1,4 +1,5 @@
 const BLOCK_SIZE: usize = 64;
+const RESULT_SIZE: usize = 16;
 const STATE_SIZE: usize = 4;
 const INIT_STATE: [u32; STATE_SIZE] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476];
 
@@ -256,7 +257,7 @@ const fn md5_transform(
     state
 }
 
-pub const fn digest(input: &[u8]) -> [u8; 16] {
+pub const fn digest(input: &[u8]) -> [u8; RESULT_SIZE] {
     let mut state = INIT_STATE;
     let mut cursor = 0;
 
@@ -310,8 +311,8 @@ pub const fn digest(input: &[u8]) -> [u8; 16] {
 
 #[cfg(test)]
 mod tests {
-    use crate::digest_to_hex_string;
     use super::digest;
+    use crate::digest_to_hex_string;
 
     #[test]
     fn test_digest_and_hex() {

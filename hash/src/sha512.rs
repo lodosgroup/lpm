@@ -211,8 +211,7 @@ const fn sha512_transform(
     ]
 }
 
-#[inline]
-pub const fn sha512(input: &[u8]) -> [u8; RESULT_SIZE] {
+pub const fn digest(input: &[u8]) -> [u8; RESULT_SIZE] {
     let mut state = INIT_STATE;
     let mut cursor = 0;
 
@@ -282,306 +281,59 @@ pub const fn sha512(input: &[u8]) -> [u8; RESULT_SIZE] {
     ]
 }
 
-pub struct Sha512 {
-    state: [u64; STATE_SIZE],
-    len: u64,
-    buffer: [u8; BLOCK_SIZE],
-}
-
-impl Sha512 {
-    pub const fn new() -> Self {
-        Self {
-            state: INIT_STATE,
-            len: 0,
-            buffer: [0; BLOCK_SIZE],
-        }
-    }
-
-    pub fn reset(&mut self) {
-        *self = Self::new();
-    }
-
-    pub const fn const_update(mut self, input: &[u8]) -> Self {
-        let num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-        self.len += input.len() as u64;
-
-        let mut cursor = 0;
-
-        if num > 0 {
-            let block_num = BLOCK_SIZE - num;
-
-            if input.len() < block_num {
-                let mut idx = 0;
-                while idx < input.len() {
-                    self.buffer[num + idx] = input[idx];
-                    idx += 1;
-                }
-                return self;
-            }
-
-            let mut idx = 0;
-            while idx < block_num {
-                self.buffer[num + idx] = input[idx];
-                idx += 1;
-            }
-            self.state = sha512_transform(self.state, 0, &self.buffer);
-            cursor += block_num
-        }
-
-        while input.len() - cursor >= BLOCK_SIZE {
-            self.state = sha512_transform(self.state, cursor, input);
-            cursor += BLOCK_SIZE;
-        }
-
-        let remains = input.len() - cursor;
-        let mut idx = 0;
-        while idx < remains {
-            self.buffer[idx] = input[cursor + idx];
-            idx += 1;
-        }
-
-        self
-    }
-
-    pub fn update(&mut self, input: &[u8]) {
-        let mut num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-        self.len += input.len() as u64;
-
-        let mut cursor = 0;
-
-        if num > 0 {
-            let buffer = &mut self.buffer[num..];
-            num = BLOCK_SIZE - num;
-
-            if input.len() < num {
-                buffer[..input.len()].copy_from_slice(input);
-                return;
-            }
-
-            buffer.copy_from_slice(&input[..num]);
-            self.state = sha512_transform(self.state, 0, &self.buffer);
-            cursor += num;
-        }
-
-        while input.len() - cursor >= BLOCK_SIZE {
-            self.state = sha512_transform(self.state, cursor, input);
-            cursor += BLOCK_SIZE;
-        }
-
-        let remains = input.len() - cursor;
-        if remains > 0 {
-            self.buffer[..remains].copy_from_slice(&input[cursor..]);
-        }
-    }
-
-    pub const fn const_result(mut self) -> [u8; RESULT_SIZE] {
-        let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-
-        self.buffer[pos] = 0x80;
-        pos += 1;
-
-        while pos != (BLOCK_SIZE - (2 * core::mem::size_of::<u64>())) {
-            pos &= BLOCK_SIZE - 1;
-
-            if pos == 0 {
-                self.state = sha512_transform(self.state, 0, &self.buffer);
-            }
-
-            self.buffer[pos] = 0;
-            pos += 1;
-        }
-
-        let len_lo = self.len.wrapping_shl(3).to_be_bytes();
-        let len_hi = self.len.wrapping_shr(64 - 3).to_be_bytes();
-
-        self.buffer[pos] = len_hi[0];
-        self.buffer[pos + 1] = len_hi[1];
-        self.buffer[pos + 2] = len_hi[2];
-        self.buffer[pos + 3] = len_hi[3];
-        self.buffer[pos + 4] = len_hi[4];
-        self.buffer[pos + 5] = len_hi[5];
-        self.buffer[pos + 6] = len_hi[6];
-        self.buffer[pos + 7] = len_hi[7];
-
-        self.buffer[pos + 8] = len_lo[0];
-        self.buffer[pos + 9] = len_lo[1];
-        self.buffer[pos + 10] = len_lo[2];
-        self.buffer[pos + 11] = len_lo[3];
-        self.buffer[pos + 12] = len_lo[4];
-        self.buffer[pos + 13] = len_lo[5];
-        self.buffer[pos + 14] = len_lo[6];
-        self.buffer[pos + 15] = len_lo[7];
-
-        self.state = sha512_transform(self.state, 0, &self.buffer);
-
-        let a = self.state[0].to_be_bytes();
-        let b = self.state[1].to_be_bytes();
-        let c = self.state[2].to_be_bytes();
-        let d = self.state[3].to_be_bytes();
-        let e = self.state[4].to_be_bytes();
-        let f = self.state[5].to_be_bytes();
-        let g = self.state[6].to_be_bytes();
-        let h = self.state[7].to_be_bytes();
-        [
-            a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], b[0], b[1], b[2], b[3], b[4], b[5],
-            b[6], b[7], c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], d[0], d[1], d[2], d[3],
-            d[4], d[5], d[6], d[7], e[0], e[1], e[2], e[3], e[4], e[5], e[6], e[7], f[0], f[1],
-            f[2], f[3], f[4], f[5], f[6], f[7], g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7],
-            h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7],
-        ]
-    }
-
-    pub fn result(&mut self) -> [u8; RESULT_SIZE] {
-        let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-
-        self.buffer[pos] = 0x80;
-        pos += 1;
-
-        while pos != (BLOCK_SIZE - (2 * core::mem::size_of::<u64>())) {
-            pos &= BLOCK_SIZE - 1;
-
-            if pos == 0 {
-                self.state = sha512_transform(self.state, 0, &self.buffer);
-            }
-
-            self.buffer[pos] = 0;
-            pos += 1;
-        }
-
-        let len_lo = self.len.wrapping_shl(3).to_be_bytes();
-        let len_hi = self.len.wrapping_shr(64 - 3).to_be_bytes();
-
-        self.buffer[pos] = len_hi[0];
-        self.buffer[pos + 1] = len_hi[1];
-        self.buffer[pos + 2] = len_hi[2];
-        self.buffer[pos + 3] = len_hi[3];
-        self.buffer[pos + 4] = len_hi[4];
-        self.buffer[pos + 5] = len_hi[5];
-        self.buffer[pos + 6] = len_hi[6];
-        self.buffer[pos + 7] = len_hi[7];
-
-        self.buffer[pos + 8] = len_lo[0];
-        self.buffer[pos + 9] = len_lo[1];
-        self.buffer[pos + 10] = len_lo[2];
-        self.buffer[pos + 11] = len_lo[3];
-        self.buffer[pos + 12] = len_lo[4];
-        self.buffer[pos + 13] = len_lo[5];
-        self.buffer[pos + 14] = len_lo[6];
-        self.buffer[pos + 15] = len_lo[7];
-
-        self.state = sha512_transform(self.state, 0, &self.buffer);
-
-        let a = self.state[0].to_be_bytes();
-        let b = self.state[1].to_be_bytes();
-        let c = self.state[2].to_be_bytes();
-        let d = self.state[3].to_be_bytes();
-        let e = self.state[4].to_be_bytes();
-        let f = self.state[5].to_be_bytes();
-        let g = self.state[6].to_be_bytes();
-        let h = self.state[7].to_be_bytes();
-        [
-            a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], b[0], b[1], b[2], b[3], b[4], b[5],
-            b[6], b[7], c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], d[0], d[1], d[2], d[3],
-            d[4], d[5], d[6], d[7], e[0], e[1], e[2], e[3], e[4], e[5], e[6], e[7], f[0], f[1],
-            f[2], f[3], f[4], f[5], f[6], f[7], g[0], g[1], g[2], g[3], g[4], g[5], g[6], g[7],
-            h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7],
-        ]
-    }
-}
-
-impl super::Digest for Sha512 {
-    type OutputType = [u8; RESULT_SIZE];
-    type BlockType = [u8; BLOCK_SIZE];
-
-    #[inline(always)]
-    fn new() -> Self {
-        Self::new()
-    }
-
-    #[inline(always)]
-    fn reset(&mut self) {
-        self.reset();
-    }
-
-    #[inline(always)]
-    fn update(&mut self, input: &[u8]) {
-        self.update(input);
-    }
-
-    #[inline(always)]
-    fn result(&mut self) -> Self::OutputType {
-        self.result()
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    extern crate alloc;
-
-    use alloc::string::{String, ToString};
-
-    use super::*;
-
-    fn digest_to_hex(input: [u8; RESULT_SIZE]) -> String {
-        crate::DigestFmt(input).to_string()
-    }
+    use super::digest;
+    use crate::digest_to_hex_string;
 
     #[test]
-    fn test_simple() {
-        let tests = [
-            ("", "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"),
-            ("abc", "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"),
-            ("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", "204a8fc6dda82f0a0ced7beb8e08a41657c16ef468b228a8279be331a703c33596fd15c13b1b07f9aa1d3bea57789ca031ad85c7a71dd70354ec631238ca3445"),
-            ("abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu", "8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909"),
-            ("abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstuabcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu", "b1179d83245119c98bd9b5f813a1df5594850c7afeebb4574ad6b3e0e6fcf700b3373ee3084170c1d33a4193d8bcf1dc3005decb5d75a6c2785056a3e7fed643"),
+    fn test_digest_and_hex() {
+        let x = b"";
+        let x_byte_array = [
+            207, 131, 225, 53, 126, 239, 184, 189, 241, 84, 40, 80, 214, 109, 128, 7, 214, 32, 228,
+            5, 11, 87, 21, 220, 131, 244, 169, 33, 211, 108, 233, 206, 71, 208, 209, 60, 93, 133,
+            242, 176, 255, 131, 24, 210, 135, 126, 236, 47, 99, 185, 49, 189, 71, 65, 122, 129,
+            165, 56, 50, 122, 249, 39, 218, 62,
         ];
+        let x_sha512_str = String::from("cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e");
 
-        let mut hasher = Sha512::new();
-        let mut chunked = Sha512::new();
-        for (data, ref expected) in tests.iter() {
-            let data = data.as_bytes();
-
-            let mut chunked_const = Sha512::new();
-            hasher.update(data);
-            for chunk in data.chunks(25) {
-                chunked.update(chunk);
-                chunked_const = chunked_const.const_update(chunk);
-            }
-
-            let hash = digest_to_hex(hasher.result());
-            let chunked_hash = digest_to_hex(chunked.result());
-            let const_hash = digest_to_hex(super::sha512(data));
-            let const_chunked_hash = digest_to_hex(chunked_const.const_result());
-            let const_hash_stateful =
-                digest_to_hex(Sha512::new().const_update(data).const_result());
-
-            assert_eq!(const_hash.len(), hash.len());
-            assert_eq!(hash, *expected);
-            assert_eq!(const_hash, *expected);
-            assert_eq!(hash, chunked_hash);
-            assert_eq!(hash, const_chunked_hash);
-            assert_eq!(hash, const_hash_stateful);
-
-            hasher.reset();
-            chunked.reset();
-        }
-    }
-
-    #[test]
-    fn test_hmac() {
-        let tests: [(&'static [u8], &'static [u8], &'static str); 5] = [
-            (&[0x0B; 20], b"Hi There", "87aa7cdea5ef619d4ff0b4241a1d6cb02379f4e2ce4ec2787ad0b30545e17cdedaa833b7d6b8a702038b274eaea3f4e4be9d914eeb61f1702e696c203a126854"),
-            (b"Jefe", b"what do ya want for nothing?", "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"),
-            (&[0xAA; 20], &[0xDD; 50], "fa73b0089d56a284efb0f0756c890be9b1b5dbdd8ee81a3655f83e33b2279d39bf3e848279a722c806b485a47e67c807b946a337bee8942674278859e13292fb"),
-            (&[0xAA; 131], b"Test Using Larger Than Block-Size Key - Hash Key First", "80b24263c7c1a3ebb71493c1dd7be8b49b46d1f41b4aeec1121b013783f8f3526b56d037e05f2598bd0fd2215d6a1e5295e64f73f63f0aec8b915a985d786598"),
-            (&[0xAA; 131], b"This is a test using a larger than block-size key and a larger than block-size data. The key needs to be hashed before being used by the HMAC algorithm.", "e37b6a775dc87dbaa4dfa9f96e5e3ffddebd71f8867289865df5a32d20cdc944b6022cac3c4982b10d5eeb55c3e4de15134676fb6de0446065c97440fa8c6a58"),
+        let y = b"Onur Ozkan - LodPM Core Developer & Maintainer";
+        let y_byte_array = [
+            243, 222, 25, 66, 101, 122, 84, 22, 37, 46, 150, 46, 175, 193, 52, 177, 234, 0, 199,
+            173, 16, 190, 9, 150, 163, 254, 32, 37, 75, 127, 144, 254, 194, 165, 227, 126, 82, 209,
+            24, 67, 199, 80, 189, 176, 157, 143, 190, 93, 48, 249, 202, 94, 213, 25, 9, 19, 237,
+            162, 78, 213, 204, 42, 252, 48,
         ];
+        let y_sha512_str = String::from("f3de1942657a5416252e962eafc134b1ea00c7ad10be0996a3fe20254b7f90fec2a5e37e52d11843c750bdb09d8fbe5d30f9ca5ed5190913eda24ed5cc2afc30");
 
-        for (key, data, ref expected) in tests.iter() {
-            let hash = crate::hmac::<Sha512>(data, key);
-            let hash = digest_to_hex(hash);
+        let z = b"Kebab is the best food!!1";
+        let z_byte_array = [
+            175, 232, 62, 23, 105, 211, 28, 88, 13, 166, 232, 197, 245, 227, 92, 219, 105, 31, 33,
+            83, 255, 83, 18, 64, 184, 47, 119, 170, 206, 31, 242, 231, 124, 169, 154, 181, 90, 69,
+            49, 224, 131, 40, 120, 211, 144, 11, 241, 45, 29, 17, 82, 168, 115, 227, 247, 53, 224,
+            31, 132, 99, 138, 178, 101, 222,
+        ];
+        let z_sha512_str = String::from("afe83e1769d31c580da6e8c5f5e35cdb691f2153ff531240b82f77aace1ff2e77ca99ab55a4531e0832878d3900bf12d1d1152a873e3f735e01f84638ab265de");
 
-            assert_eq!(hash, *expected);
-        }
+        let t = b"coulda, woulda, shoulda";
+        let t_byte_array = [
+            101, 184, 191, 20, 176, 17, 10, 80, 13, 233, 125, 122, 177, 187, 233, 218, 137, 220,
+            100, 10, 182, 25, 143, 222, 98, 226, 18, 111, 193, 1, 99, 114, 53, 123, 123, 227, 162,
+            23, 227, 155, 123, 68, 212, 244, 123, 167, 212, 213, 37, 206, 15, 100, 48, 129, 120,
+            23, 84, 122, 217, 120, 155, 144, 220, 189,
+        ];
+        let t_sha512_str = String::from("65b8bf14b0110a500de97d7ab1bbe9da89dc640ab6198fde62e2126fc1016372357b7be3a217e39b7b44d4f47ba7d4d525ce0f6430817817547ad9789b90dcbd");
+
+        assert!(digest(x) == x_byte_array);
+        assert!(digest_to_hex_string(&digest(x)) == x_sha512_str);
+
+        assert!(digest(y) == y_byte_array);
+        assert!(digest_to_hex_string(&digest(y)) == y_sha512_str);
+
+        assert!(digest(z) == z_byte_array);
+        assert!(digest_to_hex_string(&digest(z)) == z_sha512_str);
+
+        assert!(digest(t) == t_byte_array);
+        assert!(digest_to_hex_string(&digest(t)) == t_sha512_str);
     }
 }
