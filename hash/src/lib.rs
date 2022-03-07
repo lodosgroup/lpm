@@ -71,10 +71,14 @@ impl<T: AsRef<[u8]>> core::fmt::Display for DigestFmt<T> {
     }
 }
 
-pub mod md5;
+#[inline(always)]
+pub fn digest_to_hex_string(dgst: &[u8]) -> String {
+    let str_vec: Vec<String> = dgst.iter().map(|b| format!("{:02x}", b)).collect();
+    str_vec.join("")
+}
 
-mod sha256;
-pub use sha256::{sha256, Sha256};
+pub mod md5;
+pub mod sha256;
 
 mod sha512;
 pub use sha512::{sha512, Sha512};

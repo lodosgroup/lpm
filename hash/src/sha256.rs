@@ -272,7 +272,7 @@ const fn sha256_transform(
     ]
 }
 
-pub const fn sha256(input: &[u8]) -> [u8; RESULT_SIZE] {
+pub const fn digest(input: &[u8]) -> [u8; RESULT_SIZE] {
     let mut state = INIT_STATE;
     let mut cursor = 0;
 
@@ -329,279 +329,55 @@ pub const fn sha256(input: &[u8]) -> [u8; RESULT_SIZE] {
     ]
 }
 
-pub struct Sha256 {
-    state: [u32; STATE_SIZE],
-    len: u64,
-    buffer: [u8; BLOCK_SIZE],
-}
-
-impl Sha256 {
-    pub const fn new() -> Self {
-        Self {
-            state: INIT_STATE,
-            len: 0,
-            buffer: [0; BLOCK_SIZE],
-        }
-    }
-
-    pub fn reset(&mut self) {
-        *self = Self::new();
-    }
-
-    pub const fn const_update(mut self, input: &[u8]) -> Self {
-        let num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-        self.len += input.len() as u64;
-
-        let mut cursor = 0;
-
-        if num > 0 {
-            let block_num = BLOCK_SIZE - num;
-
-            if input.len() < block_num {
-                let mut idx = 0;
-                while idx < input.len() {
-                    self.buffer[num + idx] = input[idx];
-                    idx += 1;
-                }
-                return self;
-            }
-
-            let mut idx = 0;
-            while idx < block_num {
-                self.buffer[num + idx] = input[idx];
-                idx += 1;
-            }
-            self.state = sha256_transform(self.state, 0, &self.buffer);
-            cursor += block_num
-        }
-
-        while input.len() - cursor >= BLOCK_SIZE {
-            self.state = sha256_transform(self.state, cursor, input);
-            cursor += BLOCK_SIZE;
-        }
-
-        let remains = input.len() - cursor;
-        let mut idx = 0;
-        while idx < remains {
-            self.buffer[idx] = input[cursor + idx];
-            idx += 1;
-        }
-
-        self
-    }
-
-    pub fn update(&mut self, input: &[u8]) {
-        let mut num = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-        self.len += input.len() as u64;
-
-        let mut cursor = 0;
-
-        if num > 0 {
-            let buffer = &mut self.buffer[num..];
-            num = BLOCK_SIZE - num;
-
-            if input.len() < num {
-                buffer[..input.len()].copy_from_slice(input);
-                return;
-            }
-
-            buffer.copy_from_slice(&input[..num]);
-            self.state = sha256_transform(self.state, 0, &self.buffer);
-            cursor += num
-        }
-
-        while input.len() - cursor >= BLOCK_SIZE {
-            self.state = sha256_transform(self.state, cursor, input);
-            cursor += BLOCK_SIZE;
-        }
-
-        let remains = input.len() - cursor;
-        if remains > 0 {
-            self.buffer[..remains].copy_from_slice(&input[cursor..]);
-        }
-    }
-
-    pub const fn const_result(mut self) -> [u8; RESULT_SIZE] {
-        let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-
-        self.buffer[pos] = 0x80;
-        pos += 1;
-
-        while pos != (BLOCK_SIZE - core::mem::size_of::<u64>()) {
-            pos &= BLOCK_SIZE - 1;
-
-            if pos == 0 {
-                self.state = sha256_transform(self.state, 0, &self.buffer);
-            }
-
-            self.buffer[pos] = 0;
-            pos += 1;
-        }
-
-        let len = self.len.wrapping_shl(3).to_be_bytes();
-        self.buffer[pos] = len[0];
-        self.buffer[pos + 1] = len[1];
-        self.buffer[pos + 2] = len[2];
-        self.buffer[pos + 3] = len[3];
-        self.buffer[pos + 4] = len[4];
-        self.buffer[pos + 5] = len[5];
-        self.buffer[pos + 6] = len[6];
-        self.buffer[pos + 7] = len[7];
-
-        self.state = sha256_transform(self.state, 0, &self.buffer);
-
-        let a = self.state[0].to_be_bytes();
-        let b = self.state[1].to_be_bytes();
-        let c = self.state[2].to_be_bytes();
-        let d = self.state[3].to_be_bytes();
-        let e = self.state[4].to_be_bytes();
-        let f = self.state[5].to_be_bytes();
-        let g = self.state[6].to_be_bytes();
-        let h = self.state[7].to_be_bytes();
-        [
-            a[0], a[1], a[2], a[3], b[0], b[1], b[2], b[3], c[0], c[1], c[2], c[3], d[0], d[1],
-            d[2], d[3], e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3], g[0], g[1], g[2], g[3],
-            h[0], h[1], h[2], h[3],
-        ]
-    }
-
-    pub fn result(&mut self) -> [u8; RESULT_SIZE] {
-        let mut pos = (self.len & (BLOCK_SIZE as u64 - 1)) as usize;
-
-        self.buffer[pos] = 0x80;
-        pos += 1;
-
-        while pos != (BLOCK_SIZE - core::mem::size_of::<u64>()) {
-            pos &= BLOCK_SIZE - 1;
-
-            if pos == 0 {
-                self.state = sha256_transform(self.state, 0, &self.buffer);
-            }
-
-            self.buffer[pos] = 0;
-            pos += 1;
-        }
-
-        let len = self.len.wrapping_shl(3).to_be_bytes();
-        self.buffer[pos] = len[0];
-        self.buffer[pos + 1] = len[1];
-        self.buffer[pos + 2] = len[2];
-        self.buffer[pos + 3] = len[3];
-        self.buffer[pos + 4] = len[4];
-        self.buffer[pos + 5] = len[5];
-        self.buffer[pos + 6] = len[6];
-        self.buffer[pos + 7] = len[7];
-
-        self.state = sha256_transform(self.state, 0, &self.buffer);
-
-        let a = self.state[0].to_be_bytes();
-        let b = self.state[1].to_be_bytes();
-        let c = self.state[2].to_be_bytes();
-        let d = self.state[3].to_be_bytes();
-        let e = self.state[4].to_be_bytes();
-        let f = self.state[5].to_be_bytes();
-        let g = self.state[6].to_be_bytes();
-        let h = self.state[7].to_be_bytes();
-        [
-            a[0], a[1], a[2], a[3], b[0], b[1], b[2], b[3], c[0], c[1], c[2], c[3], d[0], d[1],
-            d[2], d[3], e[0], e[1], e[2], e[3], f[0], f[1], f[2], f[3], g[0], g[1], g[2], g[3],
-            h[0], h[1], h[2], h[3],
-        ]
-    }
-}
-
-impl super::Digest for Sha256 {
-    type OutputType = [u8; RESULT_SIZE];
-    type BlockType = [u8; BLOCK_SIZE];
-
-    #[inline(always)]
-    fn new() -> Self {
-        Self::new()
-    }
-
-    #[inline(always)]
-    fn reset(&mut self) {
-        self.reset();
-    }
-
-    #[inline(always)]
-    fn update(&mut self, input: &[u8]) {
-        self.update(input);
-    }
-
-    #[inline(always)]
-    fn result(&mut self) -> Self::OutputType {
-        self.result()
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    extern crate alloc;
-
-    use alloc::string::{String, ToString};
-
-    use super::*;
-
-    fn digest_to_hex(input: [u8; RESULT_SIZE]) -> String {
-        crate::DigestFmt(input).to_string()
-    }
+    use super::digest;
+    use crate::digest_to_hex_string;
 
     #[test]
-    fn test_simple() {
-        let tests = [
-            ("", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"),
-            ("abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),
-            ("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1"),
-            ("abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu", "cf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1"),
+    fn test_digest_and_hex() {
+        let x = b"";
+        let x_byte_array = [
+            227, 176, 196, 66, 152, 252, 28, 20, 154, 251, 244, 200, 153, 111, 185, 36, 39, 174,
+            65, 228, 100, 155, 147, 76, 164, 149, 153, 27, 120, 82, 184, 85,
         ];
+        let x_sha256_str =
+            String::from("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
 
-        let mut hasher = Sha256::new();
-        let mut chunked = Sha256::new();
-        for (data, ref expected) in tests.iter() {
-            let data = data.as_bytes();
-
-            let mut chunked_const = Sha256::new();
-            hasher.update(data);
-            for chunk in data.chunks(25) {
-                chunked.update(chunk);
-                chunked_const = chunked_const.const_update(chunk);
-            }
-
-            let hash = digest_to_hex(hasher.result());
-            let chunked_hash = digest_to_hex(chunked.result());
-            let const_hash = digest_to_hex(super::sha256(data));
-            let const_chunked_hash = digest_to_hex(chunked_const.const_result());
-            let const_hash_stateful =
-                digest_to_hex(Sha256::new().const_update(data).const_result());
-
-            assert_eq!(const_hash.len(), hash.len());
-            assert_eq!(hash, *expected);
-            assert_eq!(const_hash, *expected);
-            assert_eq!(hash, chunked_hash);
-            assert_eq!(hash, const_chunked_hash);
-            assert_eq!(hash, const_hash_stateful);
-
-            hasher.reset();
-            chunked.reset();
-        }
-    }
-
-    #[test]
-    fn test_hmac() {
-        let tests: [(&'static [u8], &'static [u8], &'static str); 5] = [
-            (&[0x0B; 20], b"Hi There", "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"),
-            (b"Jefe", b"what do ya want for nothing?", "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"),
-            (&[0xAA; 20], &[0xDD; 50], "773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe"),
-            (&[0xAA; 131], b"Test Using Larger Than Block-Size Key - Hash Key First", "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"),
-            (&[0xAA; 131], b"This is a test using a larger than block-size key and a larger than block-size data. The key needs to be hashed before being used by the HMAC algorithm.", "9b09ffa71b942fcb27635fbcd5b0e944bfdc63644f0713938a7f51535c3a35e2"),
+        let y = b"Onur Ozkan - LodPM Core Developer & Maintainer";
+        let y_byte_array = [
+            120, 53, 5, 7, 83, 55, 187, 191, 196, 140, 77, 165, 109, 86, 232, 235, 205, 78, 108,
+            76, 150, 131, 73, 67, 149, 145, 128, 164, 156, 226, 166, 142,
         ];
+        let y_sha256_str =
+            String::from("783505075337bbbfc48c4da56d56e8ebcd4e6c4c96834943959180a49ce2a68e");
 
-        for (key, data, ref expected) in tests.iter() {
-            let hash = crate::hmac::<Sha256>(data, key);
-            let hash = digest_to_hex(hash);
+        let z = b"Kebab is the best food!!1";
+        let z_byte_array = [
+            210, 94, 216, 86, 57, 107, 115, 96, 117, 39, 212, 114, 12, 175, 56, 16, 46, 49, 68, 63,
+            203, 218, 175, 71, 204, 213, 50, 114, 63, 8, 234, 95,
+        ];
+        let z_sha256_str =
+            String::from("d25ed856396b73607527d4720caf38102e31443fcbdaaf47ccd532723f08ea5f");
 
-            assert_eq!(hash, *expected);
-        }
+        let t = b"coulda, woulda, shoulda";
+        let t_byte_array = [
+            16, 194, 119, 7, 125, 203, 252, 176, 92, 76, 81, 47, 254, 115, 149, 46, 24, 26, 111,
+            190, 122, 201, 174, 51, 192, 203, 67, 169, 197, 247, 57, 46,
+        ];
+        let t_sha256_str =
+            String::from("10c277077dcbfcb05c4c512ffe73952e181a6fbe7ac9ae33c0cb43a9c5f7392e");
+
+        assert!(digest(x) == x_byte_array);
+        assert!(digest_to_hex_string(&digest(x)) == x_sha256_str);
+
+        assert!(digest(y) == y_byte_array);
+        assert!(digest_to_hex_string(&digest(y)) == y_sha256_str);
+
+        assert!(digest(z) == z_byte_array);
+        assert!(digest_to_hex_string(&digest(z)) == z_sha256_str);
+
+        assert!(digest(t) == t_byte_array);
+        assert!(digest_to_hex_string(&digest(t)) == t_sha256_str);
     }
 }

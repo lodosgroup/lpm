@@ -256,12 +256,6 @@ const fn md5_transform(
     state
 }
 
-#[inline(always)]
-pub fn digest_to_hex_string(dgst: &[u8; 16]) -> String {
-    let str_vec: Vec<String> = dgst.iter().map(|b| format!("{:02x}", b)).collect();
-    str_vec.join("")
-}
-
 pub const fn digest(input: &[u8]) -> [u8; 16] {
     let mut state = INIT_STATE;
     let mut cursor = 0;
@@ -316,8 +310,7 @@ pub const fn digest(input: &[u8]) -> [u8; 16] {
 
 #[cfg(test)]
 mod tests {
-    use crate::md5::digest_to_hex_string;
-
+    use crate::digest_to_hex_string;
     use super::digest;
 
     #[test]
