@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![no_std]
 
 use alloc::{format, string::String, vec::Vec};
