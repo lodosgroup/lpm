@@ -1,6 +1,9 @@
+use std::{fs, io::Read};
+
+use hash::{md5, sha256, sha512};
 use parser::meta::Checksums;
 
-use crate::pkg::LodPkg;
+use crate::{pkg::LodPkg, ExtractionTasks};
 
 enum ChecksumKind {
     Md5,
@@ -29,11 +32,9 @@ impl ChecksumKind {
 }
 
 impl<'a> super::ValidationTasks for LodPkg<'a> {
-    fn checksum_validation(&self) -> Result<(), Box<dyn std::error::Error>> {
-        match &self.meta_dir {
-            Some(meta_dir) => validate_file_checksums(&meta_dir.checksums),
-            // TODO
-            None => {}
+    fn start_validations(&self) -> Result<(), Box<dyn std::error::Error>> {
+        if let Some(meta_dir) = &self.meta_dir {
+            check_program_checksums(self.get_pkg_output_path(), &meta_dir.checksums)
         }
 
         Ok(())
@@ -41,11 +42,36 @@ impl<'a> super::ValidationTasks for LodPkg<'a> {
 }
 
 #[inline(always)]
-fn validate_file_checksums(checksums: &Checksums) {
-    match ChecksumKind::from_str(checksums.kind.to_lowercase().as_str()) {
-        // TODO
-        Ok(_) => todo!(),
-        // TODO
-        Err(_) => todo!(),
+fn check_program_checksums(dir_path: String, checksums: &Checksums) {
+    if let Ok(kind) = ChecksumKind::from_str(checksums.kind.to_lowercase().as_str()) {
+        for file in &checksums.files {
+            // Read file as byte-array
+            let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path).unwrap();
+            let mut buffer = Vec::new();
+            f_reader.read_to_end(&mut buffer).unwrap();
+
+            // Generate hash with using same algorithm of pkg checksum
+            let mut f_hash = String::new();
+            match kind {
+                ChecksumKind::Md5 => {
+                    let digest = md5::digest(&buffer);
+                    f_hash = hash::digest_to_hex_string(&digest);
+                }
+                ChecksumKind::Sha256 => {
+                    let digest = sha256::digest(&buffer);
+                    f_hash = hash::digest_to_hex_string(&digest);
+                }
+                ChecksumKind::Sha512 => {
+                    let digest = sha512::digest(&buffer);
+                    f_hash = hash::digest_to_hex_string(&digest);
+                }
+            }
+
+            // TODO
+            // Implement better comparison and error handling
+            assert_eq!(file.checksum, f_hash);
+        }
+    } else {
+        todo!()
     }
 }

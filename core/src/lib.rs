@@ -4,11 +4,12 @@ const EXTRACTION_OUTPUT_PATH: &str = "/var/cache/lpm";
 
 pub mod extraction;
 pub mod installation;
-pub mod validation;
 pub mod pkg;
+pub mod validation;
 
 pub trait ExtractionTasks {
     fn start_extraction(&mut self) -> Result<(), Box<dyn std::error::Error>>;
+    fn get_pkg_output_path(&self) -> String;
     fn half_extract(&self) -> Result<(), std::io::Error>;
     fn extract_meta_and_program(&self) -> Result<(), std::io::Error>;
     fn read_pkg_data(&mut self);
@@ -21,5 +22,5 @@ pub trait InstallationTasks {
 }
 
 pub trait ValidationTasks {
-    fn checksum_validation(&self) -> Result<(), Box<dyn std::error::Error>>;
+    fn start_validations(&self) -> Result<(), Box<dyn std::error::Error>>;
 }

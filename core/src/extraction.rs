@@ -19,6 +19,12 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
         Ok(())
     }
 
+    fn get_pkg_output_path(&self) -> String {
+        super::EXTRACTION_OUTPUT_PATH.to_string()
+            + "/"
+            + self.path.file_stem().unwrap().to_str().unwrap()
+    }
+
     fn half_extract(&self) -> Result<(), std::io::Error> {
         let input_file = File::open(self.path).expect("Package could not opened.");
         let mut archive = ar::Archive::new(input_file);
@@ -27,9 +33,7 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
             let mut entry = entry.expect("Failed on parsing archive entry.");
             let filename = from_utf8(entry.header().identifier())
                 .expect("Package has a file that has non-utf8 name.");
-            let mut output_path = super::EXTRACTION_OUTPUT_PATH.to_string()
-                + "/"
-                + self.path.file_stem().unwrap().to_str().unwrap();
+            let mut output_path = self.get_pkg_output_path();
 
             create_dir_all(output_path.clone())?;
 
@@ -46,9 +50,7 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
     }
 
     fn extract_meta_and_program(&self) -> Result<(), std::io::Error> {
-        let pkg_dir = super::EXTRACTION_OUTPUT_PATH.to_string()
-            + "/"
-            + self.path.file_stem().unwrap().to_str().unwrap();
+        let pkg_dir = self.get_pkg_output_path();
 
         let tar_file_path = pkg_dir.clone() + "/meta.tar.xz";
         let tar_file = File::open(tar_file_path)?;
@@ -64,9 +66,7 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
     }
 
     fn read_pkg_data(&mut self) {
-        let pkg_dir = super::EXTRACTION_OUTPUT_PATH.to_string()
-            + "/"
-            + self.path.file_stem().unwrap().to_str().unwrap();
+        let pkg_dir = self.get_pkg_output_path();
 
         let meta_dir = pkg_dir.clone() + "/meta";
         let system_json = pkg_dir + "/system.json";
@@ -76,9 +76,7 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
     }
 
     fn cleanup(&self) -> Result<(), std::io::Error> {
-        let pkg_dir = super::EXTRACTION_OUTPUT_PATH.to_string()
-            + "/"
-            + self.path.file_stem().unwrap().to_str().unwrap();
+        let pkg_dir = self.get_pkg_output_path();
 
         remove_dir_all(pkg_dir)?;
         Ok(())
