@@ -51,25 +51,15 @@ fn check_program_checksums(dir_path: String, checksums: &Checksums) {
             f_reader.read_to_end(&mut buffer).unwrap();
 
             // Generate hash with using same algorithm of pkg checksum
-            let mut f_hash = String::new();
-            match kind {
-                ChecksumKind::Md5 => {
-                    let digest = md5::digest(&buffer);
-                    f_hash = hash::digest_to_hex_string(&digest);
-                }
-                ChecksumKind::Sha256 => {
-                    let digest = sha256::digest(&buffer);
-                    f_hash = hash::digest_to_hex_string(&digest);
-                }
-                ChecksumKind::Sha512 => {
-                    let digest = sha512::digest(&buffer);
-                    f_hash = hash::digest_to_hex_string(&digest);
-                }
-            }
+            let file_hash = match kind {
+                ChecksumKind::Md5 => hash::digest_to_hex_string(&md5::digest(&buffer)),
+                ChecksumKind::Sha256 => hash::digest_to_hex_string(&sha256::digest(&buffer)),
+                ChecksumKind::Sha512 => hash::digest_to_hex_string(&sha512::digest(&buffer)),
+            };
 
             // TODO
             // Implement better comparison and error handling
-            assert_eq!(file.checksum, f_hash);
+            assert_eq!(file.checksum, file_hash);
         }
     } else {
         todo!()
