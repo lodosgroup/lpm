@@ -3,7 +3,9 @@ use std::{
     path::Path,
 };
 
-pub fn copy_recursively(src: &str, destination: &str) -> Result<(), std::io::Error> {
+use crate::ehandle::RuntimeError;
+
+pub fn copy_recursively(src: &str, destination: &str) -> Result<(), RuntimeError> {
     create_dir_all(destination.clone())?;
 
     let src = Path::new(src);

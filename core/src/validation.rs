@@ -2,6 +2,7 @@ use std::{fs, io::Read};
 
 use hash::{md5, sha256, sha512};
 use parser::meta::Checksums;
+use utils::ehandle::RuntimeError;
 
 use crate::{pkg::LodPkg, ExtractionTasks};
 
@@ -33,7 +34,7 @@ impl ChecksumKind {
 }
 
 impl<'a> super::ValidationTasks for LodPkg<'a> {
-    fn start_validations(&self) -> Result<(), Box<dyn std::error::Error>> {
+    fn start_validations(&self) -> Result<(), RuntimeError> {
         if let Some(meta_dir) = &self.meta_dir {
             check_program_checksums(self.get_pkg_output_path(), &meta_dir.checksums)
         }
