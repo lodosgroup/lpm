@@ -24,5 +24,6 @@ pub fn copy_recursively(src: &str, destination: &str) -> Result<(), std::io::Err
             )?;
         }
     }
+
     Ok(())
 }

@@ -4,5 +4,6 @@ members = [
 	"db",
 	"core",
     "parser",
-	"hash"
+	"hash",
+	"utils",
 ]

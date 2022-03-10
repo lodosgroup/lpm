@@ -1,3 +1,4 @@
+- add scripts that will be executed on installation or uninstallation process
 - provide package validations (missing files, checksums, etc)
 - provide error handling crate
 ? decide packaging standards

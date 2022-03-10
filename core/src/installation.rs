@@ -1,11 +1,11 @@
-use lpm_io::file::copy_recursively;
+use utils::file_io::copy_recursively;
 
 use crate::{pkg::LodPkg, ExtractionTasks, ValidationTasks};
 
 impl<'a> super::InstallationTasks for LodPkg<'a> {
     fn start_installation(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.start_extraction()?;
-        self.checksum_validation()?;
+        self.start_validations()?;
         self.install_program()?;
         self.cleanup()?;
 
