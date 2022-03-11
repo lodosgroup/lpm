@@ -1,6 +1,9 @@
 use std::{fs, io::Read};
 
-use ehandle::RuntimeError;
+use ehandle::{
+    package::{PackageError, PackageErrorKind},
+    RuntimeError,
+};
 use hash::{md5, sha256, sha512};
 use parser::meta::Checksums;
 
@@ -23,7 +26,6 @@ impl ChecksumKind {
         }
     }
 
-    // Provide error in Result
     pub fn from_str(kind: &str) -> Result<ChecksumKind, ()> {
         match kind {
             "md5" => Ok(ChecksumKind::Md5),
@@ -60,12 +62,16 @@ fn check_program_checksums(dir_path: String, checksums: &Checksums) -> Result<()
                 ChecksumKind::Sha512 => hash::digest_to_hex_string(&sha512::digest(&buffer)),
             };
 
-            // TODO
-            // Implement better comparison and error handling
-            assert_eq!(file.checksum, file_hash);
+            if file_hash.ne(&file.checksum) {
+                return Err(RuntimeError::from(PackageError::new(
+                    PackageErrorKind::InvalidPackageFiles,
+                )));
+            }
         }
     } else {
-        todo!()
+        return Err(RuntimeError::from(PackageError::new(
+            PackageErrorKind::UnsupportedChecksumAlgorithm,
+        )));
     }
 
     Ok(())

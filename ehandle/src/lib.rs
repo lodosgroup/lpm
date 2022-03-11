@@ -17,3 +17,5 @@ impl From<Box<dyn std::error::Error>> for RuntimeError {
 }
 
 mod io;
+pub mod package;
+
