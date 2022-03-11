@@ -5,8 +5,8 @@ use std::{
     str::from_utf8,
 };
 
+use ehandle::RuntimeError;
 use parser::{system::System, ParserTasks};
-use utils::ehandle::RuntimeError;
 use xz2::read::XzDecoder;
 
 use crate::pkg::{LodPkg, MetaDir};

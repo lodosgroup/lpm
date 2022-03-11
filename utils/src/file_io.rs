@@ -3,7 +3,7 @@ use std::{
     path::Path,
 };
 
-use crate::ehandle::RuntimeError;
+use ehandle::RuntimeError;
 
 pub fn copy_recursively(src: &str, destination: &str) -> Result<(), RuntimeError> {
     create_dir_all(destination.clone())?;

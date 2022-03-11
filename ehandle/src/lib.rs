@@ -1,4 +1,5 @@
-use std::io;
+#![forbid(unsafe_code)]
+#![feature(io_error_more, io_error_uncategorized)]
 
 #[derive(Debug)]
 pub struct RuntimeError {
@@ -9,18 +10,10 @@ pub struct RuntimeError {
 impl From<Box<dyn std::error::Error>> for RuntimeError {
     fn from(error: Box<dyn std::error::Error>) -> Self {
         RuntimeError {
-            kind: String::from("TODO"),
+            kind: "TODO".to_string(), // error.source().unwrap().to_string(),
             reason: error.to_string(),
         }
     }
 }
 
-impl From<io::Error> for RuntimeError {
-    fn from(error: io::Error) -> Self {
-        RuntimeError {
-            kind: String::from("io"),
-            reason: error.to_string(),
-        }
-    }
-}
-
+mod io;

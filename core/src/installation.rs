@@ -1,4 +1,5 @@
-use utils::{ehandle::RuntimeError, file_io::copy_recursively};
+use ehandle::RuntimeError;
+use utils::file_io::copy_recursively;
 
 use crate::{pkg::LodPkg, ExtractionTasks, ValidationTasks};
 

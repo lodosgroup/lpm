@@ -2,7 +2,7 @@ use std::{fs, io::Read};
 
 use hash::{md5, sha256, sha512};
 use parser::meta::Checksums;
-use utils::ehandle::RuntimeError;
+use ehandle::RuntimeError;
 
 use crate::{pkg::LodPkg, ExtractionTasks};
 
@@ -36,7 +36,7 @@ impl ChecksumKind {
 impl<'a> super::ValidationTasks for LodPkg<'a> {
     fn start_validations(&self) -> Result<(), RuntimeError> {
         if let Some(meta_dir) = &self.meta_dir {
-            check_program_checksums(self.get_pkg_output_path(), &meta_dir.checksums)
+            check_program_checksums(self.get_pkg_output_path(), &meta_dir.checksums)?
         }
 
         Ok(())
@@ -44,11 +44,11 @@ impl<'a> super::ValidationTasks for LodPkg<'a> {
 }
 
 #[inline(always)]
-fn check_program_checksums(dir_path: String, checksums: &Checksums) {
+fn check_program_checksums(dir_path: String, checksums: &Checksums) -> Result<(), RuntimeError> {
     if let Ok(kind) = ChecksumKind::from_str(checksums.kind.to_lowercase().as_str()) {
         for file in &checksums.files {
             // Read file as byte-array
-            let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path).unwrap();
+            let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path)?;
             let mut buffer = Vec::new();
             f_reader.read_to_end(&mut buffer).unwrap();
 
@@ -66,4 +66,6 @@ fn check_program_checksums(dir_path: String, checksums: &Checksums) {
     } else {
         todo!()
     }
+
+    Ok(())
 }

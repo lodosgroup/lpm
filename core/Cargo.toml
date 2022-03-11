@@ -13,3 +13,4 @@ xz2 = "0.1"
 parser = { path = "../parser" }
 hash = { path = "../hash" }
 utils = { path = "../utils" }
+ehandle = { path = "../ehandle" }

@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use utils::ehandle::RuntimeError;
+use ehandle::RuntimeError;
 
 const EXTRACTION_OUTPUT_PATH: &str = "/var/cache/lpm";
 
