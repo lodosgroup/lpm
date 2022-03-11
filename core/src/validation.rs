@@ -1,11 +1,12 @@
 use std::{fs, io::Read};
 
+use ehandle::RuntimeError;
 use hash::{md5, sha256, sha512};
 use parser::meta::Checksums;
-use ehandle::RuntimeError;
 
 use crate::{pkg::LodPkg, ExtractionTasks};
 
+#[non_exhaustive]
 enum ChecksumKind {
     Md5,
     Sha256,
