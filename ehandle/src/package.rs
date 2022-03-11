@@ -7,7 +7,6 @@ pub enum PackageErrorKind {
     UnsupportedChecksumAlgorithm,
 }
 
-#[allow(dead_code)]
 impl PackageErrorKind {
     pub fn as_str(&self) -> &str {
         match self {
