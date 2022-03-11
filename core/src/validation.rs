@@ -1,9 +1,6 @@
-use std::{fs, io::Read};
+use std::{error, fs, io::Read};
 
-use ehandle::{
-    package::{PackageError, PackageErrorKind},
-    RuntimeError,
-};
+use ehandle::package::{PackageError, PackageErrorKind};
 use hash::{md5, sha256, sha512};
 use parser::meta::Checksums;
 
@@ -26,18 +23,20 @@ impl ChecksumKind {
         }
     }
 
-    pub fn from_str(kind: &str) -> Result<ChecksumKind, ()> {
+    pub fn from_str(kind: &str) -> Result<ChecksumKind, PackageError> {
         match kind {
             "md5" => Ok(ChecksumKind::Md5),
             "sha256" => Ok(ChecksumKind::Sha256),
             "sha512" => Ok(ChecksumKind::Sha512),
-            _ => todo!(),
+            _ => Err(PackageError::new(
+                PackageErrorKind::UnsupportedChecksumAlgorithm,
+            )),
         }
     }
 }
 
 impl<'a> super::ValidationTasks for LodPkg<'a> {
-    fn start_validations(&self) -> Result<(), RuntimeError> {
+    fn start_validations(&self) -> Result<(), Box<dyn error::Error>> {
         if let Some(meta_dir) = &self.meta_dir {
             check_program_checksums(self.get_pkg_output_path(), &meta_dir.checksums)?
         }
@@ -47,7 +46,10 @@ impl<'a> super::ValidationTasks for LodPkg<'a> {
 }
 
 #[inline(always)]
-fn check_program_checksums(dir_path: String, checksums: &Checksums) -> Result<(), RuntimeError> {
+fn check_program_checksums(
+    dir_path: String,
+    checksums: &Checksums,
+) -> Result<(), Box<dyn error::Error>> {
     if let Ok(kind) = ChecksumKind::from_str(checksums.kind.to_lowercase().as_str()) {
         for file in &checksums.files {
             // Read file as byte-array
@@ -63,15 +65,11 @@ fn check_program_checksums(dir_path: String, checksums: &Checksums) -> Result<()
             };
 
             if file_hash.ne(&file.checksum) {
-                return Err(RuntimeError::from(PackageError::new(
-                    PackageErrorKind::InvalidPackageFiles,
-                )));
+                return Err(PackageError::new(PackageErrorKind::InvalidPackageFiles).into());
             }
         }
     } else {
-        return Err(RuntimeError::from(PackageError::new(
-            PackageErrorKind::UnsupportedChecksumAlgorithm,
-        )));
+        return Err(PackageError::new(PackageErrorKind::UnsupportedChecksumAlgorithm).into());
     }
 
     Ok(())

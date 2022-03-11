@@ -1,18 +1,17 @@
 use std::{
     fs::{create_dir_all, remove_dir_all, File},
-    io::copy,
+    io::{self, copy},
     path::Path,
     str::from_utf8,
 };
 
-use ehandle::RuntimeError;
 use parser::{system::System, ParserTasks};
 use xz2::read::XzDecoder;
 
 use crate::pkg::{LodPkg, MetaDir};
 
 impl<'a> super::ExtractionTasks for LodPkg<'a> {
-    fn start_extraction(&mut self) -> Result<(), RuntimeError> {
+    fn start_extraction(&mut self) -> Result<(), io::Error> {
         self.half_extract()?;
         self.extract_meta_and_program()?;
         self.read_pkg_data();
@@ -26,7 +25,7 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
             + self.path.file_stem().unwrap().to_str().unwrap()
     }
 
-    fn half_extract(&self) -> Result<(), RuntimeError> {
+    fn half_extract(&self) -> Result<(), io::Error> {
         let input_file = File::open(self.path).expect("Package could not opened.");
         let mut archive = ar::Archive::new(input_file);
 
@@ -50,7 +49,7 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
         Ok(())
     }
 
-    fn extract_meta_and_program(&self) -> Result<(), RuntimeError> {
+    fn extract_meta_and_program(&self) -> Result<(), io::Error> {
         let pkg_dir = self.get_pkg_output_path();
 
         let tar_file_path = pkg_dir.clone() + "/meta.tar.xz";
@@ -76,7 +75,7 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
         self.system = Some(System::deserialize(&system_json));
     }
 
-    fn cleanup(&self) -> Result<(), RuntimeError> {
+    fn cleanup(&self) -> Result<(), io::Error> {
         let pkg_dir = self.get_pkg_output_path();
 
         remove_dir_all(pkg_dir)?;

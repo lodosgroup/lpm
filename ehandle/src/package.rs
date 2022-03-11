@@ -1,3 +1,5 @@
+use std::error;
+
 use crate::RuntimeError;
 
 #[non_exhaustive]
@@ -44,5 +46,11 @@ impl From<PackageError> for RuntimeError {
             kind: error.kind.as_str().to_string(),
             reason: error.reason,
         }
+    }
+}
+
+impl From<PackageError> for Box<dyn error::Error> {
+    fn from(error: PackageError) -> Self {
+        error.into()
     }
 }

@@ -1,10 +1,18 @@
 #![forbid(unsafe_code)]
 #![feature(io_error_more, io_error_uncategorized)]
 
+use std::error;
+
 #[derive(Debug)]
 pub struct RuntimeError {
     pub kind: String,
     pub reason: String,
+}
+
+impl From<RuntimeError> for Box<dyn error::Error> {
+    fn from(error: RuntimeError) -> Self {
+        error.into()
+    }
 }
 
 impl From<Box<dyn std::error::Error>> for RuntimeError {

@@ -8,3 +8,4 @@ publish = false
 
 [dependencies]
 core = { path = "../core" }
+ehandle = { path = "../ehandle" }

@@ -5,6 +5,5 @@ members = [
 	"core",
     "parser",
 	"hash",
-	"utils",
 	"ehandle",
 ]
