@@ -3,10 +3,35 @@
 
 use std::error;
 
+#[non_exhaustive]
+#[derive(Debug)]
+pub enum RuntimeErrorKind {
+    UnsupportedPlatform,
+}
+
+impl RuntimeErrorKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            RuntimeErrorKind::UnsupportedPlatform => "UnsupportedPlatform",
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct RuntimeError {
     pub kind: String,
     pub reason: String,
+}
+
+impl RuntimeError {
+    pub fn new(kind: RuntimeErrorKind) -> Self {
+        match kind {
+            RuntimeErrorKind::UnsupportedPlatform => RuntimeError {
+                kind: kind.as_str().to_string(),
+                reason: "LodPM can only work on Linux based platforms.".to_string(),
+            },
+        }
+    }
 }
 
 impl From<RuntimeError> for Box<dyn error::Error> {
