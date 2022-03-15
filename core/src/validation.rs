@@ -59,6 +59,8 @@ fn check_program_checksums(
 
             // Generate hash with using same algorithm of pkg checksum
             let file_hash = match kind {
+                // TODO
+                // support more algorithms which are more secure
                 ChecksumKind::Md5 => hash::digest_to_hex_string(&md5::digest(&buffer)),
                 ChecksumKind::Sha256 => hash::digest_to_hex_string(&sha256::digest(&buffer)),
                 ChecksumKind::Sha512 => hash::digest_to_hex_string(&sha512::digest(&buffer)),
