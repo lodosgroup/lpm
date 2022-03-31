@@ -9,8 +9,6 @@ pub fn do_migrations() -> Result<(), MigrationError> {
     let mut initial_version: i64 = INITIAL_VERSION;
 
     create_table_core(&db, &mut initial_version)?;
-    create_table_core(&db, &mut initial_version)?;
-    create_table_core(&db, &mut initial_version)?;
 
     db.close();
 
@@ -27,8 +25,6 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationErr
     if status != SqlitePrimaryResult::Ok {
         return Err(MigrationError::new(MigrationErrorKind::VersionCouldNotSet));
     }
-
-    println!("{:?}", status);
 
     Ok(())
 }
