@@ -68,19 +68,48 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
     // define database structure
     let statement = String::from(
         "
-            CREATE TABLE pkg_repositories (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               link TEXT NOT NULL
+            PRAGMA foreign_keys = on;
+
+            # Description
+            CREATE TABLE sys (
+               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               name          TEXT       NOT NULL,
+               v_major       INTEGER    NOT NULL,
+               v_minor       INTEGER    NOT NULL,
+               v_patch       INTEGER    NOT NULL,
+               v_tag         TEXT,
+               v_readable    TEXT       NOT NULL
             );
 
-            CREATE TABLE pkg_architectures (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               architecture TEXT NOT NULL
+            # Description
+            CREATE TABLE checksum_kinds (
+               id      INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               kind    TEXT       NOT NULL
             );
 
-            CREATE TABLE pkg_kinds (
-               id INTEGER PRIMARY KEY AUTOINCREMENT,
-               kind TEXT NOT NULL
+            # TODO
+            # Finalize packages structure
+            CREATE TABLE packages (
+               id                  INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               name                TEXT       NOT NULL,
+               absolute_path       TEXT       NOT NULL,
+               checksum            TEXT       NOT NULL,
+               checksum_kind_id    INTEGER    NOT NULL,
+
+               FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
+            );
+
+            # Description
+            CREATE TABLE files (
+               id                  INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               name                TEXT       NOT NULL,
+               absolute_path       TEXT       NOT NULL,
+               checksum            TEXT       NOT NULL,
+               checksum_kind_id    INTEGER    NOT NULL,
+               package_id          INTEGER    NOT NULL,
+
+               FOREIGN KEY(package_id) REFERENCES packages(id),
+               FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
             );
         ",
     );
