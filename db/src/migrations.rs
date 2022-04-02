@@ -64,42 +64,70 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
         return Ok(());
     }
 
-    // TODO
-    // define database structure
     let statement = String::from(
         "
             PRAGMA foreign_keys = on;
 
-            # Description
-            CREATE TABLE sys (
-               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               name          TEXT       NOT NULL,
-               v_major       INTEGER    NOT NULL,
-               v_minor       INTEGER    NOT NULL,
-               v_patch       INTEGER    NOT NULL,
-               v_tag         TEXT,
-               v_readable    TEXT       NOT NULL
-            );
-
-            # Description
+            /*
+             * Statement of `checksum_kinds` table creation.
+             * This table will hold the supported hashing algorithms
+             * for the packages.
+            */
             CREATE TABLE checksum_kinds (
                id      INTEGER    PRIMARY KEY    AUTOINCREMENT,
                kind    TEXT       NOT NULL
             );
 
-            # TODO
-            # Finalize packages structure
-            CREATE TABLE packages (
-               id                  INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               name                TEXT       NOT NULL,
-               absolute_path       TEXT       NOT NULL,
-               checksum            TEXT       NOT NULL,
-               checksum_kind_id    INTEGER    NOT NULL,
-
-               FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
+            /*
+             * Statement of `package_kinds` table creation.
+             * This table will hold the kind of packages to help
+             * classify the packages installed in the system.
+            */
+            CREATE TABLE package_kinds (
+               id      INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               kind    TEXT       NOT NULL
             );
 
-            # Description
+            /*
+             * Statement of `package_repositories` table creation.
+             * This table will hold the repository informations.
+            */
+            CREATE TABLE package_repositories (
+               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               repository    TEXT       NOT NULL
+            );
+
+            /*
+             * Statement of `packages` table creation.
+             * This table will hold installed package informations.
+            */
+            CREATE TABLE packages (
+               id                       INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               name                     TEXT       NOT NULL,
+               description              TEXT,
+               maintainer               TEXT       NOT NULL,
+               repository_id            INTEGER,
+               homepage                 TEXT,
+               depended_package_id      INTEGER,
+               package_kind_id          INTEGER    NOT_NULL,
+               installed_size           INTEGER    NOT_NULL,
+               license                  TEXT       NOT_NULL,
+               v_major                  INTEGER    NOT NULL,
+               v_minor                  INTEGER    NOT NULL,
+               v_patch                  INTEGER    NOT NULL,
+               v_tag                    TEXT,
+               v_readable               TEXT       NOT NULL,
+
+               FOREIGN KEY(repository_id) REFERENCES package_repositories(id),
+               FOREIGN KEY(depended_package_id) REFERENCES packages(id),
+               FOREIGN KEY(package_kind_id) REFERENCES package_kinds(id)
+            );
+
+            /*
+             * Statement of `files` table creation.
+             * This table will hold the information of files which are in the
+             * packages.
+            */
             CREATE TABLE files (
                id                  INTEGER    PRIMARY KEY    AUTOINCREMENT,
                name                TEXT       NOT NULL,
@@ -107,7 +135,6 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                checksum            TEXT       NOT NULL,
                checksum_kind_id    INTEGER    NOT NULL,
                package_id          INTEGER    NOT NULL,
-
                FOREIGN KEY(package_id) REFERENCES packages(id),
                FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
             );
