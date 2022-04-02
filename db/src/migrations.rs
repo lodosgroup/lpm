@@ -15,6 +15,7 @@ pub fn start_db_migrations() -> Result<(), MigrationError> {
     Ok(())
 }
 
+#[inline]
 fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationError> {
     let statement = String::from(format!("PRAGMA user_version = {};", version));
     let status = db.execute(
@@ -29,6 +30,7 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationErr
     Ok(())
 }
 
+#[inline]
 fn can_migrate<'a>(db: &Database, version: i64) -> Result<bool, MinSqliteWrapperError<'a>> {
     let statement = String::from("PRAGMA user_version;");
 
@@ -49,6 +51,7 @@ fn can_migrate<'a>(db: &Database, version: i64) -> Result<bool, MinSqliteWrapper
     Ok(result)
 }
 
+#[inline]
 fn callback_function(status: SqlitePrimaryResult, sql_statement: String) {
     println!(
         "SQL EXECUTION HAS BEEN FAILED.\n\nReason: {:?}\nStatement: {}",
