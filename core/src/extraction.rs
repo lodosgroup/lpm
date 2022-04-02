@@ -10,7 +10,16 @@ use xz2::read::XzDecoder;
 
 use crate::pkg::{LodPkg, MetaDir};
 
-impl<'a> super::ExtractionTasks for LodPkg<'a> {
+pub trait ExtractionTasks {
+    fn start_extraction(&mut self) -> Result<(), io::Error>;
+    fn get_pkg_output_path(&self) -> String;
+    fn half_extract(&self) -> Result<(), io::Error>;
+    fn extract_meta_and_program(&self) -> Result<(), io::Error>;
+    fn read_pkg_data(&mut self);
+    fn cleanup(&self) -> Result<(), io::Error>;
+}
+
+impl<'a> ExtractionTasks for LodPkg<'a> {
     fn start_extraction(&mut self) -> Result<(), io::Error> {
         self.half_extract()?;
         self.extract_meta_and_program()?;
@@ -82,4 +91,3 @@ impl<'a> super::ExtractionTasks for LodPkg<'a> {
         Ok(())
     }
 }
-

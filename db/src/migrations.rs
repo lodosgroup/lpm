@@ -4,7 +4,7 @@ use std::{path::Path, process};
 
 const INITIAL_VERSION: i64 = 0;
 
-pub fn do_migrations() -> Result<(), MigrationError> {
+pub fn start_db_migrations() -> Result<(), MigrationError> {
     let db = Database::open(Path::new(super::DB_PATH))?;
     let mut initial_version: i64 = INITIAL_VERSION;
 
@@ -67,6 +67,20 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
     let statement = String::from(
         "
             PRAGMA foreign_keys = on;
+
+            /*
+             * Statement of `sys` table creation.
+             * This table will hold the core informations about lpm.
+            */
+            CREATE TABLE sys (
+               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               name          TEXT       NOT NULL,
+               v_major       INTEGER    NOT NULL,
+               v_minor       INTEGER    NOT NULL,
+               v_patch       INTEGER    NOT NULL,
+               v_tag         TEXT,
+               v_readable    TEXT       NOT NULL
+            );
 
             /*
              * Statement of `checksum_kinds` table creation.

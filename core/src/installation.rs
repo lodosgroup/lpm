@@ -5,9 +5,14 @@ use std::{
     path::Path,
 };
 
-use crate::{pkg::LodPkg, ExtractionTasks, ValidationTasks};
+use crate::{extraction::ExtractionTasks, pkg::LodPkg, validation::ValidationTasks};
 
-impl<'a> super::InstallationTasks for LodPkg<'a> {
+pub trait InstallationTasks {
+    fn start_installation(&mut self) -> Result<(), Box<dyn error::Error>>;
+    fn install_program(&self) -> Result<(), io::Error>;
+}
+
+impl<'a> InstallationTasks for LodPkg<'a> {
     fn start_installation(&mut self) -> Result<(), Box<dyn error::Error>> {
         self.start_extraction()?;
         self.start_validations()?;
