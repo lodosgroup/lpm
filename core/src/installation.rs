@@ -8,6 +8,7 @@ use std::{
 use crate::{extraction::ExtractionTasks, pkg::LodPkg, validation::ValidationTasks};
 
 pub trait InstallationTasks {
+    fn copy_programs(&self) -> Result<(), io::Error>;
     fn start_installation(&mut self) -> Result<(), Box<dyn error::Error>>;
     fn install_program(&self) -> Result<(), io::Error>;
 }
@@ -23,39 +24,23 @@ impl<'a> InstallationTasks for LodPkg<'a> {
     }
 
     fn install_program(&self) -> Result<(), io::Error> {
-        let src = super::EXTRACTION_OUTPUT_PATH.to_string()
+        self.copy_programs()
+    }
+
+    #[inline(always)]
+    fn copy_programs(&self) -> Result<(), io::Error> {
+        let source_path = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
             + self.path.file_stem().unwrap().to_str().unwrap()
             + "/program/";
 
-        copy_recursively(&src, "/")?;
+        for file in &self.meta_dir.as_ref().unwrap().files.0 {
+            let destination_path = Path::new("/").join(&file.path);
+            create_dir_all(destination_path.parent().unwrap()).unwrap();
+
+            fs::copy(source_path.clone() + &file.path, destination_path)?;
+        }
 
         Ok(())
     }
-}
-
-#[inline(always)]
-fn copy_recursively(src: &str, destination: &str) -> Result<(), io::Error> {
-    create_dir_all(destination.clone())?;
-
-    let src = Path::new(src);
-    let destination = Path::new(destination);
-
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        if file_type.is_dir() {
-            copy_recursively(
-                entry.path().to_str().unwrap(),
-                destination.join(entry.file_name()).to_str().unwrap(),
-            )?;
-        } else {
-            fs::copy(
-                entry.path(),
-                destination.join(entry.file_name()).to_str().unwrap(),
-            )?;
-        }
-    }
-
-    Ok(())
 }

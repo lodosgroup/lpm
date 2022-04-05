@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use parser::{
-    meta::{Checksums, Meta},
+    meta::{Files, Meta},
     system::System,
     ParserTasks,
 };
@@ -16,7 +16,7 @@ pub struct LodPkg<'a> {
 pub struct MetaDir {
     pub path: String,
     pub meta: Meta,
-    pub checksums: Checksums,
+    pub files: Files,
 }
 
 impl MetaDir {
@@ -24,7 +24,7 @@ impl MetaDir {
         Self {
             path: String::from(str_path),
             meta: Meta::deserialize(&(str_path.to_owned() + "/meta.json")),
-            checksums: Checksums::deserialize(&(str_path.to_owned() + "/checksums.json")),
+            files: Files::deserialize(&(str_path.to_owned() + "/files.json")),
         }
     }
 }

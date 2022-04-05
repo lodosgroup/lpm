@@ -22,10 +22,7 @@ pub struct Meta {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct Checksums {
-    pub kind: String,
-    pub files: Vec<ChecksumFileStruct>,
-}
+pub struct Files(pub Vec<FileStruct>);
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DependencyStruct {
@@ -40,8 +37,9 @@ pub struct SuggestionStruct {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ChecksumFileStruct {
+pub struct FileStruct {
     pub path: String,
+    pub checksum_algorithm: String,
     pub checksum: String,
 }
 
@@ -60,4 +58,4 @@ macro_rules! impl_parser_tasks {
     }
 }
 
-impl_parser_tasks!(Meta, Checksums);
+impl_parser_tasks!(Meta, Files);
