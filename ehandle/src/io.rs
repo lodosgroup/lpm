@@ -57,4 +57,3 @@ fn parse_io_error_kind(kind: ErrorKind) -> &'static str {
         _ => "UnrecognizedErrorKind",
     }
 }
-

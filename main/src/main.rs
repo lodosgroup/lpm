@@ -1,6 +1,7 @@
-use core::{pkg::LodPkg, InstallationTasks};
+use core::pkg::LodPkg;
 use std::env;
 
+#[allow(unused_imports)]
 use ehandle::{RuntimeError, RuntimeErrorKind};
 
 #[cfg(not(target_os = "linux"))]
@@ -8,6 +9,8 @@ compile_error!("LodPM can not be built on non-linux operating systems.");
 
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), RuntimeError> {
+    use core::installation::InstallationTasks;
+
     if let Some(file) = env::args().nth(1) {
         let mut pkg = LodPkg::new(&file);
         pkg.start_installation()?;

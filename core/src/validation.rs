@@ -4,7 +4,7 @@ use ehandle::package::{PackageError, PackageErrorKind};
 use hash::{md5, sha256, sha512};
 use parser::meta::Checksums;
 
-use crate::{pkg::LodPkg, ExtractionTasks};
+use crate::{pkg::LodPkg, extraction::ExtractionTasks};
 
 #[non_exhaustive]
 enum ChecksumKind {
@@ -35,7 +35,11 @@ impl ChecksumKind {
     }
 }
 
-impl<'a> super::ValidationTasks for LodPkg<'a> {
+pub trait ValidationTasks {
+    fn start_validations(&self) -> Result<(), Box<dyn error::Error>>;
+}
+
+impl<'a> ValidationTasks for LodPkg<'a> {
     fn start_validations(&self) -> Result<(), Box<dyn error::Error>> {
         if let Some(meta_dir) = &self.meta_dir {
             check_program_checksums(self.get_pkg_output_path(), &meta_dir.checksums)?

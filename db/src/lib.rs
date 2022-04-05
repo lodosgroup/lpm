@@ -1,8 +1,7 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
+pub mod migrations;
+
+#[cfg(not(debug_assertions))]
+const DB_PATH: &str = "/var/lib/lodpm/lpm.db";
+
+#[cfg(debug_assertions)]
+const DB_PATH: &str = "lpm.db";

@@ -49,6 +49,6 @@ impl From<Box<dyn std::error::Error>> for RuntimeError {
     }
 }
 
+pub mod db;
 mod io;
 pub mod package;
-
