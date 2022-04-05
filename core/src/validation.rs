@@ -2,9 +2,9 @@ use std::{error, fs, io::Read};
 
 use ehandle::package::{PackageError, PackageErrorKind};
 use hash::{md5, sha256, sha512};
-use parser::meta::Checksums;
+use parser::meta::Files;
 
-use crate::{pkg::LodPkg, extraction::ExtractionTasks};
+use crate::{extraction::ExtractionTasks, pkg::LodPkg};
 
 #[non_exhaustive]
 enum ChecksumKind {
@@ -42,7 +42,7 @@ pub trait ValidationTasks {
 impl<'a> ValidationTasks for LodPkg<'a> {
     fn start_validations(&self) -> Result<(), Box<dyn error::Error>> {
         if let Some(meta_dir) = &self.meta_dir {
-            check_program_checksums(self.get_pkg_output_path(), &meta_dir.checksums)?
+            check_program_checksums(self.get_pkg_output_path(), &meta_dir.files)?
         }
 
         Ok(())
@@ -50,21 +50,18 @@ impl<'a> ValidationTasks for LodPkg<'a> {
 }
 
 #[inline(always)]
-fn check_program_checksums(
-    dir_path: String,
-    checksums: &Checksums,
-) -> Result<(), Box<dyn error::Error>> {
-    if let Ok(kind) = ChecksumKind::from_str(checksums.kind.to_lowercase().as_str()) {
-        for file in &checksums.files {
-            // Read file as byte-array
-            let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path)?;
-            let mut buffer = Vec::new();
-            f_reader.read_to_end(&mut buffer).unwrap();
+fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), Box<dyn error::Error>> {
+    for file in &files.0 {
+        // Read file as byte-array
+        let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path)?;
+        let mut buffer = Vec::new();
+        f_reader.read_to_end(&mut buffer).unwrap();
 
+        if let Ok(checksum_algorithm) =
+            ChecksumKind::from_str(file.checksum_algorithm.to_lowercase().as_str())
+        {
             // Generate hash with using same algorithm of pkg checksum
-            let file_hash = match kind {
-                // TODO
-                // support more algorithms which are more secure
+            let file_hash = match checksum_algorithm {
                 ChecksumKind::Md5 => hash::digest_to_hex_string(&md5::digest(&buffer)),
                 ChecksumKind::Sha256 => hash::digest_to_hex_string(&sha256::digest(&buffer)),
                 ChecksumKind::Sha512 => hash::digest_to_hex_string(&sha512::digest(&buffer)),
@@ -73,9 +70,9 @@ fn check_program_checksums(
             if file_hash.ne(&file.checksum) {
                 return Err(PackageError::new(PackageErrorKind::InvalidPackageFiles).into());
             }
+        } else {
+            return Err(PackageError::new(PackageErrorKind::UnsupportedChecksumAlgorithm).into());
         }
-    } else {
-        return Err(PackageError::new(PackageErrorKind::UnsupportedChecksumAlgorithm).into());
     }
 
     Ok(())
