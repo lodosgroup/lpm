@@ -52,7 +52,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
             let output_path = Path::new(&output_path).to_path_buf();
             let mut output_file = File::create(&output_path)?;
             copy(&mut entry, &mut output_file)
-                .expect(&format!("Failed to copy {:?}.", output_path));
+                .unwrap_or_else(|_| panic!("Failed to copy {:?}.", output_path));
         }
 
         Ok(())
