@@ -17,7 +17,7 @@ pub fn start_db_migrations() -> Result<(), MigrationError> {
 
 #[inline]
 fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationError> {
-    let statement = String::from(format!("PRAGMA user_version = {};", version));
+    let statement = format!("PRAGMA user_version = {};", version);
     let status = db.execute(
         statement,
         None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
