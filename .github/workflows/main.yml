@@ -40,10 +40,11 @@ jobs:
         profile: minimal
         toolchain: ${{ matrix.rust }}
         override: true
+        components: rustfmt
     - uses: actions-rs/cargo@v1
       with:
         command: fmt
-        args: -- --check
+        args: --all -- --check
 
   lint:
     timeout-minutes: 10
@@ -58,12 +59,7 @@ jobs:
         profile: minimal
         toolchain: ${{ matrix.rust }}
         override: true
-        components: rustfmt, clippy
-    - name: Run cargo fmt
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
+        components: clippy
     - name: Run cargo clippy
       uses: actions-rs/cargo@v1
       with:
