@@ -1,4 +1,4 @@
-name: Check, Lint, Fmt, Test, Build
+name: Rust pipeline
 on:
   push:
     branches:
