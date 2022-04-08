@@ -4,7 +4,7 @@ use std::{path::Path, process};
 
 const INITIAL_VERSION: i64 = 0;
 
-pub fn start_db_migrations() -> Result<(), MigrationError> {
+pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
     let db = Database::open(Path::new(super::DB_PATH))?;
     let mut initial_version: i64 = INITIAL_VERSION;
 
