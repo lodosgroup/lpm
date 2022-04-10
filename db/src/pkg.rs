@@ -39,7 +39,7 @@ pub fn insert_pkg_kinds(
     db.execute(statement, Some(super::simple_error_callback))
 }
 
-pub fn delete_pkg_kind(
+pub fn delete_pkg_kinds(
     kinds: Vec<String>,
     db: &Database,
 ) -> Result<SqlitePrimaryResult, MinSqliteWrapperError> {

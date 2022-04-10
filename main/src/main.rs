@@ -1,7 +1,7 @@
 use core::installation::InstallationTasks;
 use core::pkg::LodPkg;
 use db::init_db;
-use db::{pkg::insert_pkg_kinds, DB_PATH};
+use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
 use min_sqlite3_sys::prelude::*;
 use std::env;
 use std::path::Path;
@@ -14,8 +14,6 @@ compile_error!("LodPM can not be built on non-linux operating systems.");
 
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), RuntimeError> {
-    use db::pkg::delete_pkg_kind;
-
     init_db()?;
 
     let args: Vec<String> = env::args().collect();
@@ -35,7 +33,7 @@ fn main() -> Result<(), RuntimeError> {
             "--delete-pkg-kind" => {
                 let db = Database::open(Path::new(DB_PATH))?;
                 let kinds = &args[2..];
-                delete_pkg_kind(kinds.to_vec(), &db)?;
+                delete_pkg_kinds(kinds.to_vec(), &db)?;
                 db.close();
             }
             _ => panic!("Invalid argument."),

@@ -170,8 +170,7 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), MigrationErro
             INSERT INTO sys
                 (name, v_major, v_minor, v_patch, v_readable)
             VALUES
-                ('lpm', {}, {}, {}, '{}');
-        ",
+                ('lpm', {}, {}, {}, '{}');",
         lpm_version.major, lpm_version.minor, lpm_version.patch, lpm_version.readable_format
     );
 
@@ -182,8 +181,7 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), MigrationErro
             VALUES
                 ('md5'),
                 ('sha256'),
-                ('sha512');
-        ",
+                ('sha512');",
     );
 
     let statement = format!(
