@@ -7,7 +7,7 @@ pub trait LodPkgCoreDbOps {
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert(&self, db: &Database) {
-        let statement = String::from("PRAGMA user_version");
+        let statement = String::from(";");
         let _status = db
             .execute(
                 statement,
@@ -19,13 +19,15 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     }
 }
 
-pub fn insert_pkg_kinds(kinds: Vec<String>, db: &Database) {
+pub fn insert_pkg_kinds(
+    kinds: Vec<String>,
+    db: &Database,
+) -> Result<SqlitePrimaryResult, MinSqliteWrapperError> {
     let mut statement = String::from(
         "
             INSERT INTO package_kinds
                 (kind)
-            VALUES
-        ",
+            VALUES",
     );
 
     for kind in kinds {
@@ -35,18 +37,25 @@ pub fn insert_pkg_kinds(kinds: Vec<String>, db: &Database) {
     statement.pop();
     statement = format!("{}{}", statement, ";");
     db.execute(statement, Some(super::simple_error_callback))
-        .unwrap();
 }
 
-pub fn delete_pkg_kind(kind: String, db: &Database) {
-    let statement = format!(
+pub fn delete_pkg_kind(
+    kinds: Vec<String>,
+    db: &Database,
+) -> Result<SqlitePrimaryResult, MinSqliteWrapperError> {
+    let mut statement = String::from(
         "
             DELETE FROM package_kinds
             WHERE
-                kind = '{}'
-        ",
-        kind,
+                kind IN (",
     );
+
+    for kind in kinds {
+        statement = format!("{} '{}',", statement, kind);
+    }
+
+    statement.pop();
+    statement = format!("{}){}", statement, ";");
+
     db.execute(statement, Some(super::simple_error_callback))
-        .unwrap();
 }

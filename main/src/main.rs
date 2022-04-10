@@ -27,13 +27,16 @@ fn main() -> Result<(), RuntimeError> {
                 pkg.start_installation()?;
             }
             "--add-pkg-kind" => {
-                let db = Database::open(Path::new(DB_PATH)).unwrap();
+                let db = Database::open(Path::new(DB_PATH))?;
                 let kinds = &args[2..];
-                insert_pkg_kinds(kinds.to_vec(), &db);
+                insert_pkg_kinds(kinds.to_vec(), &db)?;
+                db.close();
             }
             "--delete-pkg-kind" => {
-                let db = Database::open(Path::new(DB_PATH)).unwrap();
-                delete_pkg_kind(args[2].clone(), &db);
+                let db = Database::open(Path::new(DB_PATH))?;
+                let kinds = &args[2..];
+                delete_pkg_kind(kinds.to_vec(), &db)?;
+                db.close();
             }
             _ => panic!("Invalid argument."),
         };

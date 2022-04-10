@@ -47,6 +47,15 @@ impl From<MigrationError> for RuntimeError {
     }
 }
 
+impl From<MinSqliteWrapperError<'_>> for RuntimeError {
+    fn from(error: MinSqliteWrapperError) -> Self {
+        RuntimeError {
+            kind: error.kind.to_string(),
+            reason: error.reason,
+        }
+    }
+}
+
 impl From<MinSqliteWrapperError<'_>> for MigrationError {
     fn from(error: MinSqliteWrapperError) -> Self {
         MigrationError {

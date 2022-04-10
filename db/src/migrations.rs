@@ -69,7 +69,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             */
             CREATE TABLE sys (
                id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               name          TEXT       NOT NULL,
+               name          TEXT       NOT NULL       UNIQUE,
                v_major       INTEGER    NOT NULL,
                v_minor       INTEGER    NOT NULL,
                v_patch       INTEGER    NOT NULL,
@@ -84,7 +84,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             */
             CREATE TABLE checksum_kinds (
                id      INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               kind    TEXT       NOT NULL
+               kind    TEXT       NOT NULL       UNIQUE
             );
 
             /*
@@ -94,7 +94,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             */
             CREATE TABLE package_kinds (
                id      INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               kind    TEXT       NOT NULL
+               kind    TEXT       NOT NULL       UNIQUE
             );
 
             /*
@@ -103,7 +103,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             */
             CREATE TABLE package_repositories (
                id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               repository    TEXT       NOT NULL
+               repository    TEXT       NOT NULL       UNIQUE
             );
 
             /*
@@ -112,7 +112,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             */
             CREATE TABLE packages (
                id                       INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               name                     TEXT       NOT NULL,
+               name                     TEXT       NOT NULL       UNIQUE,
                description              TEXT,
                maintainer               TEXT       NOT NULL,
                repository_id            INTEGER,
@@ -140,7 +140,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             CREATE TABLE files (
                id                  INTEGER    PRIMARY KEY    AUTOINCREMENT,
                name                TEXT       NOT NULL,
-               absolute_path       TEXT       NOT NULL,
+               absolute_path       TEXT       NOT NULL       UNIQUE,
                checksum            TEXT       NOT NULL,
                checksum_kind_id    INTEGER    NOT NULL,
                package_id          INTEGER    NOT NULL,
