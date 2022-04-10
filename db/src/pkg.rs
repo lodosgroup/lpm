@@ -7,8 +7,8 @@ pub trait LodPkgCoreDbOps {
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert(&self, db: &Database) {
-        let statement = format!("PRAGMA user_version");
-        let status = db
+        let statement = String::from("PRAGMA user_version");
+        let _status = db
             .execute(
                 statement,
                 None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
@@ -20,7 +20,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 }
 
 pub fn insert_pkg_kinds(kinds: Vec<String>, db: &Database) {
-    let mut statement = format!(
+    let mut statement = String::from(
         "
             INSERT INTO package_kinds
                 (kind)
