@@ -3,6 +3,7 @@ use std::path::Path;
 use parser::{
     meta::{Files, Meta},
     system::System,
+    version::VersionStruct,
     ParserTasks,
 };
 
@@ -10,6 +11,7 @@ pub struct LodPkg<'a> {
     pub path: &'a Path,
     pub meta_dir: Option<MetaDir>,
     pub system: Option<System>,
+    pub version: VersionStruct,
 }
 
 #[derive(Debug)]
@@ -35,6 +37,7 @@ impl<'a> LodPkg<'a> {
             path: Path::new(str_path),
             meta_dir: None,
             system: None,
+            version: super::get_lpm_version(),
         }
     }
 }

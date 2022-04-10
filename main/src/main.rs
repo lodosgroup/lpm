@@ -1,5 +1,10 @@
+use core::installation::InstallationTasks;
 use core::pkg::LodPkg;
+use db::init_db;
+use db::{pkg::insert_pkg_kinds, DB_PATH};
+use min_sqlite3_sys::prelude::*;
 use std::env;
+use std::path::Path;
 
 #[allow(unused_imports)]
 use ehandle::{RuntimeError, RuntimeErrorKind};
@@ -9,16 +14,36 @@ compile_error!("LodPM can not be built on non-linux operating systems.");
 
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), RuntimeError> {
-    use core::installation::InstallationTasks;
-    use db::init_db;
+    use db::pkg::delete_pkg_kind;
 
     init_db()?;
 
-    if let Some(file) = env::args().nth(1) {
-        let mut pkg = LodPkg::new(&file);
-        pkg.start_installation()?;
-    } else {
-        panic!("Missing argument");
+    let args: Vec<String> = env::args().collect();
+
+    let cli = |arg: &str| -> Result<(), RuntimeError> {
+        match arg {
+            "--install" => {
+                let mut pkg = LodPkg::new(args.get(2).expect("Package path is missing."));
+                pkg.start_installation()?;
+            }
+            "--add-pkg-kind" => {
+                let db = Database::open(Path::new(DB_PATH)).unwrap();
+                let kinds = &args[2..];
+                insert_pkg_kinds(kinds.to_vec(), &db);
+            }
+            "--delete-pkg-kind" => {
+                let db = Database::open(Path::new(DB_PATH)).unwrap();
+                delete_pkg_kind(args[2].clone(), &db);
+            }
+            _ => panic!("Invalid argument."),
+        };
+
+        Ok(())
+    };
+
+    match args.get(1) {
+        Some(arg) => cli(arg)?,
+        None => panic!("Missing argument"),
     }
 
     Ok(())

@@ -9,3 +9,4 @@ publish = false
 [dependencies]
 min-sqlite3-sys = "1.2"
 ehandle = { path = "../ehandle" }
+core = { path = "../core" }

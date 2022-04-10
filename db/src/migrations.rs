@@ -1,6 +1,7 @@
+use core::get_lpm_version;
 use ehandle::db::{MigrationError, MigrationErrorKind};
 use min_sqlite3_sys::prelude::*;
-use std::{path::Path, process};
+use std::path::Path;
 
 const INITIAL_VERSION: i64 = 0;
 
@@ -9,6 +10,7 @@ pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
     let mut initial_version: i64 = INITIAL_VERSION;
 
     create_table_core(&db, &mut initial_version)?;
+    insert_defaults(&db, &mut initial_version)?;
 
     db.close();
 
@@ -49,16 +51,6 @@ fn can_migrate<'a>(db: &Database, version: i64) -> Result<bool, MinSqliteWrapper
     sql.kill();
 
     Ok(result)
-}
-
-#[inline]
-fn callback_function(status: SqlitePrimaryResult, sql_statement: String) {
-    println!(
-        "SQL EXECUTION HAS BEEN FAILED.\n\nReason: {:?}\nStatement: {}",
-        status, sql_statement
-    );
-
-    process::exit(1);
 }
 
 fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationError> {
@@ -158,7 +150,52 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
         ",
     );
 
-    db.execute(statement, Some(callback_function))?;
+    db.execute(statement, Some(super::simple_error_callback))?;
+
+    set_migration_version(db, *version)?;
+
+    Ok(())
+}
+
+fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), MigrationError> {
+    *version += 1;
+    if !can_migrate(db, *version)? {
+        return Ok(());
+    }
+
+    let lpm_version = get_lpm_version();
+
+    let sys_defaults = format!(
+        "
+            INSERT INTO sys
+                (name, v_major, v_minor, v_patch, v_readable)
+            VALUES
+                ('lpm', {}, {}, {}, '{}');
+        ",
+        lpm_version.major, lpm_version.minor, lpm_version.patch, lpm_version.readable_format
+    );
+
+    let checksum_kind_defaults = String::from(
+        "
+            INSERT INTO checksum_kinds
+                (kind)
+            VALUES
+                ('md5'),
+                ('sha256'),
+                ('sha512');
+        ",
+    );
+
+    let statement = format!(
+        "
+            {}
+
+            {}
+        ",
+        sys_defaults, checksum_kind_defaults
+    );
+
+    db.execute(statement, Some(super::simple_error_callback))?;
 
     set_migration_version(db, *version)?;
 

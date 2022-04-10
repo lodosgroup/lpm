@@ -10,3 +10,4 @@ publish = false
 core = { path = "../core" }
 ehandle = { path = "../ehandle" }
 db = { path = "../db" }
+min-sqlite3-sys = "1.2"
