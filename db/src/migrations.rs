@@ -10,6 +10,7 @@ pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
     let mut initial_version: i64 = INITIAL_VERSION;
 
     create_table_core(&db, &mut initial_version)?;
+    create_update_triggers_for_core_tables(&db, &mut initial_version)?;
     insert_defaults(&db, &mut initial_version)?;
 
     db.close();
@@ -74,7 +75,9 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                v_minor       INTEGER    NOT NULL,
                v_patch       INTEGER    NOT NULL,
                v_tag         TEXT,
-               v_readable    TEXT       NOT NULL
+               v_readable    TEXT       NOT NULL,
+               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+               updated_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*
@@ -83,8 +86,9 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
              * for the packages.
             */
             CREATE TABLE checksum_kinds (
-               id      INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               kind    TEXT       NOT NULL       UNIQUE
+               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               kind          TEXT       NOT NULL       UNIQUE,
+               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*
@@ -93,8 +97,9 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
              * classify the packages installed in the system.
             */
             CREATE TABLE package_kinds (
-               id      INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               kind    TEXT       NOT NULL       UNIQUE
+               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               kind          TEXT       NOT NULL       UNIQUE,
+               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*
@@ -103,7 +108,10 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             */
             CREATE TABLE package_repositories (
                id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               repository    TEXT       NOT NULL       UNIQUE
+               repository    TEXT       NOT NULL       UNIQUE,
+               is_active     BOOLEAN    NOT NULL       CHECK(is_active IN (0, 1)),
+               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+               updated_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*
@@ -126,6 +134,8 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                v_patch                  INTEGER    NOT NULL,
                v_tag                    TEXT,
                v_readable               TEXT       NOT NULL,
+               created_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+               updated_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
                FOREIGN KEY(repository_id) REFERENCES package_repositories(id),
                FOREIGN KEY(depended_package_id) REFERENCES packages(id),
@@ -144,9 +154,62 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                checksum            TEXT       NOT NULL,
                checksum_kind_id    INTEGER    NOT NULL,
                package_id          INTEGER    NOT NULL,
+               created_at          TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+
                FOREIGN KEY(package_id) REFERENCES packages(id),
                FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
             );
+        ",
+    );
+
+    db.execute(statement, Some(super::simple_error_callback))?;
+
+    set_migration_version(db, *version)?;
+
+    Ok(())
+}
+
+fn create_update_triggers_for_core_tables(db: &Database, version: &mut i64) -> Result<(), MigrationError> {
+    *version += 1;
+    if !can_migrate(db, *version)? {
+        return Ok(());
+    }
+
+    let statement = String::from(
+        "
+            /*
+             * Statement of `sys` update trigger.
+             * This will allow automatic `updated_at` updates whenever an UPDATE
+             * operation happens on the table.
+            */
+            CREATE TRIGGER sys_update_trigger
+                AFTER UPDATE ON sys
+            BEGIN
+                UPDATE sys SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END;
+
+
+            /*
+             * Statement of `package_repositories` update trigger.
+             * This will allow automatic `updated_at` updates whenever an UPDATE
+             * operation happens on the table.
+            */
+            CREATE TRIGGER package_repositories_update_trigger
+                AFTER UPDATE ON package_repositories
+            BEGIN
+                UPDATE package_repositories SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END;
+
+            /*
+             * Statement of `packages` update trigger.
+             * This will allow automatic `updated_at` updates whenever an UPDATE
+             * operation happens on the table.
+            */
+            CREATE TRIGGER packages_update_trigger
+                AFTER UPDATE ON packages
+            BEGIN
+                UPDATE packages SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END;
         ",
     );
 
