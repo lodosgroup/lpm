@@ -191,7 +191,6 @@ fn create_update_triggers_for_core_tables(
                 UPDATE sys SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
             END;
 
-
             /*
              * Statement of `package_repositories` update trigger.
              * This will allow automatic `updated_at` updates whenever an UPDATE
