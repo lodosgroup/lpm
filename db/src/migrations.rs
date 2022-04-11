@@ -169,7 +169,10 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
     Ok(())
 }
 
-fn create_update_triggers_for_core_tables(db: &Database, version: &mut i64) -> Result<(), MigrationError> {
+fn create_update_triggers_for_core_tables(
+    db: &Database,
+    version: &mut i64,
+) -> Result<(), MigrationError> {
     *version += 1;
     if !can_migrate(db, *version)? {
         return Ok(());
