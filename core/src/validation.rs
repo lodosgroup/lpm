@@ -1,10 +1,10 @@
-use std::{error, fs, io::Read};
+use crate::extraction::ExtractionTasks;
 
+use common::pkg::LodPkg;
 use ehandle::package::{PackageError, PackageErrorKind};
 use hash::{md5, sha256, sha512};
 use parser::meta::Files;
-
-use crate::{extraction::ExtractionTasks, pkg::LodPkg};
+use std::{error, fs, io::Read};
 
 #[non_exhaustive]
 enum ChecksumKind {

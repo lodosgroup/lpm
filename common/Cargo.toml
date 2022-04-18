@@ -1,12 +1,9 @@
 [package]
-name = "db"
+name = "common"
 version = "0.1.0"
 edition = "2021"
-publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-min-sqlite3-sys = "1.2"
-ehandle = { path = "../ehandle" }
-common = { path = "../common" }
+parser = { path = "../parser" }

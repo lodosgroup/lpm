@@ -1,5 +1,5 @@
 use core::installation::InstallationTasks;
-use core::pkg::LodPkg;
+use common::pkg::LodPkg;
 use db::init_db;
 use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
 use min_sqlite3_sys::prelude::*;

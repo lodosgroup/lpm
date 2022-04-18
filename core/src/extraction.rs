@@ -8,7 +8,7 @@ use std::{
 use parser::{system::System, ParserTasks};
 use xz2::read::XzDecoder;
 
-use crate::pkg::{LodPkg, MetaDir};
+use common::pkg::{LodPkg, MetaDir};
 
 pub trait ExtractionTasks {
     fn start_extraction(&mut self) -> Result<(), io::Error>;

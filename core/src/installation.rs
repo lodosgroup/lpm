@@ -1,11 +1,14 @@
+use crate::{extraction::ExtractionTasks, validation::ValidationTasks};
+
+use common::pkg::LodPkg;
+use db::{pkg::LodPkgCoreDbOps, DB_PATH};
+use min_sqlite3_sys::prelude::*;
 use std::{
     error,
     fs::{self, create_dir_all},
     io,
     path::Path,
 };
-
-use crate::{extraction::ExtractionTasks, pkg::LodPkg, validation::ValidationTasks};
 
 pub trait InstallationTasks {
     fn copy_programs(&self) -> Result<(), io::Error>;
@@ -19,6 +22,10 @@ impl<'a> InstallationTasks for LodPkg<'a> {
         self.start_validations()?;
         self.install_program()?;
         self.cleanup()?;
+
+        let db = Database::open(Path::new(DB_PATH)).unwrap();
+        self.insert(&db);
+        db.close();
 
         Ok(())
     }

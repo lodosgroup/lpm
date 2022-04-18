@@ -1,4 +1,4 @@
-use core::get_lpm_version;
+use common::lpm_version::get_lpm_version;
 use ehandle::db::{MigrationError, MigrationErrorKind};
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
@@ -128,7 +128,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                depended_package_id      INTEGER,
                package_kind_id          INTEGER    NOT_NULL,
                installed_size           INTEGER    NOT_NULL,
-               license                  TEXT       NOT_NULL,
+               license                  TEXT,
                v_major                  INTEGER    NOT NULL,
                v_minor                  INTEGER    NOT NULL,
                v_patch                  INTEGER    NOT NULL,
