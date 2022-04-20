@@ -1,7 +1,6 @@
-use std::path::Path;
-
 use common::{pkg::LodPkg, Files};
 use min_sqlite3_sys::prelude::*;
+use std::path::Path;
 
 pub trait LodPkgCoreDbOps {
     fn insert(&self, db: &Database);
