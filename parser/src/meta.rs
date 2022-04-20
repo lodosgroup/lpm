@@ -13,7 +13,7 @@ pub struct Meta {
     pub homepage: Option<String>,
     pub arch: String, // maybe use enums
     pub kind: String,
-    pub installed_size: u128,
+    pub installed_size: i64,
     pub tags: Vec<String>,
     pub version: VersionStruct,
     pub license: Option<String>,

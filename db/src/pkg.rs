@@ -8,9 +8,8 @@ pub trait LodPkgCoreDbOps {
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert(&self, db: &Database) {
         let meta = &self.meta_dir.as_ref().unwrap().meta;
-        let null_val = String::from("NULL");
 
-        let statement = format!(
+        let statement = String::from(
             "
             INSERT INTO packages
                 (name, description, maintainer, repository_id,
@@ -18,36 +17,50 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
                 installed_size, license, v_major, v_minor, v_patch,
                 v_tag, v_readable)
             VALUES
-                ({}, {}, {}, {}, {}, {}, {}, {}, {},
-                {}, {}, {}, {}, {})
-        ",
-            format!("'{}'", meta.name),
-            format!("'{}'", meta.description),
-            format!("'{}'", meta.maintainer),
-            1,
-            format!("'{}'", meta.homepage.as_ref().unwrap_or(&null_val.clone())),
-            null_val.clone(),
-            1,
-            meta.installed_size,
-            format!("'{}'", meta.license.as_ref().unwrap_or(&null_val.clone())),
-            self.version.major,
-            self.version.minor,
-            self.version.patch,
-            format!(
-                "'{}'",
-                self.version.tag.as_ref().unwrap_or(&null_val.clone())
-            ),
-            format!("'{}'", self.version.readable_format),
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         );
-        //        let _status = db
-        //            .execute(
-        //                statement,
-        //                None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-        //            )
-        //            .unwrap();
-        //
 
-        println!("{}", statement);
+        let mut sql = db
+            .prepare(
+                statement.clone(),
+                None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
+            )
+            .unwrap();
+
+        sql.bind_val(1, meta.name.clone());
+        sql.bind_val(2, meta.description.clone());
+        sql.bind_val(3, meta.maintainer.clone());
+        sql.bind_val(4, 1 as u32); // TODO
+
+        if let Some(homepage) = &meta.homepage {
+            sql.bind_val(5, homepage.clone());
+        } else {
+            sql.bind_val(5, SQLITE_NULL);
+        }
+
+        sql.bind_val(6, SQLITE_NULL); // TODO
+        sql.bind_val(7, 1 as i32); // TODO
+        sql.bind_val(8, meta.installed_size as i64);
+
+        if let Some(license) = &meta.license {
+            sql.bind_val(9, license.clone());
+        } else {
+            sql.bind_val(9, SQLITE_NULL);
+        }
+
+        sql.bind_val(10, self.version.major);
+        sql.bind_val(11, self.version.minor);
+        sql.bind_val(12, self.version.patch);
+
+        if let Some(vtag) = &self.version.tag {
+            sql.bind_val(13, vtag.clone());
+        } else {
+            sql.bind_val(13, SQLITE_NULL);
+        }
+
+        sql.bind_val(14, self.version.readable_format.clone());
+
+        let _status = sql.execute_prepared();
     }
 }
 
