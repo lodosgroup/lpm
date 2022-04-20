@@ -10,7 +10,7 @@ pub trait LodPkgCoreDbOps {
 impl<'a> LodPkgCoreDbOps for Files {
     fn insert(&self, db: &Database) {
         let files = &self.0;
-        let statement = String::from("select last_insert_rowid();");
+        let statement = String::from("SELECT LAST_INSERT_ROWID();");
         let mut sql = db
             .prepare(
                 statement,
@@ -39,8 +39,7 @@ impl<'a> LodPkgCoreDbOps for Files {
                     INSERT INTO files
                         (name, absolute_path, checksum, checksum_kind_id, package_id)
                     VALUES
-                        (?, ?, ?, ?, ?)
-                        ",
+                        (?, ?, ?, ?, ?)",
             );
 
             let mut sql = db
@@ -84,13 +83,13 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         let statement = String::from(
             "
-            INSERT INTO packages
-                (name, description, maintainer, repository_id,
-                homepage, depended_package_id, package_kind_id,
-                installed_size, license, v_major, v_minor, v_patch,
-                v_tag, v_readable)
-            VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                INSERT INTO packages
+                    (name, description, maintainer, repository_id,
+                    homepage, depended_package_id, package_kind_id,
+                    installed_size, license, v_major, v_minor, v_patch,
+                    v_tag, v_readable)
+                VALUES
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         );
 
         let mut sql = db
@@ -179,10 +178,10 @@ pub fn insert_pkg_kinds(
     for kind in kinds {
         let statement = String::from(
             "
-            INSERT INTO package_kinds
-                (kind)
-            VALUES
-                (?);",
+                INSERT INTO package_kinds
+                    (kind)
+                VALUES
+                    (?);",
         );
 
         let mut sql = db.prepare(statement, Some(super::simple_error_callback))?;
@@ -207,9 +206,9 @@ pub fn delete_pkg_kinds(
     for kind in kinds {
         let statement = String::from(
             "
-            DELETE FROM package_kinds
-            WHERE
-                kind = ?;",
+                DELETE FROM package_kinds
+                WHERE
+                    kind = ?;",
         );
 
         let mut sql = db.prepare(statement, Some(super::simple_error_callback))?;
