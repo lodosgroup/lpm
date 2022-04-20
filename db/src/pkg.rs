@@ -6,6 +6,9 @@ pub trait LodPkgCoreDbOps {
     fn insert(&self, db: &Database);
 }
 
+// Maybe don't implement LodPkgCoreDbOps, since
+// the insert functionality very coupled with `LodPkg::insert`
+// and should be private for this module.
 impl<'a> LodPkgCoreDbOps for Files {
     fn insert(&self, db: &Database) {
         let files = &self.0;
@@ -17,9 +20,12 @@ impl<'a> LodPkgCoreDbOps for Files {
             )
             .unwrap();
 
+        // TODO
+        // provide macro for `sql.execute_prepared()` to handle errors
         if PreparedStatementStatus::FoundRow != sql.execute_prepared() {
             // panic
         }
+
         let pkg_id = sql.get_data::<i64>(0).unwrap();
         println!("{}", pkg_id);
 
@@ -48,6 +54,9 @@ impl<'a> LodPkgCoreDbOps for Files {
                 )
                 .unwrap();
 
+            // TODO
+            // Remove these debug lines and handle them via custom macro provided for this job
+            // before merging to stable
             let status = sql.bind_val(1, file_path.file_name().unwrap().to_str().unwrap());
             println!("Status: {:?}", status);
             let status = sql.bind_val(2, format!("/{}", &file.path));
@@ -59,6 +68,8 @@ impl<'a> LodPkgCoreDbOps for Files {
             let status = sql.bind_val(5, pkg_id);
             println!("Status: {:?}", status);
 
+            // TODO
+            // provide macro for `sql.execute_prepared()` to handle errors
             if PreparedStatementStatus::Done != sql.execute_prepared() {
                 // sql.kill();
                 // panic
@@ -72,6 +83,8 @@ impl<'a> LodPkgCoreDbOps for Files {
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert(&self, db: &Database) {
+        // TODO
+        // Control the transaction from caller fn.
         db.execute(
             String::from("BEGIN TRANSACTION;"),
             Some(super::simple_error_callback),
@@ -131,6 +144,8 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         sql.bind_val(14, self.version.readable_format.clone());
 
+        // TODO
+        // provide macro for `sql.execute_prepared()` to handle errors
         if PreparedStatementStatus::Done != sql.execute_prepared() {
             // sql.kill();
             // panic
