@@ -1,12 +1,85 @@
-use common::pkg::LodPkg;
+use std::path::Path;
+
+use common::{pkg::LodPkg, Files};
 use min_sqlite3_sys::prelude::*;
 
 pub trait LodPkgCoreDbOps {
     fn insert(&self, db: &Database);
 }
 
+impl<'a> LodPkgCoreDbOps for Files {
+    fn insert(&self, db: &Database) {
+        let files = &self.0;
+        let statement = String::from("select last_insert_rowid();");
+        let mut sql = db
+            .prepare(
+                statement,
+                None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
+            )
+            .unwrap();
+
+        if PreparedStatementStatus::FoundRow != sql.execute_prepared() {
+            // panic
+        }
+        let pkg_id = sql.get_data::<i64>(0).unwrap();
+        println!("{}", pkg_id);
+
+        for file in files {
+            println!("{:?}", file);
+            let checksum_id = is_checksum_algorithm_exists(db, &file.checksum_algorithm);
+
+            if checksum_id.is_none() {
+                // panic
+            }
+
+            let file_path = Path::new(&file.path);
+
+            let statement = String::from(
+                "
+                    INSERT INTO files
+                        (name, absolute_path, checksum, checksum_kind_id, package_id)
+                    VALUES
+                        (?, ?, ?, ?, ?)
+                        ",
+            );
+
+            let mut sql = db
+                .prepare(
+                    statement,
+                    None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
+                )
+                .unwrap();
+
+            let status = sql.bind_val(1, file_path.file_name().unwrap().to_str().unwrap());
+            println!("Status: {:?}", status);
+            let status = sql.bind_val(2, format!("/{}", &file.path));
+            println!("Status: {:?}", status);
+            let status = sql.bind_val(3, &*file.checksum);
+            println!("Status: {:?}", status);
+            let status = sql.bind_val(4, checksum_id.unwrap());
+            println!("Status: {:?}", status);
+            let status = sql.bind_val(5, pkg_id);
+            println!("Status: {:?}", status);
+
+            if PreparedStatementStatus::Done != sql.execute_prepared() {
+                // sql.kill();
+                // panic
+                println!("hmm, wtf?");
+            }
+
+            sql.kill();
+        }
+    }
+}
+
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert(&self, db: &Database) {
+        db.execute(
+            String::from("BEGIN TRANSACTION;"),
+            Some(super::simple_error_callback),
+        )
+        .unwrap();
+
         let meta = &self.meta_dir.as_ref().unwrap().meta;
 
         let statement = String::from(
@@ -60,9 +133,38 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         sql.bind_val(14, self.version.readable_format.clone());
 
-        let _status = sql.execute_prepared();
+        if PreparedStatementStatus::Done != sql.execute_prepared() {
+            // sql.kill();
+            // panic
+        }
+
+        self.meta_dir.as_ref().unwrap().files.insert(db);
+
         sql.kill();
+
+        db.execute(String::from("COMMIT;"), Some(super::simple_error_callback))
+            .unwrap();
     }
+}
+
+pub fn is_checksum_algorithm_exists(db: &Database, algorithm: &str) -> Option<i64> {
+    let statement = String::from("SELECT id FROM checksum_kinds WHERE kind = ?;");
+
+    let mut sql = db
+        .prepare(
+            statement,
+            None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
+        )
+        .unwrap();
+
+    sql.bind_val(1, algorithm);
+
+    if let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
+        let result = sql.get_data::<i64>(0).unwrap();
+        return Some(result);
+    }
+
+    None
 }
 
 pub fn insert_pkg_kinds(
