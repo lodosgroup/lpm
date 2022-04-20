@@ -1,14 +1,12 @@
+use common::pkg::{LodPkg, MetaDir};
+use parser::{system::System, ParserTasks};
 use std::{
     fs::{create_dir_all, remove_dir_all, File},
     io::{self, copy},
     path::Path,
     str::from_utf8,
 };
-
-use parser::{system::System, ParserTasks};
 use xz2::read::XzDecoder;
-
-use common::pkg::{LodPkg, MetaDir};
 
 pub trait ExtractionTasks {
     fn start_extraction(&mut self) -> Result<(), io::Error>;

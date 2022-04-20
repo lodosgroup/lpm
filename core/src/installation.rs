@@ -1,5 +1,4 @@
 use crate::{extraction::ExtractionTasks, validation::ValidationTasks};
-
 use common::pkg::LodPkg;
 use db::{pkg::LodPkgCoreDbOps, DB_PATH};
 use min_sqlite3_sys::prelude::*;
