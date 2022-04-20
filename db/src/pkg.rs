@@ -22,7 +22,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         let mut sql = db
             .prepare(
-                statement.clone(),
+                statement,
                 None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
             )
             .unwrap();
@@ -30,7 +30,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         sql.bind_val(1, meta.name.clone());
         sql.bind_val(2, meta.description.clone());
         sql.bind_val(3, meta.maintainer.clone());
-        sql.bind_val(4, 1 as u32); // TODO
+        sql.bind_val(4, 1_u32); // TODO
 
         if let Some(homepage) = &meta.homepage {
             sql.bind_val(5, homepage.clone());
@@ -39,7 +39,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         }
 
         sql.bind_val(6, SQLITE_NULL); // TODO
-        sql.bind_val(7, 1 as i32); // TODO
+        sql.bind_val(7, 1_i32); // TODO
         sql.bind_val(8, meta.installed_size as i64);
 
         if let Some(license) = &meta.license {
