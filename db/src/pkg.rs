@@ -61,6 +61,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         sql.bind_val(14, self.version.readable_format.clone());
 
         let _status = sql.execute_prepared();
+        sql.kill();
     }
 }
 
@@ -68,39 +69,52 @@ pub fn insert_pkg_kinds(
     kinds: Vec<String>,
     db: &Database,
 ) -> Result<SqlitePrimaryResult, MinSqliteWrapperError> {
-    let mut statement = String::from(
-        "
-            INSERT INTO package_kinds
-                (kind)
-            VALUES",
-    );
+    db.execute(
+        String::from("BEGIN TRANSACTION;"),
+        Some(super::simple_error_callback),
+    )?;
 
     for kind in kinds {
-        statement = format!("{} ('{}'),", statement, kind);
+        let statement = String::from(
+            "
+            INSERT INTO package_kinds
+                (kind)
+            VALUES
+                (?);",
+        );
+
+        let mut sql = db.prepare(statement, Some(super::simple_error_callback))?;
+
+        sql.bind_val(1, kind);
+
+        sql.execute_prepared();
     }
 
-    statement.pop();
-    statement = format!("{}{}", statement, ";");
-    db.execute(statement, Some(super::simple_error_callback))
+    db.execute(String::from("COMMIT;"), Some(super::simple_error_callback))
 }
 
 pub fn delete_pkg_kinds(
     kinds: Vec<String>,
     db: &Database,
 ) -> Result<SqlitePrimaryResult, MinSqliteWrapperError> {
-    let mut statement = String::from(
-        "
-            DELETE FROM package_kinds
-            WHERE
-                kind IN (",
-    );
+    db.execute(
+        String::from("BEGIN TRANSACTION;"),
+        Some(super::simple_error_callback),
+    )?;
 
     for kind in kinds {
-        statement = format!("{} '{}',", statement, kind);
+        let statement = String::from(
+            "
+            DELETE FROM package_kinds
+            WHERE
+                kind = ?;",
+        );
+
+        let mut sql = db.prepare(statement, Some(super::simple_error_callback))?;
+        sql.bind_val(1, kind);
+
+        sql.execute_prepared();
     }
 
-    statement.pop();
-    statement = format!("{}){}", statement, ";");
-
-    db.execute(statement, Some(super::simple_error_callback))
+    db.execute(String::from("COMMIT;"), Some(super::simple_error_callback))
 }
