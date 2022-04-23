@@ -22,8 +22,8 @@ impl<'a> InstallationTasks for LodPkg<'a> {
         self.install_program()?;
         self.cleanup()?;
 
-        let db = Database::open(Path::new(DB_PATH)).unwrap();
-        self.insert(&db);
+        let db = Database::open(Path::new(DB_PATH))?;
+        self.insert(&db)?;
         db.close();
 
         Ok(())

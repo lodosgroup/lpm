@@ -1,3 +1,5 @@
+use min_sqlite3_sys::prelude::MinSqliteWrapperError;
+
 use crate::{ErrorCommons, RuntimeError};
 
 #[non_exhaustive]
@@ -73,5 +75,11 @@ impl From<PackageError> for RuntimeError {
             kind: error.kind.as_str().to_string(),
             reason: error.reason,
         }
+    }
+}
+
+impl From<MinSqliteWrapperError<'_>> for PackageError {
+    fn from(error: MinSqliteWrapperError) -> Self {
+        PackageErrorKind::InstallationFailed(Some(error.reason)).throw()
     }
 }

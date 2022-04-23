@@ -1,16 +1,20 @@
 use common::{pkg::LodPkg, Files};
+use ehandle::{
+    pkg::{PackageError, PackageErrorKind},
+    ErrorCommons,
+};
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
 
 pub trait LodPkgCoreDbOps {
-    fn insert(&self, db: &Database);
+    fn insert(&self, db: &Database) -> Result<(), PackageError>;
 }
 
 // Maybe don't implement LodPkgCoreDbOps, since
 // the insert functionality very coupled with `LodPkg::insert`
 // and should be private for this module.
 impl<'a> LodPkgCoreDbOps for Files {
-    fn insert(&self, db: &Database) {
+    fn insert(&self, db: &Database) -> Result<(), PackageError> {
         let files = &self.0;
         let statement = String::from("SELECT LAST_INSERT_ROWID();");
         let mut sql = db
@@ -30,11 +34,13 @@ impl<'a> LodPkgCoreDbOps for Files {
         println!("{}", pkg_id);
 
         for file in files {
-            println!("{:?}", file);
             let checksum_id = is_checksum_algorithm_exists(db, &file.checksum_algorithm);
-
             if checksum_id.is_none() {
-                // panic
+                return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
+                    "{} algorithm is not supported from current lpm version.",
+                    &file.checksum_algorithm
+                )))
+                .throw());
             }
 
             let file_path = Path::new(&file.path);
@@ -78,13 +84,13 @@ impl<'a> LodPkgCoreDbOps for Files {
 
             sql.kill();
         }
+
+        Ok(())
     }
 }
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
-    fn insert(&self, db: &Database) {
-        // TODO
-        // Control the transaction from caller fn.
+    fn insert(&self, db: &Database) -> Result<(), PackageError> {
         db.execute(
             String::from("BEGIN TRANSACTION;"),
             Some(super::simple_error_callback),
@@ -104,12 +110,10 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
                     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         );
 
-        let mut sql = db
-            .prepare(
-                statement,
-                None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-            )
-            .unwrap();
+        let mut sql = db.prepare(
+            statement,
+            None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
+        )?;
 
         sql.bind_val(1, meta.name.clone());
         sql.bind_val(2, meta.description.clone());
@@ -147,16 +151,38 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         // TODO
         // provide macro for `sql.execute_prepared()` to handle errors
         if PreparedStatementStatus::Done != sql.execute_prepared() {
+            db.execute(
+                String::from("ROLLBACK;"),
+                Some(super::simple_error_callback),
+            )?;
             // sql.kill();
             // panic
         }
 
-        self.meta_dir.as_ref().unwrap().files.insert(db);
+        match self.meta_dir.as_ref().unwrap().files.insert(db) {
+            Ok(_) => (),
+            Err(err) => {
+                db.execute(
+                    String::from("ROLLBACK;"),
+                    Some(super::simple_error_callback),
+                )?;
+                return Err(err);
+            }
+        };
 
         sql.kill();
 
-        db.execute(String::from("COMMIT;"), Some(super::simple_error_callback))
-            .unwrap();
+        match db.execute(String::from("COMMIT;"), Some(super::simple_error_callback)) {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                db.execute(
+                    String::from("ROLLBACK;"),
+                    Some(super::simple_error_callback),
+                )?;
+
+                Err(err.into())
+            }
+        }
     }
 }
 

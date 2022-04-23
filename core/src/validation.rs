@@ -31,7 +31,11 @@ impl ChecksumKind {
             "md5" => Ok(ChecksumKind::Md5),
             "sha256" => Ok(ChecksumKind::Sha256),
             "sha512" => Ok(ChecksumKind::Sha512),
-            _ => Err(PackageErrorKind::UnsupportedChecksumAlgorithm(None).throw()),
+            _ => Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
+                "{} algorithm is not supported from current lpm version.",
+                kind
+            )))
+            .throw()),
         }
     }
 }
