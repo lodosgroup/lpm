@@ -4,6 +4,7 @@ use crate::RuntimeError;
 #[derive(Debug, Clone)]
 pub enum PackageErrorKind {
     InvalidPackageFiles(Option<String>),
+    UnsupportedPackageArchitecture(Option<String>),
     UnsupportedChecksumAlgorithm(Option<String>),
     InstallationFailed(Option<String>),
 }
@@ -13,6 +14,7 @@ impl PackageErrorKind {
         match self {
             Self::InvalidPackageFiles(_) => "InvalidPackageFiles",
             Self::UnsupportedChecksumAlgorithm(_) => "UnsupportedChecksumAlgorithm",
+            Self::UnsupportedPackageArchitecture(_) => "UnsupportedPackageArchitecture",
             Self::InstallationFailed(_) => "InstallationFailed",
         }
     }
@@ -34,6 +36,15 @@ impl PackageErrorKind {
                     .as_ref()
                     .unwrap_or(&String::from(
                         "The checksum algorithm of the package is not supported.",
+                    ))
+                    .to_owned(),
+            },
+            Self::UnsupportedPackageArchitecture(ref err) => PackageError {
+                kind: self.clone(),
+                reason: err
+                    .as_ref()
+                    .unwrap_or(&String::from(
+                        "The package you are trying to install is built for different system architecture and not supported by this machine.",
                     ))
                     .to_owned(),
             },

@@ -1,6 +1,6 @@
 use crate::extraction::ExtractionTasks;
 
-use common::pkg::LodPkg;
+use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
     RuntimeError,
@@ -43,6 +43,14 @@ pub trait ValidationTasks {
 impl<'a> ValidationTasks for LodPkg<'a> {
     fn start_validations(&self) -> Result<(), RuntimeError> {
         if let Some(meta_dir) = &self.meta_dir {
+            // check architecture compatibility
+            if meta_dir.meta.arch != NO_ARCH && meta_dir.meta.arch != SYSTEM_ARCH {
+                let e = format!("Package '{}' is built for '{}' architecture that is not supported by this machine.", meta_dir.meta.name, meta_dir.meta.arch);
+                return Err(PackageErrorKind::UnsupportedPackageArchitecture(Some(e))
+                    .throw()
+                    .into());
+            }
+
             check_program_checksums(self.get_pkg_output_path(), &meta_dir.files)?
         }
 
