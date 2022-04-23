@@ -12,7 +12,7 @@ impl From<io::Error> for RuntimeError {
 }
 
 fn parse_io_error_kind(kind: ErrorKind) -> &'static str {
-    match kind {
+    match &kind {
         ErrorKind::NotFound => "NotFound",
         ErrorKind::PermissionDenied => "PermissionDenied",
         ErrorKind::ConnectionRefused => "ConnectionRefused",

@@ -114,7 +114,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         sql.bind_val(1, meta.name.clone());
         sql.bind_val(2, meta.description.clone());
         sql.bind_val(3, meta.maintainer.clone());
-        sql.bind_val(4, 1_u32); // TODO
+        sql.bind_val(4, SQLITE_NULL); // TODO
 
         if let Some(homepage) = &meta.homepage {
             sql.bind_val(5, homepage.clone());

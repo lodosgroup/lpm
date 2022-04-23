@@ -27,7 +27,7 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationErr
     )?;
 
     if status != SqlitePrimaryResult::Ok {
-        return Err(MigrationError::new(MigrationErrorKind::VersionCouldNotSet));
+        return Err(MigrationErrorKind::VersionCouldNotSet(None).throw());
     }
 
     Ok(())

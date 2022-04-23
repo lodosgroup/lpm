@@ -8,3 +8,4 @@
 - create macro that checks `SqlitePrimaryStatus` and panics in case of any error status
 - create and use macro in transactional functions, rollback in case of any error
 - force using prepared statements for security reasons (outside of the migrations)
+- create error macros `true_or_err` `try_and_handle`

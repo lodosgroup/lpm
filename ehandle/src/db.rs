@@ -4,17 +4,8 @@ use min_sqlite3_sys::prelude::MinSqliteWrapperError;
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum MigrationErrorKind {
-    VersionCouldNotSet,
-    SqliteWrapperError,
-}
-
-impl MigrationErrorKind {
-    pub fn as_str(&self) -> &str {
-        match self {
-            Self::VersionCouldNotSet => "VersionCouldNotSet",
-            Self::SqliteWrapperError => "SqliteWrapperError",
-        }
-    }
+    VersionCouldNotSet(Option<String>),
+    SqliteWrapperError(Option<String>),
 }
 
 #[derive(Debug)]
@@ -23,16 +14,31 @@ pub struct MigrationError {
     pub reason: String,
 }
 
-impl MigrationError {
-    pub fn new(kind: MigrationErrorKind) -> Self {
-        match kind {
-            MigrationErrorKind::VersionCouldNotSet => MigrationError {
-                kind,
-                reason: "Migration version could not set.".to_string(),
+impl MigrationErrorKind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::VersionCouldNotSet(_) => "VersionCouldNotSet",
+            Self::SqliteWrapperError(_) => "SqliteWrapperError",
+        }
+    }
+
+    pub fn throw(&self) -> MigrationError {
+        match self {
+            Self::VersionCouldNotSet(ref err) => MigrationError {
+                kind: self.clone(),
+                reason: err
+                    .as_ref()
+                    .unwrap_or(&String::from("Migration version could not set."))
+                    .to_owned(),
             },
-            MigrationErrorKind::SqliteWrapperError => MigrationError {
-                kind,
-                reason: "An error has been occur from Sqlite wrapper library.".to_string(),
+            Self::SqliteWrapperError(ref err) => MigrationError {
+                kind: self.clone(),
+                reason: err
+                    .as_ref()
+                    .unwrap_or(&String::from(
+                        "An error has been occur from Sqlite wrapper library.",
+                    ))
+                    .to_owned(),
             },
         }
     }
@@ -58,9 +64,6 @@ impl From<MinSqliteWrapperError<'_>> for RuntimeError {
 
 impl From<MinSqliteWrapperError<'_>> for MigrationError {
     fn from(error: MinSqliteWrapperError) -> Self {
-        MigrationError {
-            kind: MigrationErrorKind::SqliteWrapperError,
-            reason: error.reason,
-        }
+        MigrationErrorKind::SqliteWrapperError(Some(error.reason)).throw()
     }
 }

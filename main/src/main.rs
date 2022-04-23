@@ -9,9 +9,6 @@ use std::path::Path;
 #[allow(unused_imports)]
 use ehandle::{RuntimeError, RuntimeErrorKind};
 
-#[cfg(not(target_os = "linux"))]
-compile_error!("LodPM can not be built on non-linux operating systems.");
-
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), RuntimeError> {
     init_db()?;
@@ -50,8 +47,7 @@ fn main() -> Result<(), RuntimeError> {
     Ok(())
 }
 
-// handle with pre-build executions
 #[cfg(not(target_os = "linux"))]
 fn main() -> Result<(), RuntimeError> {
-    Err(RuntimeError::new(RuntimeErrorKind::UnsupportedPlatform))
+    Err(RuntimeErrorKind::UnsupportedPlatform(None).throw())
 }
