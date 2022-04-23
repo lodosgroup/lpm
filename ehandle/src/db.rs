@@ -105,8 +105,23 @@ impl From<MinSqliteWrapperError<'_>> for MigrationError {
     }
 }
 
+impl From<SqlError> for RuntimeError {
+    fn from(error: SqlError) -> Self {
+        RuntimeError {
+            kind: error.kind.as_str().to_string(),
+            reason: error.reason,
+        }
+    }
+}
+
 impl From<SqlError> for PackageError {
     fn from(error: SqlError) -> Self {
         PackageErrorKind::InstallationFailed(Some(error.reason)).throw()
+    }
+}
+
+impl From<MinSqliteWrapperError<'_>> for SqlError {
+    fn from(error: MinSqliteWrapperError) -> Self {
+        SqlErrorKind::FailedExecuting(Some(error.reason)).throw()
     }
 }

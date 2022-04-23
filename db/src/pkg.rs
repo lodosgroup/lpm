@@ -1,5 +1,6 @@
 use common::{pkg::LodPkg, Files};
 use ehandle::{
+    db::SqlError,
     pkg::{PackageError, PackageErrorKind},
     ErrorCommons,
 };
@@ -20,7 +21,7 @@ impl<'a> LodPkgCoreDbOps for Files {
         let pkg_id = super::get_last_insert_row_id(db)?;
 
         for file in files {
-            let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm);
+            let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm)?;
             if checksum_id.is_none() {
                 return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
                     "{} algorithm is not supported from current lpm version.",
@@ -39,12 +40,7 @@ impl<'a> LodPkgCoreDbOps for Files {
                         (?, ?, ?, ?, ?)",
             );
 
-            let mut sql = db
-                .prepare(
-                    statement,
-                    None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-                )
-                .unwrap();
+            let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
             // TODO
             // Remove these debug lines and handle them via custom macro provided for this job
@@ -78,7 +74,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert(&self, db: &Database) -> Result<(), PackageError> {
         let meta = &self.meta_dir.as_ref().unwrap().meta;
 
-        if is_package_exists(db, &meta.name) {
+        if is_package_exists(db, &meta.name)? {
             return Err(PackageErrorKind::AlreadyInstalled(Some(format!(
                 "{} is already installed in your system.",
                 meta.name
@@ -89,8 +85,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         db.execute(
             String::from("BEGIN TRANSACTION;"),
             Some(super::simple_error_callback),
-        )
-        .unwrap();
+        )?;
 
         let statement = String::from(
             "
@@ -103,10 +98,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
                     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         );
 
-        let mut sql = db.prepare(
-            statement,
-            None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-        )?;
+        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
         sql.bind_val(1, meta.name.clone());
         sql.bind_val(2, meta.description.clone());
@@ -144,13 +136,15 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         // TODO
         // provide macro for `sql.execute_prepared()` to handle errors
         if PreparedStatementStatus::Done != sql.execute_prepared() {
+            sql.kill();
             db.execute(
                 String::from("ROLLBACK;"),
                 Some(super::simple_error_callback),
             )?;
-            sql.kill();
             return Err(PackageErrorKind::InstallationFailed(None).throw());
         }
+
+        sql.kill();
 
         match self.meta_dir.as_ref().unwrap().files.insert(db) {
             Ok(_) => (),
@@ -162,8 +156,6 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
                 return Err(err);
             }
         };
-
-        sql.kill();
 
         match db.execute(String::from("COMMIT;"), Some(super::simple_error_callback)) {
             Ok(_) => Ok(()),
@@ -179,51 +171,48 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     }
 }
 
-pub fn is_package_exists(db: &Database, name: &str) -> bool {
+pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, SqlError> {
     let statement = String::from("SELECT EXISTS(SELECT 1 FROM packages WHERE name = ?);");
 
-    let mut sql = db
-        .prepare(
-            statement,
-            None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-        )
-        .unwrap();
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     sql.bind_val(1, name);
 
     if let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
         let result = sql.get_data::<i64>(0).unwrap_or(0);
+        sql.kill();
 
-        return result == 1;
+        return Ok(result == 1);
     }
 
-    false
+    sql.kill();
+    Ok(false)
 }
 
-pub fn get_checksum_algorithm_id_by_kind(db: &Database, algorithm: &str) -> Option<i64> {
+pub fn get_checksum_algorithm_id_by_kind(
+    db: &Database,
+    algorithm: &str,
+) -> Result<Option<i64>, SqlError> {
     let statement = String::from("SELECT id FROM checksum_kinds WHERE kind = ?;");
 
-    let mut sql = db
-        .prepare(
-            statement,
-            None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-        )
-        .unwrap();
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     sql.bind_val(1, algorithm);
 
     if let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
         let result = sql.get_data::<i64>(0).unwrap();
-        return Some(result);
+        sql.kill();
+        return Ok(Some(result));
     }
 
-    None
+    sql.kill();
+    Ok(None)
 }
 
 pub fn insert_pkg_kinds(
     kinds: Vec<String>,
     db: &Database,
-) -> Result<SqlitePrimaryResult, MinSqliteWrapperError> {
+) -> Result<SqlitePrimaryResult, SqlError> {
     db.execute(
         String::from("BEGIN TRANSACTION;"),
         Some(super::simple_error_callback),
@@ -239,19 +228,18 @@ pub fn insert_pkg_kinds(
         );
 
         let mut sql = db.prepare(statement, Some(super::simple_error_callback))?;
-
         sql.bind_val(1, kind);
-
         sql.execute_prepared();
+        sql.kill();
     }
 
-    db.execute(String::from("COMMIT;"), Some(super::simple_error_callback))
+    Ok(db.execute(String::from("COMMIT;"), super::SQL_NO_CALLBACK_FN)?)
 }
 
 pub fn delete_pkg_kinds(
     kinds: Vec<String>,
     db: &Database,
-) -> Result<SqlitePrimaryResult, MinSqliteWrapperError> {
+) -> Result<SqlitePrimaryResult, SqlError> {
     db.execute(
         String::from("BEGIN TRANSACTION;"),
         Some(super::simple_error_callback),
@@ -267,9 +255,9 @@ pub fn delete_pkg_kinds(
 
         let mut sql = db.prepare(statement, Some(super::simple_error_callback))?;
         sql.bind_val(1, kind);
-
         sql.execute_prepared();
+        sql.kill();
     }
 
-    db.execute(String::from("COMMIT;"), Some(super::simple_error_callback))
+    Ok(db.execute(String::from("COMMIT;"), super::SQL_NO_CALLBACK_FN)?)
 }

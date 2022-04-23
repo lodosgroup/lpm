@@ -18,6 +18,10 @@ pub fn init_db() -> Result<(), MigrationError> {
     start_db_migrations()
 }
 
+pub const SQL_NO_CALLBACK_FN: Option<
+    Box<dyn FnOnce(min_sqlite3_sys::bindings::SqlitePrimaryResult, String)>,
+> = None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>;
+
 #[inline]
 // TODO
 // remove this and throw `SqlError` instead.
@@ -33,12 +37,7 @@ pub fn simple_error_callback(status: SqlitePrimaryResult, sql_statement: String)
 #[inline]
 fn get_last_insert_row_id(db: &Database) -> Result<i64, SqlError> {
     let statement = String::from("SEuLECT LAST_INSERT_ROWID();");
-    let mut sql = db
-        .prepare(
-            statement.clone(),
-            None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-        )
-        .unwrap();
+    let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN).unwrap();
 
     if PreparedStatementStatus::FoundRow != sql.execute_prepared() {
         sql.kill();
