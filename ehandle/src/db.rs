@@ -1,4 +1,4 @@
-use crate::RuntimeError;
+use crate::{ErrorCommons, RuntimeError};
 use min_sqlite3_sys::prelude::MinSqliteWrapperError;
 
 #[non_exhaustive]
@@ -14,15 +14,15 @@ pub struct MigrationError {
     pub reason: String,
 }
 
-impl MigrationErrorKind {
-    pub fn as_str(&self) -> &str {
+impl ErrorCommons<MigrationError> for MigrationErrorKind {
+    fn as_str(&self) -> &str {
         match self {
             Self::VersionCouldNotSet(_) => "VersionCouldNotSet",
             Self::SqliteWrapperError(_) => "SqliteWrapperError",
         }
     }
 
-    pub fn throw(&self) -> MigrationError {
+    fn throw(&self) -> MigrationError {
         match self {
             Self::VersionCouldNotSet(ref err) => MigrationError {
                 kind: self.clone(),

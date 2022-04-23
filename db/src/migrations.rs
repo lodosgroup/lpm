@@ -1,5 +1,8 @@
 use common::lpm_version::get_lpm_version;
-use ehandle::db::{MigrationError, MigrationErrorKind};
+use ehandle::{
+    db::{MigrationError, MigrationErrorKind},
+    ErrorCommons,
+};
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
 

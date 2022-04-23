@@ -1,4 +1,4 @@
-use crate::RuntimeError;
+use crate::{ErrorCommons, RuntimeError};
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
@@ -9,8 +9,8 @@ pub enum PackageErrorKind {
     InstallationFailed(Option<String>),
 }
 
-impl PackageErrorKind {
-    pub fn as_str(&self) -> &str {
+impl ErrorCommons<PackageError> for PackageErrorKind {
+    fn as_str(&self) -> &str {
         match self {
             Self::InvalidPackageFiles(_) => "InvalidPackageFiles",
             Self::UnsupportedChecksumAlgorithm(_) => "UnsupportedChecksumAlgorithm",
@@ -19,7 +19,7 @@ impl PackageErrorKind {
         }
     }
 
-    pub fn throw(&self) -> PackageError {
+    fn throw(&self) -> PackageError {
         match self {
             Self::InvalidPackageFiles(ref err) => PackageError {
                 kind: self.clone(),

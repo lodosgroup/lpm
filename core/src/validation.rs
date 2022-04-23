@@ -3,7 +3,7 @@ use crate::extraction::ExtractionTasks;
 use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
-    RuntimeError,
+    ErrorCommons, RuntimeError,
 };
 use hash::{md5, sha256, sha512};
 use parser::meta::Files;
