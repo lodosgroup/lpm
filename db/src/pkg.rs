@@ -16,25 +16,11 @@ pub trait LodPkgCoreDbOps {
 impl<'a> LodPkgCoreDbOps for Files {
     fn insert(&self, db: &Database) -> Result<(), PackageError> {
         let files = &self.0;
-        let statement = String::from("SELECT LAST_INSERT_ROWID();");
-        let mut sql = db
-            .prepare(
-                statement,
-                None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-            )
-            .unwrap();
 
-        // TODO
-        // provide macro for `sql.execute_prepared()` to handle errors
-        if PreparedStatementStatus::FoundRow != sql.execute_prepared() {
-            // panic
-        }
-
-        let pkg_id = sql.get_data::<i64>(0).unwrap();
-        println!("{}", pkg_id);
+        let pkg_id = super::get_last_insert_row_id(db)?;
 
         for file in files {
-            let checksum_id = is_checksum_algorithm_exists(db, &file.checksum_algorithm);
+            let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm);
             if checksum_id.is_none() {
                 return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
                     "{} algorithm is not supported from current lpm version.",
@@ -77,9 +63,8 @@ impl<'a> LodPkgCoreDbOps for Files {
             // TODO
             // provide macro for `sql.execute_prepared()` to handle errors
             if PreparedStatementStatus::Done != sql.execute_prepared() {
-                // sql.kill();
-                // panic
-                println!("hmm, wtf?");
+                sql.kill();
+                return Err(PackageErrorKind::InstallationFailed(None).throw());
             }
 
             sql.kill();
@@ -91,13 +76,21 @@ impl<'a> LodPkgCoreDbOps for Files {
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert(&self, db: &Database) -> Result<(), PackageError> {
+        let meta = &self.meta_dir.as_ref().unwrap().meta;
+
+        if is_package_exists(db, &meta.name) {
+            return Err(PackageErrorKind::AlreadyInstalled(Some(format!(
+                "{} is already installed in your system.",
+                meta.name
+            )))
+            .throw());
+        }
+
         db.execute(
             String::from("BEGIN TRANSACTION;"),
             Some(super::simple_error_callback),
         )
         .unwrap();
-
-        let meta = &self.meta_dir.as_ref().unwrap().meta;
 
         let statement = String::from(
             "
@@ -155,8 +148,8 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
                 String::from("ROLLBACK;"),
                 Some(super::simple_error_callback),
             )?;
-            // sql.kill();
-            // panic
+            sql.kill();
+            return Err(PackageErrorKind::InstallationFailed(None).throw());
         }
 
         match self.meta_dir.as_ref().unwrap().files.insert(db) {
@@ -186,7 +179,28 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     }
 }
 
-pub fn is_checksum_algorithm_exists(db: &Database, algorithm: &str) -> Option<i64> {
+pub fn is_package_exists(db: &Database, name: &str) -> bool {
+    let statement = String::from("SELECT EXISTS(SELECT 1 FROM packages WHERE name = ?);");
+
+    let mut sql = db
+        .prepare(
+            statement,
+            None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
+        )
+        .unwrap();
+
+    sql.bind_val(1, name);
+
+    if let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
+        let result = sql.get_data::<i64>(0).unwrap_or(0);
+
+        return result == 1;
+    }
+
+    false
+}
+
+pub fn get_checksum_algorithm_id_by_kind(db: &Database, algorithm: &str) -> Option<i64> {
     let statement = String::from("SELECT id FROM checksum_kinds WHERE kind = ?;");
 
     let mut sql = db

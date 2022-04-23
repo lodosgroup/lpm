@@ -1,4 +1,7 @@
-use crate::{ErrorCommons, RuntimeError};
+use crate::{
+    pkg::{PackageError, PackageErrorKind},
+    ErrorCommons, RuntimeError,
+};
 use min_sqlite3_sys::prelude::MinSqliteWrapperError;
 
 #[non_exhaustive]
@@ -6,12 +9,6 @@ use min_sqlite3_sys::prelude::MinSqliteWrapperError;
 pub enum MigrationErrorKind {
     VersionCouldNotSet(Option<String>),
     SqliteWrapperError(Option<String>),
-}
-
-#[derive(Debug)]
-pub struct MigrationError {
-    pub kind: MigrationErrorKind,
-    pub reason: String,
 }
 
 impl ErrorCommons<MigrationError> for MigrationErrorKind {
@@ -44,6 +41,46 @@ impl ErrorCommons<MigrationError> for MigrationErrorKind {
     }
 }
 
+#[derive(Debug)]
+pub struct MigrationError {
+    pub kind: MigrationErrorKind,
+    pub reason: String,
+}
+
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub enum SqlErrorKind {
+    FailedExecuting(Option<String>),
+}
+
+#[derive(Debug)]
+pub struct SqlError {
+    pub kind: SqlErrorKind,
+    pub reason: String,
+}
+
+impl ErrorCommons<SqlError> for SqlErrorKind {
+    fn as_str(&self) -> &str {
+        match self {
+            Self::FailedExecuting(_) => "FailedExecuting",
+        }
+    }
+
+    fn throw(&self) -> SqlError {
+        match self {
+            Self::FailedExecuting(ref err) => SqlError {
+                kind: self.clone(),
+                reason: err
+                    .as_ref()
+                    .unwrap_or(&String::from(
+                        "Sqlite has returned the error status as a response of the SQL query.",
+                    ))
+                    .to_owned(),
+            },
+        }
+    }
+}
+
 impl From<MigrationError> for RuntimeError {
     fn from(error: MigrationError) -> Self {
         RuntimeError {
@@ -65,5 +102,11 @@ impl From<MinSqliteWrapperError<'_>> for RuntimeError {
 impl From<MinSqliteWrapperError<'_>> for MigrationError {
     fn from(error: MinSqliteWrapperError) -> Self {
         MigrationErrorKind::SqliteWrapperError(Some(error.reason)).throw()
+    }
+}
+
+impl From<SqlError> for PackageError {
+    fn from(error: SqlError) -> Self {
+        PackageErrorKind::InstallationFailed(Some(error.reason)).throw()
     }
 }
