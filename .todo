@@ -7,3 +7,4 @@
 - provide version and pkg protection
 - force using prepared statements for security reasons (outside of the migrations)
 - do not allow using `dyn Error`
+- provide proper error message for `try_execute` and `try_execute_prepared` usage

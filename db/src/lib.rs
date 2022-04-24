@@ -25,7 +25,7 @@ fn get_last_insert_row_id(db: &Database) -> Result<i64, SqlError> {
     let statement = String::from("SELECT LAST_INSERT_ROWID();");
     let mut sql = db.prepare(statement, SQL_NO_CALLBACK_FN).unwrap();
 
-    try_execute_prepared!(sql);
+    try_execute_prepared!(sql, None);
 
     Ok(sql.get_data::<i64>(0).unwrap())
 }

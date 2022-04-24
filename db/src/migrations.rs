@@ -38,7 +38,7 @@ fn can_migrate(db: &Database, version: i64) -> Result<bool, SqlError> {
     let statement = String::from("PRAGMA user_version;");
 
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
-    try_execute_prepared!(sql);
+    try_execute_prepared!(sql, None);
 
     let db_user_version = sql.clone().get_data::<i64>(0).unwrap();
     let result = version > db_user_version;
@@ -154,7 +154,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
         ",
     );
 
-    try_execute!(db, statement);
+    try_execute!(db, statement, None);
 
     set_migration_version(db, *version)?;
 
@@ -207,7 +207,7 @@ fn create_update_triggers_for_core_tables(
         ",
     );
 
-    try_execute!(db, statement);
+    try_execute!(db, statement, None);
 
     set_migration_version(db, *version)?;
 
@@ -250,7 +250,7 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), MigrationErro
         sys_defaults, checksum_kind_defaults
     );
 
-    try_execute!(db, statement);
+    try_execute!(db, statement, None);
 
     set_migration_version(db, *version)?;
 
