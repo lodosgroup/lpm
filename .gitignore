@@ -11,3 +11,4 @@ Cargo.lock
 
 # Other
 lpm.db
+lpm.db-journal

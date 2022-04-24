@@ -1,64 +1,49 @@
-use ehandle::db::{MigrationError, MigrationErrorKind};
+use common::lpm_version::get_lpm_version;
+use ehandle::{
+    db::{MigrationError, MigrationErrorKind, SqlError},
+    try_execute, try_execute_prepared, ErrorCommons,
+};
 use min_sqlite3_sys::prelude::*;
-use std::{path::Path, process};
+use std::path::Path;
 
 const INITIAL_VERSION: i64 = 0;
 
-pub fn start_db_migrations() -> Result<(), MigrationError> {
+pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
     let db = Database::open(Path::new(super::DB_PATH))?;
     let mut initial_version: i64 = INITIAL_VERSION;
 
     create_table_core(&db, &mut initial_version)?;
+    create_update_triggers_for_core_tables(&db, &mut initial_version)?;
+    insert_defaults(&db, &mut initial_version)?;
 
     db.close();
 
     Ok(())
 }
 
-#[inline]
 fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationError> {
     let statement = format!("PRAGMA user_version = {};", version);
-    let status = db.execute(
-        statement,
-        None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-    )?;
 
-    if status != SqlitePrimaryResult::Ok {
-        return Err(MigrationError::new(MigrationErrorKind::VersionCouldNotSet));
+    match db.execute(statement, super::SQL_NO_CALLBACK_FN) {
+        Ok(_) => (),
+        Err(_) => {
+            return Err(MigrationErrorKind::VersionCouldNotSet(None).throw());
+        }
     }
 
     Ok(())
 }
 
-#[inline]
-fn can_migrate<'a>(db: &Database, version: i64) -> Result<bool, MinSqliteWrapperError<'a>> {
+fn can_migrate(db: &Database, version: i64) -> Result<bool, SqlError> {
     let statement = String::from("PRAGMA user_version;");
 
-    let mut sql = db.prepare(
-        statement,
-        None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-    )?;
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    try_execute_prepared!(sql);
 
-    let mut result = false;
-    while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
-        let db_user_version = sql.clone().get_data::<i64>(0).unwrap();
-
-        result = version > db_user_version;
-    }
-
+    let db_user_version = sql.clone().get_data::<i64>(0).unwrap();
+    let result = version > db_user_version;
     sql.kill();
-
     Ok(result)
-}
-
-#[inline]
-fn callback_function(status: SqlitePrimaryResult, sql_statement: String) {
-    println!(
-        "SQL EXECUTION HAS BEEN FAILED.\n\nReason: {:?}\nStatement: {}",
-        status, sql_statement
-    );
-
-    process::exit(1);
 }
 
 fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationError> {
@@ -77,12 +62,14 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             */
             CREATE TABLE sys (
                id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               name          TEXT       NOT NULL,
+               name          TEXT       NOT NULL       UNIQUE,
                v_major       INTEGER    NOT NULL,
                v_minor       INTEGER    NOT NULL,
                v_patch       INTEGER    NOT NULL,
                v_tag         TEXT,
-               v_readable    TEXT       NOT NULL
+               v_readable    TEXT       NOT NULL,
+               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+               updated_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*
@@ -91,8 +78,9 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
              * for the packages.
             */
             CREATE TABLE checksum_kinds (
-               id      INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               kind    TEXT       NOT NULL
+               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               kind          TEXT       NOT NULL       UNIQUE,
+               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*
@@ -101,8 +89,9 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
              * classify the packages installed in the system.
             */
             CREATE TABLE package_kinds (
-               id      INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               kind    TEXT       NOT NULL
+               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               kind          TEXT       NOT NULL       UNIQUE,
+               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*
@@ -111,7 +100,10 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             */
             CREATE TABLE package_repositories (
                id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               repository    TEXT       NOT NULL
+               repository    TEXT       NOT NULL       UNIQUE,
+               is_active     BOOLEAN    NOT NULL       CHECK(is_active IN (0, 1)),
+               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+               updated_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*
@@ -120,7 +112,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             */
             CREATE TABLE packages (
                id                       INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               name                     TEXT       NOT NULL,
+               name                     TEXT       NOT NULL       UNIQUE,
                description              TEXT,
                maintainer               TEXT       NOT NULL,
                repository_id            INTEGER,
@@ -128,12 +120,14 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                depended_package_id      INTEGER,
                package_kind_id          INTEGER    NOT_NULL,
                installed_size           INTEGER    NOT_NULL,
-               license                  TEXT       NOT_NULL,
+               license                  TEXT,
                v_major                  INTEGER    NOT NULL,
                v_minor                  INTEGER    NOT NULL,
                v_patch                  INTEGER    NOT NULL,
                v_tag                    TEXT,
                v_readable               TEXT       NOT NULL,
+               created_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+               updated_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
                FOREIGN KEY(repository_id) REFERENCES package_repositories(id),
                FOREIGN KEY(depended_package_id) REFERENCES packages(id),
@@ -148,17 +142,115 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             CREATE TABLE files (
                id                  INTEGER    PRIMARY KEY    AUTOINCREMENT,
                name                TEXT       NOT NULL,
-               absolute_path       TEXT       NOT NULL,
+               absolute_path       TEXT       NOT NULL       UNIQUE,
                checksum            TEXT       NOT NULL,
                checksum_kind_id    INTEGER    NOT NULL,
                package_id          INTEGER    NOT NULL,
+               created_at          TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+
                FOREIGN KEY(package_id) REFERENCES packages(id),
                FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
             );
         ",
     );
 
-    db.execute(statement, Some(callback_function))?;
+    try_execute!(db, statement);
+
+    set_migration_version(db, *version)?;
+
+    Ok(())
+}
+
+fn create_update_triggers_for_core_tables(
+    db: &Database,
+    version: &mut i64,
+) -> Result<(), MigrationError> {
+    *version += 1;
+    if !can_migrate(db, *version)? {
+        return Ok(());
+    }
+
+    let statement = String::from(
+        "
+            /*
+             * Statement of `sys` update trigger.
+             * This will allow automatic `updated_at` updates whenever an UPDATE
+             * operation happens on the table.
+            */
+            CREATE TRIGGER sys_update_trigger
+                AFTER UPDATE ON sys
+            BEGIN
+                UPDATE sys SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END;
+
+            /*
+             * Statement of `package_repositories` update trigger.
+             * This will allow automatic `updated_at` updates whenever an UPDATE
+             * operation happens on the table.
+            */
+            CREATE TRIGGER package_repositories_update_trigger
+                AFTER UPDATE ON package_repositories
+            BEGIN
+                UPDATE package_repositories SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END;
+
+            /*
+             * Statement of `packages` update trigger.
+             * This will allow automatic `updated_at` updates whenever an UPDATE
+             * operation happens on the table.
+            */
+            CREATE TRIGGER packages_update_trigger
+                AFTER UPDATE ON packages
+            BEGIN
+                UPDATE packages SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+            END;
+        ",
+    );
+
+    try_execute!(db, statement);
+
+    set_migration_version(db, *version)?;
+
+    Ok(())
+}
+
+fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), MigrationError> {
+    *version += 1;
+    if !can_migrate(db, *version)? {
+        return Ok(());
+    }
+
+    let lpm_version = get_lpm_version();
+
+    let sys_defaults = format!(
+        "
+            INSERT INTO sys
+                (name, v_major, v_minor, v_patch, v_readable)
+            VALUES
+                ('lpm', {}, {}, {}, '{}');",
+        lpm_version.major, lpm_version.minor, lpm_version.patch, lpm_version.readable_format
+    );
+
+    let checksum_kind_defaults = String::from(
+        "
+            INSERT INTO checksum_kinds
+                (kind)
+            VALUES
+                ('md5'),
+                ('sha256'),
+                ('sha512');",
+    );
+
+    let statement = format!(
+        "
+            {}
+
+            {}
+        ",
+        sys_defaults, checksum_kind_defaults
+    );
+
+    try_execute!(db, statement);
 
     set_migration_version(db, *version)?;
 
