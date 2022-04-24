@@ -62,7 +62,6 @@ impl<'a> ValidationTasks for LodPkg<'a> {
     }
 }
 
-#[inline(always)]
 fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), RuntimeError> {
     for file in &files.0 {
         // Read file as byte-array

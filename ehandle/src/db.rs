@@ -63,6 +63,7 @@ pub enum MigrationErrorKind {
 }
 
 impl ErrorCommons<MigrationError> for MigrationErrorKind {
+    #[inline(always)]
     fn as_str(&self) -> &str {
         match self {
             Self::VersionCouldNotSet(_) => "VersionCouldNotSet",
@@ -71,6 +72,7 @@ impl ErrorCommons<MigrationError> for MigrationErrorKind {
         }
     }
 
+    #[inline(always)]
     fn throw(&self) -> MigrationError {
         match self {
             Self::VersionCouldNotSet(ref err) => MigrationError {
@@ -122,6 +124,7 @@ pub struct SqlError {
 }
 
 impl ErrorCommons<SqlError> for SqlErrorKind {
+    #[inline(always)]
     fn as_str(&self) -> &str {
         match self {
             Self::FailedExecuting(_) => "FailedExecuting",
@@ -129,6 +132,7 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
         }
     }
 
+    #[inline(always)]
     fn throw(&self) -> SqlError {
         match self {
             Self::FailedExecuting(ref err) => SqlError {
@@ -154,6 +158,7 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
 }
 
 impl From<MigrationError> for RuntimeError {
+    #[inline(always)]
     fn from(error: MigrationError) -> Self {
         RuntimeError {
             kind: error.kind.as_str().to_string(),
@@ -163,6 +168,7 @@ impl From<MigrationError> for RuntimeError {
 }
 
 impl From<MinSqliteWrapperError<'_>> for RuntimeError {
+    #[inline(always)]
     fn from(error: MinSqliteWrapperError) -> Self {
         RuntimeError {
             kind: error.kind.to_string(),
@@ -172,12 +178,14 @@ impl From<MinSqliteWrapperError<'_>> for RuntimeError {
 }
 
 impl From<MinSqliteWrapperError<'_>> for MigrationError {
+    #[inline(always)]
     fn from(error: MinSqliteWrapperError) -> Self {
         MigrationErrorKind::SqliteWrapperError(Some(error.reason)).throw()
     }
 }
 
 impl From<SqlError> for RuntimeError {
+    #[inline(always)]
     fn from(error: SqlError) -> Self {
         RuntimeError {
             kind: error.kind.as_str().to_string(),
@@ -187,18 +195,21 @@ impl From<SqlError> for RuntimeError {
 }
 
 impl From<SqlError> for PackageError {
+    #[inline(always)]
     fn from(error: SqlError) -> Self {
         PackageErrorKind::InstallationFailed(Some(error.reason)).throw()
     }
 }
 
 impl From<SqlError> for MigrationError {
+    #[inline(always)]
     fn from(error: SqlError) -> Self {
         MigrationErrorKind::FailedExecuting(Some(error.reason)).throw()
     }
 }
 
 impl From<MinSqliteWrapperError<'_>> for SqlError {
+    #[inline(always)]
     fn from(error: MinSqliteWrapperError) -> Self {
         SqlErrorKind::FailedExecuting(Some(error.reason)).throw()
     }

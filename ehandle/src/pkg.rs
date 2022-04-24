@@ -13,6 +13,7 @@ pub enum PackageErrorKind {
 }
 
 impl ErrorCommons<PackageError> for PackageErrorKind {
+    #[inline(always)]
     fn as_str(&self) -> &str {
         match self {
             Self::InvalidPackageFiles(_) => "InvalidPackageFiles",
@@ -23,6 +24,7 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
         }
     }
 
+    #[inline(always)]
     fn throw(&self) -> PackageError {
         match self {
             Self::InvalidPackageFiles(ref err) => PackageError {
@@ -81,6 +83,7 @@ pub struct PackageError {
 }
 
 impl From<PackageError> for RuntimeError {
+    #[inline(always)]
     fn from(error: PackageError) -> Self {
         RuntimeError {
             kind: error.kind.as_str().to_string(),
@@ -90,6 +93,7 @@ impl From<PackageError> for RuntimeError {
 }
 
 impl From<MinSqliteWrapperError<'_>> for PackageError {
+    #[inline(always)]
     fn from(error: MinSqliteWrapperError) -> Self {
         PackageErrorKind::InstallationFailed(Some(error.reason)).throw()
     }

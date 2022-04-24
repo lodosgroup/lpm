@@ -12,7 +12,7 @@ pub const DB_PATH: &str = "/var/lib/lodpm/lpm.db";
 #[cfg(debug_assertions)]
 pub const DB_PATH: &str = "lpm.db";
 
-#[inline]
+#[inline(always)]
 pub fn init_db() -> Result<(), MigrationError> {
     start_db_migrations()
 }
@@ -21,7 +21,6 @@ pub const SQL_NO_CALLBACK_FN: Option<
     Box<dyn FnOnce(min_sqlite3_sys::bindings::SqlitePrimaryResult, String)>,
 > = None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>;
 
-#[inline]
 fn get_last_insert_row_id(db: &Database) -> Result<i64, SqlError> {
     let statement = String::from("SELECT LAST_INSERT_ROWID();");
     let mut sql = db.prepare(statement, SQL_NO_CALLBACK_FN).unwrap();

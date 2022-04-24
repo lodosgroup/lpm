@@ -26,6 +26,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
         Ok(())
     }
 
+    #[inline(always)]
     fn get_pkg_output_path(&self) -> String {
         super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"

@@ -21,7 +21,6 @@ pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
     Ok(())
 }
 
-#[inline]
 fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationError> {
     let statement = format!("PRAGMA user_version = {};", version);
 
@@ -35,7 +34,6 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationErr
     Ok(())
 }
 
-#[inline]
 fn can_migrate(db: &Database, version: i64) -> Result<bool, SqlError> {
     let statement = String::from("PRAGMA user_version;");
 
