@@ -1,6 +1,5 @@
-use min_sqlite3_sys::prelude::MinSqliteWrapperError;
-
 use crate::{ErrorCommons, RuntimeError};
+use min_sqlite3_sys::prelude::MinSqliteWrapperError;
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]

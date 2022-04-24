@@ -1,6 +1,5 @@
-use std::io::{self, ErrorKind};
-
 use crate::RuntimeError;
+use std::io::{self, ErrorKind};
 
 impl From<io::Error> for RuntimeError {
     #[inline(always)]
