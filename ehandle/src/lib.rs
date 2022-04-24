@@ -1,11 +1,6 @@
 #![forbid(unsafe_code)]
 #![feature(io_error_more, io_error_uncategorized)]
 
-#[macro_export]
-macro_rules! ERRL {
-  ($format: expr, $($args: tt)+) => {format! (concat! ("[{}:{}] ", $format), $crate::filename (file!()), line!(), $($args)+)};
-  ($format: expr) => {format! (concat! ("[{}:{}] ", $format), $crate::filename (file!()), line!())}}
-
 pub trait ErrorCommons<T> {
     fn as_str(&self) -> &str;
     fn throw(&self) -> T;
