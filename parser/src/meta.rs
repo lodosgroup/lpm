@@ -9,7 +9,7 @@ pub struct Meta {
     pub description: String,
     pub maintainer: String,
     pub source_pkg: Option<String>,
-    pub repository: String, // maybe make it optional
+    pub repository: Option<String>,
     pub homepage: Option<String>,
     pub arch: String, // maybe use enums
     pub kind: String,

@@ -80,23 +80,30 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
-        try_bind_val!(sql, 1, meta.name.clone());
-        try_bind_val!(sql, 2, meta.description.clone());
-        try_bind_val!(sql, 3, meta.maintainer.clone());
+        try_bind_val!(sql, 1, &*meta.name);
+        try_bind_val!(sql, 2, &*meta.description);
+        try_bind_val!(sql, 3, &*meta.maintainer);
         try_bind_val!(sql, 4, SQLITE_NULL); // TODO
 
         if let Some(homepage) = &meta.homepage {
-            try_bind_val!(sql, 5, homepage.clone());
+            try_bind_val!(sql, 5, &**homepage);
         } else {
             try_bind_val!(sql, 5, SQLITE_NULL);
         }
 
-        try_bind_val!(sql, 6, SQLITE_NULL); // TODO
+        if let Some(_repository) = &meta.repository {
+            // TODO
+            // Get repository id by `&**repository`
+            try_bind_val!(sql, 6, SQLITE_NULL);
+        } else {
+            try_bind_val!(sql, 6, SQLITE_NULL);
+        }
+
         try_bind_val!(sql, 7, 1_i32); // TODO
         try_bind_val!(sql, 8, meta.installed_size as i64);
 
         if let Some(license) = &meta.license {
-            try_bind_val!(sql, 9, license.clone());
+            try_bind_val!(sql, 9, &**license);
         } else {
             try_bind_val!(sql, 9, SQLITE_NULL);
         }
@@ -106,12 +113,12 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         try_bind_val!(sql, 12, self.version.patch);
 
         if let Some(vtag) = &self.version.tag {
-            try_bind_val!(sql, 13, vtag.clone());
+            try_bind_val!(sql, 13, &**vtag);
         } else {
             try_bind_val!(sql, 13, SQLITE_NULL);
         }
 
-        try_bind_val!(sql, 14, self.version.readable_format.clone());
+        try_bind_val!(sql, 14, &*self.version.readable_format);
 
         if PreparedStatementStatus::Done != sql.execute_prepared() {
             sql.kill();
