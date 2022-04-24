@@ -1,7 +1,7 @@
 use common::lpm_version::get_lpm_version;
 use ehandle::{
-    db::{MigrationError, MigrationErrorKind},
-    ErrorCommons,
+    db::{MigrationError, MigrationErrorKind, SqlError},
+    try_execute, try_execute_prepared, ErrorCommons,
 };
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
@@ -37,23 +37,18 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationErr
 }
 
 #[inline]
-fn can_migrate<'a>(db: &Database, version: i64) -> Result<bool, MinSqliteWrapperError<'a>> {
+fn can_migrate(db: &Database, version: i64) -> Result<bool, SqlError> {
     let statement = String::from("PRAGMA user_version;");
 
     let mut sql = db.prepare(
         statement,
         None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
     )?;
+    try_execute_prepared!(sql);
 
-    let mut result = false;
-    while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
-        let db_user_version = sql.clone().get_data::<i64>(0).unwrap();
-
-        result = version > db_user_version;
-    }
-
+    let db_user_version = sql.clone().get_data::<i64>(0).unwrap();
+    let result = version > db_user_version;
     sql.kill();
-
     Ok(result)
 }
 
@@ -165,7 +160,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
         ",
     );
 
-    db.execute(statement, Some(super::simple_error_callback))?;
+    try_execute!(db, statement);
 
     set_migration_version(db, *version)?;
 
@@ -218,7 +213,7 @@ fn create_update_triggers_for_core_tables(
         ",
     );
 
-    db.execute(statement, Some(super::simple_error_callback))?;
+    try_execute!(db, statement);
 
     set_migration_version(db, *version)?;
 
@@ -261,7 +256,7 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), MigrationErro
         sys_defaults, checksum_kind_defaults
     );
 
-    db.execute(statement, Some(super::simple_error_callback))?;
+    try_execute!(db, statement);
 
     set_migration_version(db, *version)?;
 

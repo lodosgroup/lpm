@@ -1,10 +1,9 @@
 use ehandle::{
-    db::{MigrationError, SqlError, SqlErrorKind},
-    ErrorCommons,
+    db::{MigrationError, SqlError},
+    try_execute_prepared, ErrorCommons,
 };
 use migrations::start_db_migrations;
 use min_sqlite3_sys::prelude::*;
-use std::process;
 mod migrations;
 
 #[cfg(not(debug_assertions))]
@@ -23,30 +22,11 @@ pub const SQL_NO_CALLBACK_FN: Option<
 > = None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>;
 
 #[inline]
-// TODO
-// remove this and throw `SqlError` instead.
-pub fn simple_error_callback(status: SqlitePrimaryResult, sql_statement: String) {
-    println!(
-        "SQL EXECUTION HAS BEEN FAILED.\n\nReason: {:?}\nStatement: {}",
-        status, sql_statement
-    );
-
-    process::exit(1);
-}
-
-#[inline]
 fn get_last_insert_row_id(db: &Database) -> Result<i64, SqlError> {
-    let statement = String::from("SEuLECT LAST_INSERT_ROWID();");
-    let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN).unwrap();
+    let statement = String::from("SELECT LAST_INSERT_ROWID();");
+    let mut sql = db.prepare(statement, SQL_NO_CALLBACK_FN).unwrap();
 
-    if PreparedStatementStatus::FoundRow != sql.execute_prepared() {
-        sql.kill();
-        return Err(SqlErrorKind::FailedExecuting(Some(format!(
-            "Failed executing '{}'",
-            statement
-        )))
-        .throw());
-    }
+    try_execute_prepared!(sql);
 
     Ok(sql.get_data::<i64>(0).unwrap())
 }
