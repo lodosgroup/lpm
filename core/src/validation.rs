@@ -1,10 +1,12 @@
-use std::{error, fs, io::Read};
-
-use ehandle::package::{PackageError, PackageErrorKind};
+use crate::extraction::ExtractionTasks;
+use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
+use ehandle::{
+    pkg::{PackageError, PackageErrorKind},
+    ErrorCommons, RuntimeError,
+};
 use hash::{md5, sha256, sha512};
 use parser::meta::Files;
-
-use crate::{extraction::ExtractionTasks, pkg::LodPkg};
+use std::{fs, io::Read};
 
 #[non_exhaustive]
 enum ChecksumKind {
@@ -28,20 +30,30 @@ impl ChecksumKind {
             "md5" => Ok(ChecksumKind::Md5),
             "sha256" => Ok(ChecksumKind::Sha256),
             "sha512" => Ok(ChecksumKind::Sha512),
-            _ => Err(PackageError::new(
-                PackageErrorKind::UnsupportedChecksumAlgorithm,
-            )),
+            _ => Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
+                "{} algorithm is not supported from current lpm version.",
+                kind
+            )))
+            .throw()),
         }
     }
 }
 
 pub trait ValidationTasks {
-    fn start_validations(&self) -> Result<(), Box<dyn error::Error>>;
+    fn start_validations(&self) -> Result<(), RuntimeError>;
 }
 
 impl<'a> ValidationTasks for LodPkg<'a> {
-    fn start_validations(&self) -> Result<(), Box<dyn error::Error>> {
+    fn start_validations(&self) -> Result<(), RuntimeError> {
         if let Some(meta_dir) = &self.meta_dir {
+            // check architecture compatibility
+            if meta_dir.meta.arch != NO_ARCH && meta_dir.meta.arch != SYSTEM_ARCH {
+                let e = format!("Package '{}' is built for '{}' architecture that is not supported by this machine.", meta_dir.meta.name, meta_dir.meta.arch);
+                return Err(PackageErrorKind::UnsupportedPackageArchitecture(Some(e))
+                    .throw()
+                    .into());
+            }
+
             check_program_checksums(self.get_pkg_output_path(), &meta_dir.files)?
         }
 
@@ -49,8 +61,7 @@ impl<'a> ValidationTasks for LodPkg<'a> {
     }
 }
 
-#[inline(always)]
-fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), Box<dyn error::Error>> {
+fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), RuntimeError> {
     for file in &files.0 {
         // Read file as byte-array
         let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path)?;
@@ -68,10 +79,12 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), Box<dy
             };
 
             if file_hash.ne(&file.checksum) {
-                return Err(PackageError::new(PackageErrorKind::InvalidPackageFiles).into());
+                return Err(PackageErrorKind::InvalidPackageFiles(None).throw().into());
             }
         } else {
-            return Err(PackageError::new(PackageErrorKind::UnsupportedChecksumAlgorithm).into());
+            return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(None)
+                .throw()
+                .into());
         }
     }
 

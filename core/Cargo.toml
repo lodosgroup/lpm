@@ -10,6 +10,9 @@ publish = false
 ar = "0.9"
 tar = { version = "0.4", default-features = false }
 xz2 = "0.1"
+min-sqlite3-sys = "1.3"
 parser = { path = "../parser" }
 hash = { path = "../hash" }
 ehandle = { path = "../ehandle" }
+common = { path = "../common" }
+db = { path = "../db" }

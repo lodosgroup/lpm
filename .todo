@@ -5,3 +5,5 @@
 - lock-file for strict bulk installations
 - handle pkg version switching
 - provide version and pkg protection
+- force using prepared statements for security reasons (outside of the migrations)
+- do not allow using `dyn Error`

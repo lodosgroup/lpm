@@ -1,18 +1,37 @@
 #![forbid(unsafe_code)]
 #![feature(io_error_more, io_error_uncategorized)]
 
-use std::error;
+pub trait ErrorCommons<T> {
+    fn as_str(&self) -> &str;
+    fn throw(&self) -> T;
+}
 
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum RuntimeErrorKind {
-    UnsupportedPlatform,
+    UnsupportedPlatform(Option<String>),
 }
 
-impl RuntimeErrorKind {
-    pub fn as_str(&self) -> &str {
+impl ErrorCommons<RuntimeError> for RuntimeErrorKind {
+    #[inline(always)]
+    fn as_str(&self) -> &str {
         match self {
-            RuntimeErrorKind::UnsupportedPlatform => "UnsupportedPlatform",
+            RuntimeErrorKind::UnsupportedPlatform(_) => "UnsupportedPlatform",
+        }
+    }
+
+    #[inline(always)]
+    fn throw(&self) -> RuntimeError {
+        match self {
+            Self::UnsupportedPlatform(ref err) => RuntimeError {
+                kind: self.as_str().to_string(),
+                reason: err
+                    .as_ref()
+                    .unwrap_or(&String::from(
+                        "LodPM can only work on Linux based platforms.",
+                    ))
+                    .to_owned(),
+            },
         }
     }
 }
@@ -23,32 +42,6 @@ pub struct RuntimeError {
     pub reason: String,
 }
 
-impl RuntimeError {
-    pub fn new(kind: RuntimeErrorKind) -> Self {
-        match kind {
-            RuntimeErrorKind::UnsupportedPlatform => RuntimeError {
-                kind: kind.as_str().to_string(),
-                reason: "LodPM can only work on Linux based platforms.".to_string(),
-            },
-        }
-    }
-}
-
-impl From<RuntimeError> for Box<dyn error::Error> {
-    fn from(error: RuntimeError) -> Self {
-        error.into()
-    }
-}
-
-impl From<Box<dyn std::error::Error>> for RuntimeError {
-    fn from(error: Box<dyn std::error::Error>) -> Self {
-        RuntimeError {
-            kind: "TODO".to_string(), // error.source().unwrap().to_string(),
-            reason: error.to_string(),
-        }
-    }
-}
-
 pub mod db;
 mod io;
-pub mod package;
+pub mod pkg;

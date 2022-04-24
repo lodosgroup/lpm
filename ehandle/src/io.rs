@@ -1,8 +1,8 @@
+use crate::RuntimeError;
 use std::io::{self, ErrorKind};
 
-use crate::RuntimeError;
-
 impl From<io::Error> for RuntimeError {
+    #[inline(always)]
     fn from(error: io::Error) -> Self {
         RuntimeError {
             kind: parse_io_error_kind(error.kind()).to_string(),
@@ -11,8 +11,9 @@ impl From<io::Error> for RuntimeError {
     }
 }
 
+#[inline(always)]
 fn parse_io_error_kind(kind: ErrorKind) -> &'static str {
-    match kind {
+    match &kind {
         ErrorKind::NotFound => "NotFound",
         ErrorKind::PermissionDenied => "PermissionDenied",
         ErrorKind::ConnectionRefused => "ConnectionRefused",
