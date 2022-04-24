@@ -170,7 +170,10 @@ pub fn get_checksum_algorithm_id_by_kind(
     Ok(Some(result))
 }
 
-pub fn insert_pkg_kinds(kinds: Vec<String>, db: &Database) -> Result<(), SqlError> {
+pub fn insert_pkg_kinds(
+    kinds: Vec<String>,
+    db: &Database,
+) -> Result<SqlitePrimaryResult, SqlError> {
     try_execute!(db, String::from("BEGIN TRANSACTION;"));
 
     for kind in kinds {
@@ -188,11 +191,13 @@ pub fn insert_pkg_kinds(kinds: Vec<String>, db: &Database) -> Result<(), SqlErro
         sql.kill();
     }
 
-    try_execute!(db, String::from("COMMIT;"));
-    Ok(())
+    Ok(try_execute!(db, String::from("COMMIT;")))
 }
 
-pub fn delete_pkg_kinds(kinds: Vec<String>, db: &Database) -> Result<(), SqlError> {
+pub fn delete_pkg_kinds(
+    kinds: Vec<String>,
+    db: &Database,
+) -> Result<SqlitePrimaryResult, SqlError> {
     try_execute!(db, String::from("BEGIN TRANSACTION;"));
 
     for kind in kinds {
@@ -209,6 +214,5 @@ pub fn delete_pkg_kinds(kinds: Vec<String>, db: &Database) -> Result<(), SqlErro
         sql.kill();
     }
 
-    try_execute!(db, String::from("COMMIT;"));
-    Ok(())
+    Ok(try_execute!(db, String::from("COMMIT;")))
 }

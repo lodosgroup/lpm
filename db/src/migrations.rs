@@ -24,13 +24,12 @@ pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
 #[inline]
 fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationError> {
     let statement = format!("PRAGMA user_version = {};", version);
-    let status = db.execute(
-        statement,
-        None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-    )?;
 
-    if status != SqlitePrimaryResult::Ok {
-        return Err(MigrationErrorKind::VersionCouldNotSet(None).throw());
+    match db.execute(statement, super::SQL_NO_CALLBACK_FN) {
+        Ok(_) => (),
+        Err(_) => {
+            return Err(MigrationErrorKind::VersionCouldNotSet(None).throw());
+        }
     }
 
     Ok(())
@@ -40,10 +39,7 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationErr
 fn can_migrate(db: &Database, version: i64) -> Result<bool, SqlError> {
     let statement = String::from("PRAGMA user_version;");
 
-    let mut sql = db.prepare(
-        statement,
-        None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>,
-    )?;
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
     try_execute_prepared!(sql);
 
     let db_user_version = sql.clone().get_data::<i64>(0).unwrap();

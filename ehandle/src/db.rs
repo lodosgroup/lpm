@@ -23,13 +23,19 @@ macro_rules! try_bind_val {
 #[macro_export]
 macro_rules! try_execute_prepared {
     ($sql: expr) => {
-        if $sql.execute_prepared()
-            == min_sqlite3_sys::prelude::PreparedStatementStatus::UnrecognizedStatus
-        {
-            $sql.kill();
-            return Err(ehandle::db::SqlErrorKind::FailedExecuting(None)
-                .throw()
-                .into());
+        match $sql.execute_prepared() {
+            min_sqlite3_sys::prelude::PreparedStatementStatus::FoundRow => {
+                min_sqlite3_sys::prelude::PreparedStatementStatus::FoundRow
+            }
+            min_sqlite3_sys::prelude::PreparedStatementStatus::Done => {
+                min_sqlite3_sys::prelude::PreparedStatementStatus::Done
+            }
+            _ => {
+                $sql.kill();
+                return Err(ehandle::db::SqlErrorKind::FailedExecuting(None)
+                    .throw()
+                    .into());
+            }
         }
     };
 }
@@ -37,11 +43,13 @@ macro_rules! try_execute_prepared {
 #[macro_export]
 macro_rules! try_execute {
     ($db: expr, $statement: expr) => {
-        let status = $db.execute($statement, crate::SQL_NO_CALLBACK_FN)?;
-        if status == min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok {
-            return Err(ehandle::db::SqlErrorKind::FailedExecuting(None)
-                .throw()
-                .into());
+        match $db.execute($statement, crate::SQL_NO_CALLBACK_FN)? {
+            min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok => SqlitePrimaryResult::Ok,
+            _ => {
+                return Err(ehandle::db::SqlErrorKind::FailedExecuting(None)
+                    .throw()
+                    .into());
+            }
         }
     };
 }
