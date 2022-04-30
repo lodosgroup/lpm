@@ -28,7 +28,7 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationErr
         Ok(_) => Ok(()),
         Err(_) => {
             return Err(MigrationErrorKind::VersionCouldNotSet(Some(simple_e_fmt!(
-                "SQL statement `{}` is failed while executing.",
+                "Failed executing SQL statement `{}`.",
                 statement
             )))
             .throw());
@@ -43,7 +43,7 @@ fn can_migrate(db: &Database, version: i64) -> Result<bool, SqlError> {
     try_execute_prepared!(
         sql,
         Some(simple_e_fmt!(
-            "SQL statement `{}` is failed while executing.",
+            "Failed executing SQL statement `{}`.",
             statement
         ))
     );
