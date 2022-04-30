@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![feature(io_error_more, io_error_uncategorized)]
 
 #[macro_export]

@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 pub mod meta;
 pub mod system;
 pub mod version;

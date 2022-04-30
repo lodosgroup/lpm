@@ -1,0 +1,7 @@
+disallowed-methods = [
+	"min_sqlite3_sys::operations::Operations::execute"
+]
+
+disallowed-types = [
+	"std::error::Error",
+]
