@@ -1,4 +1,3 @@
-- install only checksum validated files
 - ? on pkg upgrading or downgrading, apply only differences between system-target pkg
 - transactional pkg operations
 - add scripts that will be executed on installation or uninstallation process
@@ -7,3 +6,4 @@
 - provide version and pkg protection
 - force using prepared statements for security reasons (outside of the migrations)
 - do not allow using `dyn Error`
+- Override formatting before stdout for RuntimeError

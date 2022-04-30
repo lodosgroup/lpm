@@ -2,7 +2,7 @@ use common::{pkg::LodPkg, Files};
 use ehandle::{
     db::SqlError,
     pkg::{PackageError, PackageErrorKind},
-    try_bind_val, try_execute, try_execute_prepared, ErrorCommons,
+    simple_e_fmt, try_bind_val, try_execute, try_execute_prepared, ErrorCommons,
 };
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
@@ -44,7 +44,10 @@ impl<'a> LodPkgCoreDbOps for Files {
             try_bind_val!(sql, 4, checksum_id.unwrap());
             try_bind_val!(sql, 5, pkg_id);
 
-            try_execute_prepared!(sql);
+            try_execute_prepared!(
+                sql,
+                Some(simple_e_fmt!("Could not insert to \"files\" table."))
+            );
 
             sql.kill();
         }
@@ -65,7 +68,11 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             .throw());
         }
 
-        try_execute!(db, String::from("BEGIN TRANSACTION;"));
+        try_execute!(
+            db,
+            String::from("BEGIN TRANSACTION;"),
+            Some(simple_e_fmt!("Could not begin the transaction."))
+        );
 
         let statement = String::from(
             "
@@ -91,10 +98,24 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             try_bind_val!(sql, 5, SQLITE_NULL);
         }
 
-        if let Some(_repository) = &meta.repository {
-            // TODO
-            // Get repository id by `&**repository`
-            try_bind_val!(sql, 6, SQLITE_NULL);
+        if let Some(repository) = &meta.repository {
+            let repository_id = get_repository_id_by_repository(db, repository)?;
+
+            if let Some(r_id) = repository_id {
+                try_bind_val!(sql, 6, r_id);
+            } else {
+                sql.kill();
+                try_execute!(
+                    db,
+                    String::from("ROLLBACK;"),
+                    Some(simple_e_fmt!("Could not rollback the transaction."))
+                );
+                return Err(PackageErrorKind::UnrecognizedRepository(Some(format!(
+                    "Repository '{}' is not defined in your system. See 'TODO'",
+                    repository
+                )))
+                .throw());
+            }
         } else {
             try_bind_val!(sql, 6, SQLITE_NULL);
         }
@@ -122,8 +143,17 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         if PreparedStatementStatus::Done != sql.execute_prepared() {
             sql.kill();
-            try_execute!(db, String::from("ROLLBACK;"));
-            return Err(PackageErrorKind::InstallationFailed(None).throw());
+            try_execute!(
+                db,
+                String::from("ROLLBACK;"),
+                Some(simple_e_fmt!("Could not rollback the transaction."))
+            );
+
+            return Err(PackageErrorKind::InstallationFailed(Some(simple_e_fmt!(
+                "Installing package \"{}\" is failed.",
+                meta.name
+            )))
+            .throw());
         }
 
         sql.kill();
@@ -131,7 +161,11 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         match self.meta_dir.as_ref().unwrap().files.insert(db) {
             Ok(_) => (),
             Err(err) => {
-                try_execute!(db, String::from("ROLLBACK;"));
+                try_execute!(
+                    db,
+                    String::from("ROLLBACK;"),
+                    Some(simple_e_fmt!("Could not rollback the transaction."))
+                );
                 return Err(err);
             }
         };
@@ -139,7 +173,11 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         match db.execute(String::from("COMMIT;"), super::SQL_NO_CALLBACK_FN) {
             Ok(_) => Ok(()),
             Err(err) => {
-                try_execute!(db, String::from("ROLLBACK;"));
+                try_execute!(
+                    db,
+                    String::from("ROLLBACK;"),
+                    Some(simple_e_fmt!("Could not rollback the transaction."))
+                );
                 Err(err.into())
             }
         }
@@ -152,12 +190,37 @@ pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, SqlError> {
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, 1, name);
-    try_execute_prepared!(sql);
+    try_execute_prepared!(
+        sql,
+        Some(simple_e_fmt!("Error SELECT query on \"packages\" table."))
+    );
 
     let result = sql.get_data::<i64>(0).unwrap_or(0);
     sql.kill();
 
     Ok(result == 1)
+}
+
+pub fn get_repository_id_by_repository(
+    db: &Database,
+    repository: &str,
+) -> Result<Option<i64>, SqlError> {
+    let statement = String::from("SELECT id FROM repositories WHERE repository = ?;");
+
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+
+    try_bind_val!(sql, 1, repository);
+    try_execute_prepared!(
+        sql,
+        Some(simple_e_fmt!(
+            "Error SELECT query on \"repositories\" table."
+        ))
+    );
+
+    let result = sql.get_data::<i64>(0).unwrap();
+    sql.kill();
+
+    Ok(Some(result))
 }
 
 pub fn get_checksum_algorithm_id_by_kind(
@@ -169,7 +232,12 @@ pub fn get_checksum_algorithm_id_by_kind(
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, 1, algorithm);
-    try_execute_prepared!(sql);
+    try_execute_prepared!(
+        sql,
+        Some(simple_e_fmt!(
+            "Error SELECT query on \"checksum_kinds\" table."
+        ))
+    );
 
     let result = sql.get_data::<i64>(0).unwrap();
     sql.kill();
@@ -181,7 +249,11 @@ pub fn insert_pkg_kinds(
     kinds: Vec<String>,
     db: &Database,
 ) -> Result<SqlitePrimaryResult, SqlError> {
-    try_execute!(db, String::from("BEGIN TRANSACTION;"));
+    try_execute!(
+        db,
+        String::from("BEGIN TRANSACTION;"),
+        Some(simple_e_fmt!("Could not begin the transaction."))
+    );
 
     for kind in kinds {
         let statement = String::from(
@@ -193,19 +265,33 @@ pub fn insert_pkg_kinds(
         );
 
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, 1, kind);
-        try_execute_prepared!(sql);
+        try_bind_val!(sql, 1, &*kind);
+        try_execute_prepared!(
+            sql,
+            Some(simple_e_fmt!(
+                "Error on inserting package kind \"{}\".",
+                kind
+            ))
+        );
         sql.kill();
     }
 
-    Ok(try_execute!(db, String::from("COMMIT;")))
+    Ok(try_execute!(
+        db,
+        String::from("COMMIT;"),
+        Some(simple_e_fmt!("Could not commit the transaction."))
+    ))
 }
 
 pub fn delete_pkg_kinds(
     kinds: Vec<String>,
     db: &Database,
 ) -> Result<SqlitePrimaryResult, SqlError> {
-    try_execute!(db, String::from("BEGIN TRANSACTION;"));
+    try_execute!(
+        db,
+        String::from("BEGIN TRANSACTION;"),
+        Some(simple_e_fmt!("Could not begin the transaction."))
+    );
 
     for kind in kinds {
         let statement = String::from(
@@ -216,10 +302,20 @@ pub fn delete_pkg_kinds(
         );
 
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, 1, kind);
-        try_execute_prepared!(sql);
+        try_bind_val!(sql, 1, &*kind);
+        try_execute_prepared!(
+            sql,
+            Some(simple_e_fmt!(
+                "Error on deleting package kind \"{}\".",
+                kind
+            ))
+        );
         sql.kill();
     }
 
-    Ok(try_execute!(db, String::from("COMMIT;")))
+    Ok(try_execute!(
+        db,
+        String::from("COMMIT;"),
+        Some(simple_e_fmt!("Could not commit the transaction."))
+    ))
 }

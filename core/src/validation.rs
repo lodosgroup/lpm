@@ -2,7 +2,7 @@ use crate::extraction::ExtractionTasks;
 use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
-    ErrorCommons, RuntimeError,
+    simple_e_fmt, ErrorCommons, RuntimeError,
 };
 use hash::{md5, sha256, sha512};
 use parser::meta::Files;
@@ -79,12 +79,22 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), Runtim
             };
 
             if file_hash.ne(&file.checksum) {
-                return Err(PackageErrorKind::InvalidPackageFiles(None).throw().into());
-            }
-        } else {
-            return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(None)
+                return Err(PackageErrorKind::InvalidPackageFiles(Some(simple_e_fmt!(
+                    "File \"{}\" is not valid.",
+                    file.path
+                )))
                 .throw()
                 .into());
+            }
+        } else {
+            return Err(
+                PackageErrorKind::UnsupportedChecksumAlgorithm(Some(simple_e_fmt!(
+                    "Algorithm \"{}\" is not supported by lpm.",
+                    file.checksum_algorithm
+                )))
+                .throw()
+                .into(),
+            );
         }
     }
 

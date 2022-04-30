@@ -1,6 +1,24 @@
 #![forbid(unsafe_code)]
 #![feature(io_error_more, io_error_uncategorized)]
 
+#[macro_export]
+macro_rules! simple_e_fmt {
+    ($format: expr, $($args: tt)+) => { format!($format, $($args)+) };
+    ($format: expr) => { format!($format) }
+}
+
+#[macro_export]
+macro_rules! backtrace_e_fmt {
+    ($format: expr, $($args: tt)+) => { ehandle::backtrace!($format, $($args)+) };
+    ($format: expr) => { ehandle::backtrace!($format) }
+}
+
+#[macro_export]
+macro_rules! backtrace {
+    ($format: expr, $($args: tt)+) => {format! (concat! ("{}:{} >> ", $format), file!(), line!(), $($args)+)};
+    ($format: expr) => {format! (concat! ("{}:{} >> ", $format), file!(), line!())}
+}
+
 pub trait ErrorCommons<T> {
     fn as_str(&self) -> &str;
     fn throw(&self) -> T;

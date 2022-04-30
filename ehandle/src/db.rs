@@ -22,7 +22,7 @@ macro_rules! try_bind_val {
 
 #[macro_export]
 macro_rules! try_execute_prepared {
-    ($sql: expr) => {
+    ($sql: expr, $err: expr) => {
         match $sql.execute_prepared() {
             min_sqlite3_sys::prelude::PreparedStatementStatus::FoundRow => {
                 min_sqlite3_sys::prelude::PreparedStatementStatus::FoundRow
@@ -32,7 +32,7 @@ macro_rules! try_execute_prepared {
             }
             _ => {
                 $sql.kill();
-                return Err(ehandle::db::SqlErrorKind::FailedExecuting(None)
+                return Err(ehandle::db::SqlErrorKind::FailedExecuting($err)
                     .throw()
                     .into());
             }
@@ -42,11 +42,11 @@ macro_rules! try_execute_prepared {
 
 #[macro_export]
 macro_rules! try_execute {
-    ($db: expr, $statement: expr) => {
+    ($db: expr, $statement: expr, $err: expr) => {
         match $db.execute($statement, crate::SQL_NO_CALLBACK_FN)? {
             min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok => SqlitePrimaryResult::Ok,
             _ => {
-                return Err(ehandle::db::SqlErrorKind::FailedExecuting(None)
+                return Err(ehandle::db::SqlErrorKind::FailedExecuting($err)
                     .throw()
                     .into());
             }
