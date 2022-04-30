@@ -1,7 +1,7 @@
 use common::lpm_version::get_lpm_version;
 use ehandle::{
     db::{MigrationError, MigrationErrorKind, SqlError},
-    try_execute, try_execute_prepared, ErrorCommons,
+    simple_e_fmt, try_execute, try_execute_prepared, ErrorCommons,
 };
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
@@ -24,21 +24,29 @@ pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
 fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationError> {
     let statement = format!("PRAGMA user_version = {};", version);
 
-    match db.execute(statement, super::SQL_NO_CALLBACK_FN) {
-        Ok(_) => (),
+    match db.execute(statement.clone(), super::SQL_NO_CALLBACK_FN) {
+        Ok(_) => Ok(()),
         Err(_) => {
-            return Err(MigrationErrorKind::VersionCouldNotSet(None).throw());
+            return Err(MigrationErrorKind::VersionCouldNotSet(Some(simple_e_fmt!(
+                "SQL statement `{}` is failed while executing.",
+                statement
+            )))
+            .throw());
         }
     }
-
-    Ok(())
 }
 
 fn can_migrate(db: &Database, version: i64) -> Result<bool, SqlError> {
     let statement = String::from("PRAGMA user_version;");
 
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
-    try_execute_prepared!(sql, None);
+    let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    try_execute_prepared!(
+        sql,
+        Some(simple_e_fmt!(
+            "SQL statement `{}` is failed while executing.",
+            statement
+        ))
+    );
 
     let db_user_version = sql.clone().get_data::<i64>(0).unwrap();
     let result = version > db_user_version;
@@ -154,7 +162,13 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
         ",
     );
 
-    try_execute!(db, statement, None);
+    try_execute!(
+        db,
+        statement,
+        Some(simple_e_fmt!(
+            "Migration `create_table_core` has been failed."
+        ))
+    );
 
     set_migration_version(db, *version)?;
 
@@ -207,7 +221,13 @@ fn create_update_triggers_for_core_tables(
         ",
     );
 
-    try_execute!(db, statement, None);
+    try_execute!(
+        db,
+        statement,
+        Some(simple_e_fmt!(
+            "Migration `create_update_triggers_for_core_tables` has been failed."
+        ))
+    );
 
     set_migration_version(db, *version)?;
 
@@ -250,7 +270,13 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), MigrationErro
         sys_defaults, checksum_kind_defaults
     );
 
-    try_execute!(db, statement, None);
+    try_execute!(
+        db,
+        statement,
+        Some(simple_e_fmt!(
+            "Migration `insert_defaults` has been failed."
+        ))
+    );
 
     set_migration_version(db, *version)?;
 
