@@ -46,7 +46,7 @@ pub enum Transaction {
 
 impl Transaction {
     #[inline(always)]
-    fn as_str(&self) -> &str {
+    fn to_statement(&self) -> &str {
         match self {
             Transaction::Begin => "BEGIN;",
             Transaction::Commit => "COMMIT;",
@@ -59,7 +59,7 @@ pub fn transaction_op(
     db: &Database,
     transaction: Transaction,
 ) -> Result<SqlitePrimaryResult, SqlError> {
-    let statement = transaction.as_str();
+    let statement = transaction.to_statement();
     #[allow(clippy::disallowed_methods)]
     match db.execute(statement.to_owned(), SQL_NO_CALLBACK_FN)? {
         SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
