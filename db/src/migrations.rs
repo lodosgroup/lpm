@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_methods)]
+
 use common::lpm_version::get_lpm_version;
 use ehandle::{
     db::{MigrationError, MigrationErrorKind, SqlError},
