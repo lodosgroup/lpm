@@ -2,10 +2,12 @@ use common::{pkg::LodPkg, Files};
 use ehandle::{
     db::SqlError,
     pkg::{PackageError, PackageErrorKind},
-    simple_e_fmt, try_bind_val, try_execute, try_execute_prepared, ErrorCommons,
+    simple_e_fmt, try_bind_val, try_execute_prepared, ErrorCommons,
 };
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
+
+use crate::{transaction_op, Transaction};
 
 pub trait LodPkgCoreDbOps {
     fn insert(&self, db: &Database) -> Result<(), PackageError>;
@@ -68,11 +70,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             .throw());
         }
 
-        try_execute!(
-            db,
-            String::from("BEGIN TRANSACTION;"),
-            Some(simple_e_fmt!("Could not begin the transaction."))
-        );
+        transaction_op(db, Transaction::Begin)?;
 
         let statement = String::from(
             "
@@ -105,11 +103,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
                 try_bind_val!(sql, 6, r_id);
             } else {
                 sql.kill();
-                try_execute!(
-                    db,
-                    String::from("ROLLBACK;"),
-                    Some(simple_e_fmt!("Could not rollback the transaction."))
-                );
+                transaction_op(db, Transaction::Rollback)?;
                 return Err(PackageErrorKind::UnrecognizedRepository(Some(format!(
                     "Repository '{}' is not defined in your system. See 'TODO'",
                     repository
@@ -143,11 +137,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         if PreparedStatementStatus::Done != sql.execute_prepared() {
             sql.kill();
-            try_execute!(
-                db,
-                String::from("ROLLBACK;"),
-                Some(simple_e_fmt!("Could not rollback the transaction."))
-            );
+            transaction_op(db, Transaction::Rollback)?;
 
             return Err(PackageErrorKind::InstallationFailed(Some(simple_e_fmt!(
                 "Installing package \"{}\" is failed.",
@@ -161,23 +151,15 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         match self.meta_dir.as_ref().unwrap().files.insert(db) {
             Ok(_) => (),
             Err(err) => {
-                try_execute!(
-                    db,
-                    String::from("ROLLBACK;"),
-                    Some(simple_e_fmt!("Could not rollback the transaction."))
-                );
+                transaction_op(db, Transaction::Rollback)?;
                 return Err(err);
             }
         };
 
-        match db.execute(String::from("COMMIT;"), super::SQL_NO_CALLBACK_FN) {
+        match transaction_op(db, Transaction::Commit) {
             Ok(_) => Ok(()),
             Err(err) => {
-                try_execute!(
-                    db,
-                    String::from("ROLLBACK;"),
-                    Some(simple_e_fmt!("Could not rollback the transaction."))
-                );
+                transaction_op(db, Transaction::Rollback)?;
                 Err(err.into())
             }
         }
@@ -249,11 +231,7 @@ pub fn insert_pkg_kinds(
     kinds: Vec<String>,
     db: &Database,
 ) -> Result<SqlitePrimaryResult, SqlError> {
-    try_execute!(
-        db,
-        String::from("BEGIN TRANSACTION;"),
-        Some(simple_e_fmt!("Could not begin the transaction."))
-    );
+    transaction_op(db, Transaction::Begin)?;
 
     for kind in kinds {
         let statement = String::from(
@@ -276,22 +254,14 @@ pub fn insert_pkg_kinds(
         sql.kill();
     }
 
-    Ok(try_execute!(
-        db,
-        String::from("COMMIT;"),
-        Some(simple_e_fmt!("Could not commit the transaction."))
-    ))
+    transaction_op(db, Transaction::Commit)
 }
 
 pub fn delete_pkg_kinds(
     kinds: Vec<String>,
     db: &Database,
 ) -> Result<SqlitePrimaryResult, SqlError> {
-    try_execute!(
-        db,
-        String::from("BEGIN TRANSACTION;"),
-        Some(simple_e_fmt!("Could not begin the transaction."))
-    );
+    transaction_op(db, Transaction::Begin)?;
 
     for kind in kinds {
         let statement = String::from(
@@ -313,9 +283,5 @@ pub fn delete_pkg_kinds(
         sql.kill();
     }
 
-    Ok(try_execute!(
-        db,
-        String::from("COMMIT;"),
-        Some(simple_e_fmt!("Could not commit the transaction."))
-    ))
+    transaction_op(db, Transaction::Commit)
 }

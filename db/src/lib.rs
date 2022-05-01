@@ -1,5 +1,5 @@
 use ehandle::{
-    db::{MigrationError, SqlError},
+    db::{MigrationError, SqlError, SqlErrorKind},
     simple_e_fmt, try_execute_prepared, ErrorCommons,
 };
 use migrations::start_db_migrations;
@@ -33,7 +33,44 @@ fn get_last_insert_row_id(db: &Database) -> Result<i64, SqlError> {
         ))
     );
 
-    Ok(sql.get_data::<i64>(0).unwrap())
+    let data = sql.get_data::<i64>(0).unwrap();
+    sql.kill();
+    Ok(data)
+}
+
+pub enum Transaction {
+    Begin,
+    Commit,
+    Rollback,
+}
+
+impl Transaction {
+    #[inline(always)]
+    fn as_str(&self) -> &str {
+        match self {
+            Transaction::Begin => "BEGIN;",
+            Transaction::Commit => "COMMIT;",
+            Transaction::Rollback => "ROLLBACK;",
+        }
+    }
+}
+
+pub fn transaction_op(
+    db: &Database,
+    transaction: Transaction,
+) -> Result<SqlitePrimaryResult, SqlError> {
+    let statement = transaction.as_str();
+    #[allow(clippy::disallowed_methods)]
+    match db.execute(statement.to_owned(), SQL_NO_CALLBACK_FN)? {
+        SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
+        _ => {
+            return Err(SqlErrorKind::FailedExecuting(Some(simple_e_fmt!(
+                "Failed executing SQL statement `{}`.",
+                statement
+            )))
+            .throw());
+        }
+    }
 }
 
 pub mod pkg;

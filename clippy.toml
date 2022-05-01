@@ -1,7 +1,10 @@
-disallowed-methods = [
-	"min_sqlite3_sys::operations::Operations::execute"
-]
+# Disallowed fns
+[[disallowed-methods]]
+path = "min_sqlite3_sys::operations::Operations::execute"
+replacement = "min_sqlite3_sys::operations::Operations::execute_prepared"
+reason = "prefer using `execute_prepared` to avoid SQL injection."
 
-disallowed-types = [
-	"std::error::Error",
-]
+# Disallowed types
+[[disallowed-types]]
+path = "std::error::Error"
+reason = "Please create & use an error specifically for lpm."

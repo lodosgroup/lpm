@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_methods)]
+
 use common::lpm_version::get_lpm_version;
 use ehandle::{
     db::{MigrationError, MigrationErrorKind, SqlError},
@@ -24,6 +26,7 @@ pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
 fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationError> {
     let statement = format!("PRAGMA user_version = {};", version);
 
+    #[allow(clippy::disallowed_methods)]
     match db.execute(statement.clone(), super::SQL_NO_CALLBACK_FN) {
         Ok(_) => Ok(()),
         Err(_) => {
