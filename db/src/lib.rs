@@ -46,27 +46,27 @@ pub enum Transaction {
 
 impl Transaction {
     #[inline(always)]
-    fn to_statement(&self) -> &str {
+    fn to_statement(&self) -> String {
         match self {
-            Transaction::Begin => "BEGIN;",
-            Transaction::Commit => "COMMIT;",
-            Transaction::Rollback => "ROLLBACK;",
+            Transaction::Begin => String::from("BEGIN;"),
+            Transaction::Commit => String::from("COMMIT;"),
+            Transaction::Rollback => String::from("ROLLBACK;"),
         }
     }
 }
 
+#[inline(always)]
 pub fn transaction_op(
     db: &Database,
     transaction: Transaction,
 ) -> Result<SqlitePrimaryResult, SqlError> {
-    let statement = transaction.to_statement();
     #[allow(clippy::disallowed_methods)]
-    match db.execute(statement.to_owned(), SQL_NO_CALLBACK_FN)? {
+    match db.execute(transaction.to_statement(), SQL_NO_CALLBACK_FN)? {
         SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
         _ => {
             return Err(SqlErrorKind::FailedExecuting(Some(simple_e_fmt!(
                 "Failed executing SQL statement `{}`.",
-                statement
+                transaction.to_statement()
             )))
             .throw());
         }
