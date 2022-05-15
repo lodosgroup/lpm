@@ -1,5 +1,5 @@
 use common::pkg::LodPkg;
-use core::installation::InstallationTasks;
+use core::{installation::InstallationTasks, AdditionalCapabilities};
 use db::init_db;
 use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
 use min_sqlite3_sys::prelude::*;
@@ -18,8 +18,14 @@ fn main() -> Result<(), RuntimeError> {
     let cli = |arg: &str| -> Result<(), RuntimeError> {
         match arg {
             "--install" => {
-                let mut pkg = LodPkg::new(args.get(2).expect("Package path is missing."));
+                let mut pkg = LodPkg::from_fs(args.get(2).expect("Package path is missing."));
                 pkg.start_installation()?;
+            }
+            "--delete" => {
+                let pkg = LodPkg::from_db(args.get(2).expect("Package name is missing."));
+                println!("{:?}", pkg);
+
+                // pkg.delete_package()?;
             }
             "--add-pkg-kind" => {
                 let db = Database::open(Path::new(DB_PATH))?;

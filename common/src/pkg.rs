@@ -7,6 +7,7 @@ use parser::{
 };
 use std::path::Path;
 
+#[derive(Debug)]
 pub struct LodPkg<'a> {
     pub path: &'a Path,
     pub meta_dir: Option<MetaDir>,
@@ -32,7 +33,8 @@ impl MetaDir {
 }
 
 impl<'a> LodPkg<'a> {
-    pub fn new(str_path: &'a str) -> Self {
+    #[inline]
+    pub fn from_fs(str_path: &'a str) -> Self {
         Self {
             path: Path::new(str_path),
             meta_dir: None,
