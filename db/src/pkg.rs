@@ -1,3 +1,5 @@
+use crate::{transaction_op, Transaction};
+
 use common::{pkg::LodPkg, Files};
 use ehandle::{
     db::SqlError,
@@ -7,10 +9,9 @@ use ehandle::{
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
 
-use crate::{transaction_op, Transaction};
-
 pub trait LodPkgCoreDbOps {
     fn insert(&self, db: &Database) -> Result<(), PackageError>;
+    fn get_by_name(&self, db: &Database, name: &str) -> Result<Box<Self>, PackageError>;
 }
 
 impl<'a> LodPkgCoreDbOps for Files {
@@ -55,6 +56,10 @@ impl<'a> LodPkgCoreDbOps for Files {
         }
 
         Ok(())
+    }
+
+    fn get_by_name(&self, db: &Database, name: &str) -> Result<Box<Self>, PackageError> {
+        unimplemented!()
     }
 }
 
@@ -163,6 +168,10 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
                 Err(err.into())
             }
         }
+    }
+
+    fn get_by_name(&self, db: &Database, name: &str) -> Result<Box<Self>, PackageError> {
+        unimplemented!()
     }
 }
 

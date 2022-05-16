@@ -43,3 +43,14 @@ impl<'a> LodPkg<'a> {
         }
     }
 }
+
+impl<'a> Default for LodPkg<'a> {
+    fn default() -> Self {
+        Self {
+            path: Path::new(""),
+            meta_dir: None,
+            system: None,
+            version: get_lpm_version(),
+        }
+    }
+}
