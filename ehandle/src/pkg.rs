@@ -9,6 +9,7 @@ pub enum PackageErrorKind {
     UnsupportedChecksumAlgorithm(Option<String>),
     InstallationFailed(Option<String>),
     AlreadyInstalled(Option<String>),
+    DoesNotExists(Option<String>),
     UnrecognizedRepository(Option<String>),
 }
 
@@ -21,6 +22,7 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
             Self::UnsupportedPackageArchitecture(_) => "UnsupportedPackageArchitecture",
             Self::InstallationFailed(_) => "InstallationFailed",
             Self::AlreadyInstalled(_) => "AlreadyInstalled",
+            Self::DoesNotExists(_) => "DoesNotExists",
             Self::UnrecognizedRepository(_) => "UnrecognizedRepository",
         }
     }
@@ -70,6 +72,15 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
                     .as_ref()
                     .unwrap_or(&String::from(
                         "The package you are trying to install is already installed in the system.",
+                    ))
+                    .to_owned(),
+            },
+            Self::DoesNotExists(ref err) => PackageError {
+                kind: self.clone(),
+                reason: err
+                    .as_ref()
+                    .unwrap_or(&String::from(
+                        "The package you are trying to reach is not installed in the system.",
                     ))
                     .to_owned(),
             },

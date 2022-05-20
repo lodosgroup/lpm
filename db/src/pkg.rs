@@ -196,7 +196,7 @@ pub fn get_repository_id_by_repository(
     db: &Database,
     repository: &str,
 ) -> Result<Option<i64>, SqlError> {
-    let statement = String::from("SELECT id FROM repositories WHERE repository = ?;");
+    let statement = String::from("SELECT id FROM package_repositories WHERE repository = ?;");
 
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
@@ -204,7 +204,7 @@ pub fn get_repository_id_by_repository(
     try_execute_prepared!(
         sql,
         Some(simple_e_fmt!(
-            "Error SELECT query on \"repositories\" table."
+            "Error SELECT query on \"package_repositories\" table."
         ))
     );
 

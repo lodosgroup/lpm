@@ -4,5 +4,5 @@
 - lock-file for strict bulk installations
 - handle pkg version switching
 - provide version and pkg protection
-- Override formatting before stdout for RuntimeError
 - re-export main functionality of LodPkg from single namespace
+- Deserialize LodPkg from database
