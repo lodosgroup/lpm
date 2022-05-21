@@ -1,5 +1,8 @@
-use common::pkg::{LodPkg, MetaDir};
-use parser::{system::System, ParserTasks};
+use common::{
+    pkg::{LodPkg, MetaDir},
+    system::System,
+    ParserTasks,
+};
 use std::{
     fs::{create_dir_all, remove_dir_all, File},
     io::{self, copy},

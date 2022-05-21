@@ -3,7 +3,6 @@ members = [
 	"main",
 	"db",
 	"core",
-	"parser",
 	"hash",
 	"ehandle",
 	"common",

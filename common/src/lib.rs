@@ -1,8 +1,15 @@
 pub mod lpm_version;
 pub mod pkg;
+pub mod meta;
+pub mod system;
+pub mod version;
 
 // re-exports
-pub use parser::meta::Files;
+pub use meta::Files;
+
+pub trait ParserTasks {
+    fn deserialize(path: &str) -> Self;
+}
 
 // For non-binary packages
 pub const NO_ARCH: &str = "no-arch";

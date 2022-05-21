@@ -1,11 +1,11 @@
 use crate::extraction::ExtractionTasks;
+use common::meta::Files;
 use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
     simple_e_fmt, ErrorCommons, RuntimeError,
 };
 use hash::{md5, sha256, sha512};
-use parser::meta::Files;
 use std::{fs, io::Read};
 
 #[non_exhaustive]

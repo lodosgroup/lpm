@@ -1,9 +1,9 @@
+use super::ParserTasks;
 use crate::lpm_version::get_lpm_version;
-use parser::{
+use crate::{
     meta::{Files, Meta},
     system::System,
     version::VersionStruct,
-    ParserTasks,
 };
 use std::path::Path;
 
