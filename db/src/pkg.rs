@@ -245,7 +245,6 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         let files = Files(files);
 
-
         let meta_dir = MetaDir {
             path: String::new(),
             meta,
