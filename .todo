@@ -6,4 +6,4 @@
 - provide version and pkg protection
 - re-export main functionality of LodPkg from single namespace
 - Deserialize LodPkg from database
-- Update db fields (specially for packages)
+- sync db fields (specially for packages)
