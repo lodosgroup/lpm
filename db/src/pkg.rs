@@ -1,6 +1,11 @@
 use crate::{transaction_op, Transaction};
 
-use common::{meta::Meta, pkg::LodPkg, version::VersionStruct, Files};
+use common::{
+    meta::{FileStruct, Meta},
+    pkg::{LodPkg, MetaDir},
+    version::VersionStruct,
+    Files,
+};
 use ehandle::{
     db::SqlError,
     pkg::{PackageError, PackageErrorKind},
@@ -196,7 +201,6 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             tag: sql.get_data(13).unwrap(),
             readable_format: sql.get_data(14).unwrap(),
         };
-        println!("{:?}", version);
 
         let meta = Meta {
             name: sql.get_data(1).unwrap(),
@@ -217,10 +221,40 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             // suggestions: sql.get_data(13).unwrap(),
             suggestions: Vec::new(),
         };
-        println!("{:?}", meta);
 
         sql.kill();
 
+        println!("{:?}", meta);
+
+        let statement = String::from("SELECT * FROM files WHERE package_id = ?;");
+        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        try_bind_val!(sql, 1, id);
+
+        let mut files: Vec<FileStruct> = Vec::new();
+
+        while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
+            let file = FileStruct {
+                path: sql.get_data(2).unwrap(),
+                checksum_algorithm: get_checksum_algorithm_by_id(db, sql.get_data(4).unwrap())
+                    .unwrap(),
+                checksum: sql.get_data(3).unwrap(),
+            };
+
+            files.push(file);
+        }
+
+        let files = Files(files);
+
+
+        let meta_dir = MetaDir {
+            path: String::new(),
+            meta,
+            files,
+        };
+
+        println!("{:?}", meta_dir);
+
+        sql.kill();
         unimplemented!()
     }
 }
@@ -262,6 +296,25 @@ pub fn get_repository_id_by_repository(
     sql.kill();
 
     Ok(Some(result))
+}
+
+pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, SqlError> {
+    let statement = String::from("SELECT kind FROM checksum_kinds WHERE id = ?;");
+
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+
+    try_bind_val!(sql, 1, id);
+    try_execute_prepared!(
+        sql,
+        Some(simple_e_fmt!(
+            "Error SELECT query on \"checksum_kinds\" table."
+        ))
+    );
+
+    let result = sql.get_data::<String>(0).unwrap();
+    sql.kill();
+
+    Ok(result)
 }
 
 pub fn get_checksum_algorithm_id_by_kind(

@@ -1,6 +1,6 @@
 pub mod lpm_version;
-pub mod pkg;
 pub mod meta;
+pub mod pkg;
 pub mod system;
 pub mod version;
 
