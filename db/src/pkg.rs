@@ -1,6 +1,6 @@
 use crate::{transaction_op, Transaction};
 
-use common::{pkg::LodPkg, Files};
+use common::{meta::Meta, pkg::LodPkg, version::VersionStruct, Files};
 use ehandle::{
     db::SqlError,
     pkg::{PackageError, PackageErrorKind},
@@ -171,6 +171,56 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     }
 
     fn get_by_name(&self, db: &Database, name: &str) -> Result<Box<Self>, PackageError> {
+        let statement = String::from("SELECT * FROM packages WHERE name = ?;");
+        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        try_bind_val!(sql, 1, name);
+        try_execute_prepared!(
+            sql,
+            Some(simple_e_fmt!("Error SELECT query on \"packages\" table."))
+        );
+        let id = sql.get_data::<i64>(0).unwrap_or(0);
+
+        if id == 0 {
+            sql.kill();
+            return Err(PackageErrorKind::DoesNotExists(Some(format!(
+                "{} is doesn't exists in your system.",
+                name
+            )))
+            .throw());
+        }
+
+        let version = VersionStruct {
+            major: sql.get_data(10).unwrap(),
+            minor: sql.get_data(11).unwrap(),
+            patch: sql.get_data(12).unwrap(),
+            tag: sql.get_data(13).unwrap(),
+            readable_format: sql.get_data(14).unwrap(),
+        };
+        println!("{:?}", version);
+
+        let meta = Meta {
+            name: sql.get_data(1).unwrap(),
+            description: sql.get_data(2).unwrap(),
+            maintainer: sql.get_data(3).unwrap(),
+            source_pkg: None,
+            repository: None,
+            homepage: sql.get_data(5).unwrap(),
+            arch: String::new(),
+            kind: String::new(),
+            installed_size: sql.get_data(8).unwrap(),
+            // tags: sql.get_data(10).unwrap(),
+            tags: Vec::new(),
+            version,
+            license: sql.get_data(9).unwrap(),
+            // dependencies: sql.get_data(12).unwrap(),
+            dependencies: Vec::new(),
+            // suggestions: sql.get_data(13).unwrap(),
+            suggestions: Vec::new(),
+        };
+        println!("{:?}", meta);
+
+        sql.kill();
+
         unimplemented!()
     }
 }
