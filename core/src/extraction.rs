@@ -33,11 +33,11 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
     fn get_pkg_output_path(&self) -> String {
         super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
-            + self.path.file_stem().unwrap().to_str().unwrap()
+            + self.path.unwrap().file_stem().unwrap().to_str().unwrap()
     }
 
     fn half_extract(&self) -> Result<(), io::Error> {
-        let input_file = File::open(self.path).expect("Package could not opened.");
+        let input_file = File::open(self.path.unwrap()).expect("Package could not opened.");
         let mut archive = ar::Archive::new(input_file);
 
         while let Some(entry) = archive.next_entry() {

@@ -16,7 +16,7 @@ use std::path::Path;
 
 pub trait LodPkgCoreDbOps {
     fn insert(&self, db: &Database) -> Result<(), PackageError>;
-    fn get_by_name(db: &Database, name: &str) -> Result<Box<Self>, PackageError>;
+    fn get_by_name<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError>;
 }
 
 impl<'a> LodPkgCoreDbOps for Files {
@@ -63,7 +63,7 @@ impl<'a> LodPkgCoreDbOps for Files {
         Ok(())
     }
 
-    fn get_by_name(_db: &Database, _name: &str) -> Result<Box<Self>, PackageError> {
+    fn get_by_name<'lpkg>(_db: &Database, _name: &str) -> Result<LodPkg<'lpkg>, PackageError> {
         unimplemented!()
     }
 }
@@ -183,7 +183,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         }
     }
 
-    fn get_by_name(db: &Database, name: &str) -> Result<Box<Self>, PackageError> {
+    fn get_by_name<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError> {
         let statement = String::from("SELECT * FROM packages WHERE name = ?;");
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
         try_bind_val!(sql, 1, name);
@@ -221,7 +221,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             kind: String::new(),
             installed_size: sql.get_data(8).unwrap(),
             tags: Vec::new(),
-            version,
+            version: version.clone(),
             license: sql.get_data(9).unwrap(),
             dependencies: Vec::new(),
             suggestions: Vec::new(),
@@ -276,9 +276,12 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             files,
         };
 
-        println!("{:?}", meta_dir);
-
-        unimplemented!()
+        Ok(LodPkg {
+            path: None,
+            meta_dir: Some(meta_dir),
+            system: None,
+            version,
+        })
     }
 }
 
@@ -362,6 +365,9 @@ pub fn get_checksum_algorithm_id_by_kind(
     Ok(Some(result))
 }
 
+/// This is a non-transactional insert operation. (created for `LodPkg::get_by_name` which
+/// already has an opened transaction.)
+/// To make it transactional, open&close the transaction from caller stack.
 pub fn insert_pkg_tags(db: &Database, tags: Vec<String>) -> Result<SqlitePrimaryResult, SqlError> {
     let pkg_id = super::get_last_insert_row_id(db)?;
     for tag in tags {

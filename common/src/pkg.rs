@@ -9,7 +9,7 @@ use std::path::Path;
 
 #[derive(Debug)]
 pub struct LodPkg<'a> {
-    pub path: &'a Path,
+    pub path: Option<&'a Path>,
     pub meta_dir: Option<MetaDir>,
     pub system: Option<System>,
     pub version: VersionStruct,
@@ -36,7 +36,7 @@ impl<'a> LodPkg<'a> {
     #[inline]
     pub fn from_fs(str_path: &'a str) -> Self {
         Self {
-            path: Path::new(str_path),
+            path: Some(Path::new(str_path)),
             meta_dir: None,
             system: None,
             version: get_lpm_version(),

@@ -37,7 +37,7 @@ impl<'a> InstallationTasks for LodPkg<'a> {
     fn copy_programs(&self) -> Result<(), io::Error> {
         let source_path = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
-            + self.path.file_stem().unwrap().to_str().unwrap()
+            + self.path.unwrap().file_stem().unwrap().to_str().unwrap()
             + "/program/";
 
         for file in &self.meta_dir.as_ref().unwrap().files.0 {
