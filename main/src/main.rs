@@ -30,13 +30,13 @@ fn main() -> Result<(), RuntimeError> {
             "--add-pkg-kind" => {
                 let db = Database::open(Path::new(DB_PATH))?;
                 let kinds = &args[2..];
-                insert_pkg_kinds(kinds.to_vec(), &db)?;
+                insert_pkg_kinds(&db, kinds.to_vec())?;
                 db.close();
             }
             "--delete-pkg-kind" => {
                 let db = Database::open(Path::new(DB_PATH))?;
                 let kinds = &args[2..];
-                delete_pkg_kinds(kinds.to_vec(), &db)?;
+                delete_pkg_kinds(&db, kinds.to_vec())?;
                 db.close();
             }
             _ => panic!("Invalid argument."),

@@ -12,9 +12,8 @@ pub trait AdditionalCapabilities {
 
 impl<'a> AdditionalCapabilities for LodPkg<'a> {
     fn from_db(pkg_name: &str) -> Self {
-        let instance = LodPkg::default();
         let db = Database::open(Path::new(DB_PATH)).unwrap();
-        let _x = instance.get_by_name(&db, pkg_name).unwrap();
+        let _x = LodPkg::get_by_name(&db, pkg_name).unwrap();
 
         db.close();
         // read package from the database if exists

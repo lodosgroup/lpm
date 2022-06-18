@@ -7,3 +7,4 @@
 - re-export main functionality of LodPkg from single namespace
 - Deserialize LodPkg from database
 - sync db fields (specially for packages)
+- save each process on fs

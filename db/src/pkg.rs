@@ -16,7 +16,7 @@ use std::path::Path;
 
 pub trait LodPkgCoreDbOps {
     fn insert(&self, db: &Database) -> Result<(), PackageError>;
-    fn get_by_name(&self, db: &Database, name: &str) -> Result<Box<Self>, PackageError>;
+    fn get_by_name(db: &Database, name: &str) -> Result<Box<Self>, PackageError>;
 }
 
 impl<'a> LodPkgCoreDbOps for Files {
@@ -63,19 +63,19 @@ impl<'a> LodPkgCoreDbOps for Files {
         Ok(())
     }
 
-    fn get_by_name(&self, db: &Database, name: &str) -> Result<Box<Self>, PackageError> {
+    fn get_by_name(db: &Database, name: &str) -> Result<Box<Self>, PackageError> {
         unimplemented!()
     }
 }
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert(&self, db: &Database) -> Result<(), PackageError> {
-        let meta = &self.meta_dir.as_ref().unwrap().meta;
+        let meta_dir = &self.meta_dir.as_ref().unwrap();
 
-        if is_package_exists(db, &meta.name)? {
+        if is_package_exists(db, &meta_dir.meta.name)? {
             return Err(PackageErrorKind::AlreadyInstalled(Some(format!(
                 "{} is already installed in your system.",
-                meta.name
+                meta_dir.meta.name
             )))
             .throw());
         }
@@ -95,18 +95,18 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
-        try_bind_val!(sql, 1, &*meta.name);
-        try_bind_val!(sql, 2, &*meta.description);
-        try_bind_val!(sql, 3, &*meta.maintainer);
+        try_bind_val!(sql, 1, &*meta_dir.meta.name);
+        try_bind_val!(sql, 2, &*meta_dir.meta.description);
+        try_bind_val!(sql, 3, &*meta_dir.meta.maintainer);
         try_bind_val!(sql, 4, SQLITE_NULL); // TODO
 
-        if let Some(homepage) = &meta.homepage {
+        if let Some(homepage) = &meta_dir.meta.homepage {
             try_bind_val!(sql, 5, &**homepage);
         } else {
             try_bind_val!(sql, 5, SQLITE_NULL);
         }
 
-        if let Some(repository) = &meta.repository {
+        if let Some(repository) = &meta_dir.meta.repository {
             let repository_id = get_repository_id_by_repository(db, repository)?;
 
             if let Some(r_id) = repository_id {
@@ -125,9 +125,9 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         }
 
         try_bind_val!(sql, 7, 1_i32); // TODO
-        try_bind_val!(sql, 8, meta.installed_size as i64);
+        try_bind_val!(sql, 8, meta_dir.meta.installed_size as i64);
 
-        if let Some(license) = &meta.license {
+        if let Some(license) = &meta_dir.meta.license {
             try_bind_val!(sql, 9, &**license);
         } else {
             try_bind_val!(sql, 9, SQLITE_NULL);
@@ -151,14 +151,22 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
             return Err(PackageErrorKind::InstallationFailed(Some(simple_e_fmt!(
                 "Installing package \"{}\" is failed.",
-                meta.name
+                meta_dir.meta.name
             )))
             .throw());
         }
 
         sql.kill();
 
-        match self.meta_dir.as_ref().unwrap().files.insert(db) {
+        match insert_pkg_tags(db, meta_dir.meta.tags.clone()) {
+            Ok(_) => (),
+            Err(err) => {
+                transaction_op(db, Transaction::Rollback)?;
+                return Err(err.into());
+            }
+        };
+
+        match meta_dir.files.insert(db) {
             Ok(_) => (),
             Err(err) => {
                 transaction_op(db, Transaction::Rollback)?;
@@ -175,7 +183,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         }
     }
 
-    fn get_by_name(&self, db: &Database, name: &str) -> Result<Box<Self>, PackageError> {
+    fn get_by_name(db: &Database, name: &str) -> Result<Box<Self>, PackageError> {
         let statement = String::from("SELECT * FROM packages WHERE name = ?;");
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
         try_bind_val!(sql, 1, name);
@@ -202,7 +210,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             readable_format: sql.get_data(14).unwrap(),
         };
 
-        let meta = Meta {
+        let mut meta = Meta {
             name: sql.get_data(1).unwrap(),
             description: sql.get_data(2).unwrap(),
             maintainer: sql.get_data(3).unwrap(),
@@ -212,22 +220,38 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             arch: String::new(),
             kind: String::new(),
             installed_size: sql.get_data(8).unwrap(),
-            // tags: sql.get_data(10).unwrap(),
             tags: Vec::new(),
             version,
             license: sql.get_data(9).unwrap(),
-            // dependencies: sql.get_data(12).unwrap(),
             dependencies: Vec::new(),
-            // suggestions: sql.get_data(13).unwrap(),
             suggestions: Vec::new(),
         };
 
+        let kind_id = sql.get_data::<i64>(7).unwrap();
         sql.kill();
 
-        println!("{:?}", meta);
+        let kind_statement = String::from("SELECT kind FROM package_kinds WHERE id = ?;");
+        let mut sql = db.prepare(kind_statement, super::SQL_NO_CALLBACK_FN)?;
+        try_bind_val!(sql, 1, kind_id);
 
-        let statement = String::from("SELECT * FROM files WHERE package_id = ?;");
-        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
+            meta.kind = sql.get_data(0)?;
+        }
+
+        sql.kill();
+
+        let tags_statement = String::from("SELECT tag FROM package_tags WHERE package_id = ?;");
+        let mut sql = db.prepare(tags_statement, super::SQL_NO_CALLBACK_FN)?;
+        try_bind_val!(sql, 1, id);
+
+        while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
+            meta.tags.push(sql.get_data(0)?);
+        }
+
+        sql.kill();
+
+        let files_statement = String::from("SELECT * FROM files WHERE package_id = ?;");
+        let mut sql = db.prepare(files_statement, super::SQL_NO_CALLBACK_FN)?;
         try_bind_val!(sql, 1, id);
 
         let mut files: Vec<FileStruct> = Vec::new();
@@ -242,6 +266,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
             files.push(file);
         }
+        sql.kill();
 
         let files = Files(files);
 
@@ -253,7 +278,6 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         println!("{:?}", meta_dir);
 
-        sql.kill();
         unimplemented!()
     }
 }
@@ -338,9 +362,33 @@ pub fn get_checksum_algorithm_id_by_kind(
     Ok(Some(result))
 }
 
+pub fn insert_pkg_tags(db: &Database, tags: Vec<String>) -> Result<SqlitePrimaryResult, SqlError> {
+    let pkg_id = super::get_last_insert_row_id(db)?;
+    for tag in tags {
+        let statement = String::from(
+            "
+                INSERT INTO package_tags
+                    (tag, package_id)
+                VALUES
+                    (?, ?);",
+        );
+
+        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        try_bind_val!(sql, 1, &*tag);
+        try_bind_val!(sql, 2, pkg_id);
+        try_execute_prepared!(
+            sql,
+            Some(simple_e_fmt!("Error on inserting package tag \"{}\".", tag))
+        );
+        sql.kill();
+    }
+
+    Ok(SqlitePrimaryResult::Ok)
+}
+
 pub fn insert_pkg_kinds(
-    kinds: Vec<String>,
     db: &Database,
+    kinds: Vec<String>,
 ) -> Result<SqlitePrimaryResult, SqlError> {
     transaction_op(db, Transaction::Begin)?;
 
@@ -369,8 +417,8 @@ pub fn insert_pkg_kinds(
 }
 
 pub fn delete_pkg_kinds(
-    kinds: Vec<String>,
     db: &Database,
+    kinds: Vec<String>,
 ) -> Result<SqlitePrimaryResult, SqlError> {
     transaction_op(db, Transaction::Begin)?;
 

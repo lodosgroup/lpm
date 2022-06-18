@@ -161,6 +161,20 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                FOREIGN KEY(package_id) REFERENCES packages(id),
                FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
             );
+
+            /*
+             * Statement of `package_tags` table creation.
+             * This table will hold the tag data which belongs to
+             * packages.
+            */
+            CREATE TABLE package_tags (
+               id                  INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               tag                 TEXT       NOT NULL,
+               package_id          INTEGER    NOT NULL,
+               created_at          TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+
+               FOREIGN KEY(package_id) REFERENCES packages(id)
+            );
         ",
     );
 
