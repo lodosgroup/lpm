@@ -63,7 +63,7 @@ impl<'a> LodPkgCoreDbOps for Files {
         Ok(())
     }
 
-    fn get_by_name(db: &Database, name: &str) -> Result<Box<Self>, PackageError> {
+    fn get_by_name(_db: &Database, _name: &str) -> Result<Box<Self>, PackageError> {
         unimplemented!()
     }
 }
