@@ -15,57 +15,9 @@ use min_sqlite3_sys::prelude::*;
 use std::path::Path;
 
 pub trait LodPkgCoreDbOps {
+    fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError>;
     fn insert(&self, db: &Database) -> Result<(), PackageError>;
-    fn get_by_name<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError>;
-}
-
-impl<'a> LodPkgCoreDbOps for Files {
-    fn insert(&self, db: &Database) -> Result<(), PackageError> {
-        let files = &self.0;
-
-        let pkg_id = super::get_last_insert_row_id(db)?;
-
-        for file in files {
-            let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm)?;
-            if checksum_id.is_none() {
-                return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
-                    "{} algorithm is not supported from current lpm version.",
-                    &file.checksum_algorithm
-                )))
-                .throw());
-            }
-
-            let file_path = Path::new(&file.path);
-            let statement = String::from(
-                "
-                    INSERT INTO files
-                        (name, absolute_path, checksum, checksum_kind_id, package_id)
-                    VALUES
-                        (?, ?, ?, ?, ?)",
-            );
-
-            let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
-
-            try_bind_val!(sql, 1, file_path.file_name().unwrap().to_str().unwrap());
-            try_bind_val!(sql, 2, format!("/{}", &file.path));
-            try_bind_val!(sql, 3, &*file.checksum);
-            try_bind_val!(sql, 4, checksum_id.unwrap());
-            try_bind_val!(sql, 5, pkg_id);
-
-            try_execute_prepared!(
-                sql,
-                Some(simple_e_fmt!("Could not insert to \"files\" table."))
-            );
-
-            sql.kill();
-        }
-
-        Ok(())
-    }
-
-    fn get_by_name<'lpkg>(_db: &Database, _name: &str) -> Result<LodPkg<'lpkg>, PackageError> {
-        unimplemented!()
-    }
+    fn delete(db: &Database, name: &str) -> Result<(), PackageError>;
 }
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
@@ -166,7 +118,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             }
         };
 
-        match meta_dir.files.insert(db) {
+        match insert_files(&meta_dir.files, db) {
             Ok(_) => (),
             Err(err) => {
                 transaction_op(db, Transaction::Rollback)?;
@@ -183,7 +135,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         }
     }
 
-    fn get_by_name<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError> {
+    fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError> {
         let statement = String::from("SELECT * FROM packages WHERE name = ?;");
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
         try_bind_val!(sql, 1, name);
@@ -283,6 +235,53 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             version,
         })
     }
+
+    fn delete<'lpkg>(_db: &Database, _name: &str) -> Result<(), PackageError> {
+        todo!()
+    }
+}
+
+fn insert_files(files: &Files, db: &Database) -> Result<(), PackageError> {
+    let files = &files.0;
+
+    let pkg_id = super::get_last_insert_row_id(db)?;
+
+    for file in files {
+        let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm)?;
+        if checksum_id.is_none() {
+            return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
+                "{} algorithm is not supported from current lpm version.",
+                &file.checksum_algorithm
+            )))
+            .throw());
+        }
+
+        let file_path = Path::new(&file.path);
+        let statement = String::from(
+            "
+                    INSERT INTO files
+                        (name, absolute_path, checksum, checksum_kind_id, package_id)
+                    VALUES
+                        (?, ?, ?, ?, ?)",
+        );
+
+        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+
+        try_bind_val!(sql, 1, file_path.file_name().unwrap().to_str().unwrap());
+        try_bind_val!(sql, 2, format!("/{}", &file.path));
+        try_bind_val!(sql, 3, &*file.checksum);
+        try_bind_val!(sql, 4, checksum_id.unwrap());
+        try_bind_val!(sql, 5, pkg_id);
+
+        try_execute_prepared!(
+            sql,
+            Some(simple_e_fmt!("Could not insert to \"files\" table."))
+        );
+
+        sql.kill();
+    }
+
+    Ok(())
 }
 
 pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, SqlError> {
@@ -306,7 +305,7 @@ pub fn get_repository_id_by_repository(
     db: &Database,
     repository: &str,
 ) -> Result<Option<i64>, SqlError> {
-    let statement = String::from("SELECT id FROM package_repositories WHERE repository = ?;");
+    let statement = String::from("SELECT id FROM repositories WHERE repository = ?;");
 
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
@@ -314,7 +313,7 @@ pub fn get_repository_id_by_repository(
     try_execute_prepared!(
         sql,
         Some(simple_e_fmt!(
-            "Error SELECT query on \"package_repositories\" table."
+            "Error SELECT query on \"repositories\" table."
         ))
     );
 
