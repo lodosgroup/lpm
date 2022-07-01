@@ -52,7 +52,25 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         try_bind_val!(sql, 1, &*meta_dir.meta.name);
         try_bind_val!(sql, 2, &*meta_dir.meta.description);
         try_bind_val!(sql, 3, &*meta_dir.meta.maintainer);
-        try_bind_val!(sql, 4, SQLITE_NULL); // TODO
+
+        // if let Some(repository) = &meta_dir.meta.repository {
+        //     let repository_id = get_repository_id_by_repository(db, repository)?;
+
+        //     if let Some(r_id) = repository_id {
+        //         try_bind_val!(sql, 4, r_id);
+        //     } else {
+        //         sql.kill();
+        //         transaction_op(db, Transaction::Rollback)?;
+        //         return Err(PackageErrorKind::UnrecognizedRepository(Some(format!(
+        //             "Repository '{}' is not defined in your system. See 'TODO'",
+        //             repository
+        //         )))
+        //         .throw());
+        //     }
+        // } else {
+        //     try_bind_val!(sql, 4, SQLITE_NULL);
+        // }
+        try_bind_val!(sql, 4, SQLITE_NULL);
 
         if let Some(homepage) = &meta_dir.meta.homepage {
             try_bind_val!(sql, 5, &**homepage);
@@ -60,23 +78,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             try_bind_val!(sql, 5, SQLITE_NULL);
         }
 
-        if let Some(repository) = &meta_dir.meta.repository {
-            let repository_id = get_repository_id_by_repository(db, repository)?;
-
-            if let Some(r_id) = repository_id {
-                try_bind_val!(sql, 6, r_id);
-            } else {
-                sql.kill();
-                transaction_op(db, Transaction::Rollback)?;
-                return Err(PackageErrorKind::UnrecognizedRepository(Some(format!(
-                    "Repository '{}' is not defined in your system. See 'TODO'",
-                    repository
-                )))
-                .throw());
-            }
-        } else {
-            try_bind_val!(sql, 6, SQLITE_NULL);
-        }
+        try_bind_val!(sql, 6, SQLITE_NULL);
 
         try_bind_val!(sql, 7, 1_i32); // TODO
         try_bind_val!(sql, 8, meta_dir.meta.installed_size as i64);
@@ -311,10 +313,10 @@ pub fn get_repository_id_by_repository(
         ))
     );
 
-    let result = sql.get_data::<i64>(0).unwrap();
+    let result = sql.get_data::<Option<i64>>(0)?;
     sql.kill();
 
-    Ok(Some(result))
+    Ok(result)
 }
 
 pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, SqlError> {
