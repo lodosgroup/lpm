@@ -123,18 +123,10 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         };
 
         match insert_files(db, pkg_id, &meta_dir.files) {
-            Ok(_) => (),
-            Err(err) => {
-                transaction_op(db, Transaction::Rollback)?;
-                return Err(err);
-            }
-        };
-
-        match transaction_op(db, Transaction::Commit) {
             Ok(_) => Ok(()),
             Err(err) => {
                 transaction_op(db, Transaction::Rollback)?;
-                Err(err.into())
+                Err(err)
             }
         }
     }
