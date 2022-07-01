@@ -12,6 +12,8 @@ const INITIAL_VERSION: i64 = 0;
 
 pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
     let db = Database::open(Path::new(super::DB_PATH))?;
+    super::enable_foreign_keys(&db)?;
+
     let mut initial_version: i64 = INITIAL_VERSION;
 
     create_table_core(&db, &mut initial_version)?;
@@ -64,8 +66,6 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
 
     let statement = String::from(
         "
-            PRAGMA foreign_keys = on;
-
             /*
              * Statement of `sys` table creation.
              * This table will hold the core informations about lpm.

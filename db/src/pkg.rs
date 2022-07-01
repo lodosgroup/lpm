@@ -1,4 +1,4 @@
-use crate::{transaction_op, Transaction};
+use crate::{enable_foreign_keys, transaction_op, Transaction};
 
 use common::{
     meta::{FileStruct, Meta},
@@ -22,6 +22,8 @@ pub trait LodPkgCoreDbOps {
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert(&self, db: &Database) -> Result<(), PackageError> {
+        enable_foreign_keys(db)?;
+
         let meta_dir = &self.meta_dir.as_ref().unwrap();
 
         if is_package_exists(db, &meta_dir.meta.name)? {
@@ -108,9 +110,11 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             .throw());
         }
 
+        let pkg_id = super::get_last_insert_row_id(db)?;
+
         sql.kill();
 
-        match insert_pkg_tags(db, meta_dir.meta.tags.clone()) {
+        match insert_pkg_tags(db, pkg_id, meta_dir.meta.tags.clone()) {
             Ok(_) => (),
             Err(err) => {
                 transaction_op(db, Transaction::Rollback)?;
@@ -118,7 +122,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             }
         };
 
-        match insert_files(&meta_dir.files, db) {
+        match insert_files(db, pkg_id, &meta_dir.files) {
             Ok(_) => (),
             Err(err) => {
                 transaction_op(db, Transaction::Rollback)?;
@@ -241,10 +245,8 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     }
 }
 
-fn insert_files(files: &Files, db: &Database) -> Result<(), PackageError> {
+fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), PackageError> {
     let files = &files.0;
-
-    let pkg_id = super::get_last_insert_row_id(db)?;
 
     for file in files {
         let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm)?;
@@ -367,8 +369,11 @@ pub fn get_checksum_algorithm_id_by_kind(
 /// This is a non-transactional insert operation. (created for `LodPkg::get_by_name` which
 /// already has an opened transaction.)
 /// To make it transactional, open&close the transaction from caller stack.
-pub fn insert_pkg_tags(db: &Database, tags: Vec<String>) -> Result<SqlitePrimaryResult, SqlError> {
-    let pkg_id = super::get_last_insert_row_id(db)?;
+pub fn insert_pkg_tags(
+    db: &Database,
+    pkg_id: i64,
+    tags: Vec<String>,
+) -> Result<SqlitePrimaryResult, SqlError> {
     for tag in tags {
         let statement = String::from(
             "
