@@ -21,6 +21,16 @@ pub const SQL_NO_CALLBACK_FN: Option<
     Box<dyn FnOnce(min_sqlite3_sys::bindings::SqlitePrimaryResult, String)>,
 > = None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>;
 
+#[allow(clippy::disallowed_methods)]
+pub fn enable_foreign_keys(db: &Database) -> Result<(), SqlError> {
+    db.execute(
+        String::from("PRAGMA foreign_keys = on;"),
+        SQL_NO_CALLBACK_FN,
+    )?;
+
+    Ok(())
+}
+
 fn get_last_insert_row_id(db: &Database) -> Result<i64, SqlError> {
     let statement = String::from("SELECT LAST_INSERT_ROWID();");
     let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN).unwrap();
@@ -46,27 +56,27 @@ pub enum Transaction {
 
 impl Transaction {
     #[inline(always)]
-    fn as_str(&self) -> &str {
+    fn to_statement(&self) -> String {
         match self {
-            Transaction::Begin => "BEGIN;",
-            Transaction::Commit => "COMMIT;",
-            Transaction::Rollback => "ROLLBACK;",
+            Transaction::Begin => String::from("BEGIN;"),
+            Transaction::Commit => String::from("COMMIT;"),
+            Transaction::Rollback => String::from("ROLLBACK;"),
         }
     }
 }
 
+#[inline(always)]
 pub fn transaction_op(
     db: &Database,
     transaction: Transaction,
 ) -> Result<SqlitePrimaryResult, SqlError> {
-    let statement = transaction.as_str();
     #[allow(clippy::disallowed_methods)]
-    match db.execute(statement.to_owned(), SQL_NO_CALLBACK_FN)? {
+    match db.execute(transaction.to_statement(), SQL_NO_CALLBACK_FN)? {
         SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
         _ => {
             return Err(SqlErrorKind::FailedExecuting(Some(simple_e_fmt!(
                 "Failed executing SQL statement `{}`.",
-                statement
+                transaction.to_statement()
             )))
             .throw());
         }

@@ -1,6 +1,6 @@
 use crate::{extraction::ExtractionTasks, validation::ValidationTasks};
 use common::pkg::LodPkg;
-use db::{pkg::LodPkgCoreDbOps, DB_PATH};
+use db::{pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
 use ehandle::RuntimeError;
 use min_sqlite3_sys::prelude::*;
 use std::{
@@ -19,11 +19,34 @@ impl<'a> InstallationTasks for LodPkg<'a> {
     fn start_installation(&mut self) -> Result<(), RuntimeError> {
         self.start_extraction()?;
         self.start_validations()?;
-        self.install_program()?;
-        self.cleanup()?;
 
         let db = Database::open(Path::new(DB_PATH))?;
-        self.insert(&db)?;
+        self.insert_to_db(&db)?;
+
+        match self.install_program() {
+            Ok(_) => {}
+            Err(err) => {
+                transaction_op(&db, Transaction::Rollback)?;
+                return Err(err.into());
+            }
+        };
+
+        match self.cleanup() {
+            Ok(_) => {}
+            Err(err) => {
+                transaction_op(&db, Transaction::Rollback)?;
+                return Err(err.into());
+            }
+        };
+
+        match transaction_op(&db, Transaction::Commit) {
+            Ok(_) => {}
+            Err(err) => {
+                transaction_op(&db, Transaction::Rollback)?;
+                return Err(err.into());
+            }
+        };
+
         db.close();
 
         Ok(())
@@ -37,7 +60,7 @@ impl<'a> InstallationTasks for LodPkg<'a> {
     fn copy_programs(&self) -> Result<(), io::Error> {
         let source_path = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
-            + self.path.file_stem().unwrap().to_str().unwrap()
+            + self.path.unwrap().file_stem().unwrap().to_str().unwrap()
             + "/program/";
 
         for file in &self.meta_dir.as_ref().unwrap().files.0 {

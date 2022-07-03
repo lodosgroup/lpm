@@ -1,4 +1,4 @@
-use parser::version::VersionStruct;
+use crate::version::VersionStruct;
 
 const _V_MAJOR: &str = env!("CARGO_PKG_VERSION_MAJOR");
 const _V_MINOR: &str = env!("CARGO_PKG_VERSION_MINOR");

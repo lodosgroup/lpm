@@ -1,9 +1,8 @@
 [workspace]
 members = [
-    "main",
+	"main",
 	"db",
 	"core",
-    "parser",
 	"hash",
 	"ehandle",
 	"common",

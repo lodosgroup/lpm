@@ -12,6 +12,8 @@ const INITIAL_VERSION: i64 = 0;
 
 pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
     let db = Database::open(Path::new(super::DB_PATH))?;
+    super::enable_foreign_keys(&db)?;
+
     let mut initial_version: i64 = INITIAL_VERSION;
 
     create_table_core(&db, &mut initial_version)?;
@@ -64,8 +66,6 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
 
     let statement = String::from(
         "
-            PRAGMA foreign_keys = on;
-
             /*
              * Statement of `sys` table creation.
              * This table will hold the core informations about lpm.
@@ -105,10 +105,10 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
             );
 
             /*
-             * Statement of `package_repositories` table creation.
+             * Statement of `repositories` table creation.
              * This table will hold the repository informations.
             */
-            CREATE TABLE package_repositories (
+            CREATE TABLE repositories (
                id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
                repository    TEXT       NOT NULL       UNIQUE,
                is_active     BOOLEAN    NOT NULL       CHECK(is_active IN (0, 1)),
@@ -139,7 +139,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                created_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
                updated_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
-               FOREIGN KEY(repository_id) REFERENCES package_repositories(id),
+               FOREIGN KEY(repository_id) REFERENCES repositories(id),
                FOREIGN KEY(depended_package_id) REFERENCES packages(id),
                FOREIGN KEY(package_kind_id) REFERENCES package_kinds(id)
             );
@@ -158,8 +158,22 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                package_id          INTEGER    NOT NULL,
                created_at          TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
-               FOREIGN KEY(package_id) REFERENCES packages(id),
+               FOREIGN KEY(package_id) REFERENCES packages(id) ON DELETE CASCADE,
                FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
+            );
+
+            /*
+             * Statement of `package_tags` table creation.
+             * This table will hold the tag data which belongs to
+             * packages.
+            */
+            CREATE TABLE package_tags (
+               id                  INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               tag                 TEXT       NOT NULL,
+               package_id          INTEGER    NOT NULL,
+               created_at          TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+
+               FOREIGN KEY(package_id) REFERENCES packages(id) ON DELETE CASCADE
             );
         ",
     );
@@ -200,14 +214,14 @@ fn create_update_triggers_for_core_tables(
             END;
 
             /*
-             * Statement of `package_repositories` update trigger.
+             * Statement of `repositories` update trigger.
              * This will allow automatic `updated_at` updates whenever an UPDATE
              * operation happens on the table.
             */
-            CREATE TRIGGER package_repositories_update_trigger
-                AFTER UPDATE ON package_repositories
+            CREATE TRIGGER repositories_update_trigger
+                AFTER UPDATE ON repositories
             BEGIN
-                UPDATE package_repositories SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+                UPDATE repositories SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
             END;
 
             /*

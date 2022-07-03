@@ -4,4 +4,9 @@
 - lock-file for strict bulk installations
 - handle pkg version switching
 - provide version and pkg protection
-- Override formatting before stdout for RuntimeError
+- re-export main functionality of LodPkg from single namespace
+- Deserialize LodPkg from database
+- sync db fields (specially for packages)
+- save each process on fs
+- provide prelude re-exports
+- [bug] wrong `package_id` on file inserts to db

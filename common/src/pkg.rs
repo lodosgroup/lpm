@@ -1,14 +1,15 @@
+use super::ParserTasks;
 use crate::lpm_version::get_lpm_version;
-use parser::{
+use crate::{
     meta::{Files, Meta},
     system::System,
     version::VersionStruct,
-    ParserTasks,
 };
 use std::path::Path;
 
+#[derive(Debug)]
 pub struct LodPkg<'a> {
-    pub path: &'a Path,
+    pub path: Option<&'a Path>,
     pub meta_dir: Option<MetaDir>,
     pub system: Option<System>,
     pub version: VersionStruct,
@@ -32,9 +33,10 @@ impl MetaDir {
 }
 
 impl<'a> LodPkg<'a> {
-    pub fn new(str_path: &'a str) -> Self {
+    #[inline]
+    pub fn from_fs(str_path: &'a str) -> Self {
         Self {
-            path: Path::new(str_path),
+            path: Some(Path::new(str_path)),
             meta_dir: None,
             system: None,
             version: get_lpm_version(),
