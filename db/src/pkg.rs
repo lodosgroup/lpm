@@ -17,7 +17,7 @@ use std::path::Path;
 pub trait LodPkgCoreDbOps {
     fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError>;
     fn insert(&self, db: &Database) -> Result<(), PackageError>;
-    fn delete(db: &Database, name: &str) -> Result<(), PackageError>;
+    fn delete(db: &Database) -> Result<(), PackageError>;
 }
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
@@ -234,7 +234,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         })
     }
 
-    fn delete<'lpkg>(_db: &Database, _name: &str) -> Result<(), PackageError> {
+    fn delete<'lpkg>(_db: &Database) -> Result<(), PackageError> {
         todo!()
     }
 }

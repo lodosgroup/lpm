@@ -25,7 +25,7 @@ fn main() -> Result<(), RuntimeError> {
             }
             "--delete" => {
                 let db = Database::open(Path::new(DB_PATH)).unwrap();
-                let pkg = LodPkg::from_db(&db, args.get(2).expect("Package name is missing."));
+                let pkg = LodPkg::from_db(&db, args.get(2).expect("Package name is missing."))?;
                 println!("{:?}", pkg);
 
                 // pkg.delete_package()?;
