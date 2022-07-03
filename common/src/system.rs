@@ -1,6 +1,8 @@
-use crate::{version::VersionStruct, ParserTasks};
 use serde::Deserialize;
 use std::fs;
+
+use super::ParserTasks;
+use crate::version::VersionStruct;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct System {

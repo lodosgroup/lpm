@@ -1,6 +1,7 @@
 use common::pkg::LodPkg;
-use core::installation::InstallationTasks;
+use core::{deletion::DeletionTasks, installation::InstallationTasks};
 use db::init_db;
+use db::pkg::LodPkgCoreDbOps;
 use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
 use min_sqlite3_sys::prelude::*;
 use std::env;
@@ -18,19 +19,26 @@ fn main() -> Result<(), RuntimeError> {
     let cli = |arg: &str| -> Result<(), RuntimeError> {
         match arg {
             "--install" => {
-                let mut pkg = LodPkg::new(args.get(2).expect("Package path is missing."));
+                let mut pkg = LodPkg::from_fs(args.get(2).expect("Package path is missing."));
                 pkg.start_installation()?;
+            }
+            "--delete" => {
+                let db = Database::open(Path::new(DB_PATH)).unwrap();
+                let pkg = LodPkg::from_db(&db, args.get(2).expect("Package name is missing."))?;
+                db.close();
+
+                pkg.start_deletion()?;
             }
             "--add-pkg-kind" => {
                 let db = Database::open(Path::new(DB_PATH))?;
                 let kinds = &args[2..];
-                insert_pkg_kinds(kinds.to_vec(), &db)?;
+                insert_pkg_kinds(&db, kinds.to_vec())?;
                 db.close();
             }
             "--delete-pkg-kind" => {
                 let db = Database::open(Path::new(DB_PATH))?;
                 let kinds = &args[2..];
-                delete_pkg_kinds(kinds.to_vec(), &db)?;
+                delete_pkg_kinds(&db, kinds.to_vec())?;
                 db.close();
             }
             _ => panic!("Invalid argument."),

@@ -1,5 +1,8 @@
-use common::pkg::{LodPkg, MetaDir};
-use parser::{system::System, ParserTasks};
+use common::{
+    pkg::{LodPkg, MetaDir},
+    system::System,
+    ParserTasks,
+};
 use std::{
     fs::{create_dir_all, remove_dir_all, File},
     io::{self, copy},
@@ -30,11 +33,11 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
     fn get_pkg_output_path(&self) -> String {
         super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
-            + self.path.file_stem().unwrap().to_str().unwrap()
+            + self.path.unwrap().file_stem().unwrap().to_str().unwrap()
     }
 
     fn half_extract(&self) -> Result<(), io::Error> {
-        let input_file = File::open(self.path).expect("Package could not opened.");
+        let input_file = File::open(self.path.unwrap()).expect("Package could not opened.");
         let mut archive = ar::Archive::new(input_file);
 
         while let Some(entry) = archive.next_entry() {
