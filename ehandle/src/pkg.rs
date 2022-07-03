@@ -8,6 +8,7 @@ pub enum PackageErrorKind {
     UnsupportedPackageArchitecture(Option<String>),
     UnsupportedChecksumAlgorithm(Option<String>),
     InstallationFailed(Option<String>),
+    DeletionFailed(Option<String>),
     AlreadyInstalled(Option<String>),
     DoesNotExists(Option<String>),
     UnrecognizedRepository(Option<String>),
@@ -21,6 +22,7 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
             Self::UnsupportedChecksumAlgorithm(_) => "UnsupportedChecksumAlgorithm",
             Self::UnsupportedPackageArchitecture(_) => "UnsupportedPackageArchitecture",
             Self::InstallationFailed(_) => "InstallationFailed",
+            Self::DeletionFailed(_) => "DeletionFailed",
             Self::AlreadyInstalled(_) => "AlreadyInstalled",
             Self::DoesNotExists(_) => "DoesNotExists",
             Self::UnrecognizedRepository(_) => "UnrecognizedRepository",
@@ -63,6 +65,15 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
                     .as_ref()
                     .unwrap_or(&String::from(
                         "The installation process could not be completed.",
+                    ))
+                    .to_owned(),
+            },
+            Self::DeletionFailed(ref err) => PackageError {
+                kind: self.clone(),
+                reason: err
+                    .as_ref()
+                    .unwrap_or(&String::from(
+                        "The deletion process could not be completed.",
                     ))
                     .to_owned(),
             },

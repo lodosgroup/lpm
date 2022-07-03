@@ -22,7 +22,7 @@ pub const SQL_NO_CALLBACK_FN: Option<
 > = None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>;
 
 #[allow(clippy::disallowed_methods)]
-fn enable_foreign_keys(db: &Database) -> Result<(), SqlError> {
+pub fn enable_foreign_keys(db: &Database) -> Result<(), SqlError> {
     db.execute(
         String::from("PRAGMA foreign_keys = on;"),
         SQL_NO_CALLBACK_FN,

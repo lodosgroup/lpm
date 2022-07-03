@@ -16,12 +16,12 @@ use std::path::Path;
 
 pub trait LodPkgCoreDbOps {
     fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError>;
-    fn insert(&self, db: &Database) -> Result<(), PackageError>;
-    fn delete(db: &Database) -> Result<(), PackageError>;
+    fn insert_to_db(&self, db: &Database) -> Result<(), PackageError>;
+    fn delete_from_db(&self, db: &Database) -> Result<(), PackageError>;
 }
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
-    fn insert(&self, db: &Database) -> Result<(), PackageError> {
+    fn insert_to_db(&self, db: &Database) -> Result<(), PackageError> {
         enable_foreign_keys(db)?;
 
         let meta_dir = &self.meta_dir.as_ref().unwrap();
@@ -234,8 +234,30 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         })
     }
 
-    fn delete<'lpkg>(_db: &Database) -> Result<(), PackageError> {
-        todo!()
+    fn delete_from_db<'lpkg>(&self, db: &Database) -> Result<(), PackageError> {
+        let statement = String::from(
+            "
+                DELETE FROM packages
+                WHERE
+                    name = ?;",
+        );
+
+        let pkg_name = &self
+            .meta_dir
+            .as_ref()
+            .expect("Package is not loaded.")
+            .meta
+            .name;
+
+        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        try_bind_val!(sql, 1, pkg_name.clone());
+        try_execute_prepared!(
+            sql,
+            Some(simple_e_fmt!("Error on deleting package \"{}\".", pkg_name))
+        );
+        sql.kill();
+
+        Ok(())
     }
 }
 

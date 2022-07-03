@@ -1,6 +1,7 @@
 use common::pkg::LodPkg;
-use core::installation::InstallationTasks;
+use core::{deletion::DeletionTasks, installation::InstallationTasks};
 use db::init_db;
+use db::pkg::LodPkgCoreDbOps;
 use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
 use min_sqlite3_sys::prelude::*;
 use std::env;
@@ -11,8 +12,6 @@ use ehandle::{RuntimeError, RuntimeErrorKind};
 
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), RuntimeError> {
-    use db::pkg::LodPkgCoreDbOps;
-
     init_db()?;
 
     let args: Vec<String> = env::args().collect();
@@ -26,9 +25,9 @@ fn main() -> Result<(), RuntimeError> {
             "--delete" => {
                 let db = Database::open(Path::new(DB_PATH)).unwrap();
                 let pkg = LodPkg::from_db(&db, args.get(2).expect("Package name is missing."))?;
-                println!("{:?}", pkg);
+                db.close();
 
-                // pkg.delete_package()?;
+                pkg.start_deletion()?;
             }
             "--add-pkg-kind" => {
                 let db = Database::open(Path::new(DB_PATH))?;

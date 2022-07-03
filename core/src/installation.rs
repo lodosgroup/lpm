@@ -21,7 +21,7 @@ impl<'a> InstallationTasks for LodPkg<'a> {
         self.start_validations()?;
 
         let db = Database::open(Path::new(DB_PATH))?;
-        self.insert(&db)?;
+        self.insert_to_db(&db)?;
 
         match self.install_program() {
             Ok(_) => {}

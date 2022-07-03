@@ -158,7 +158,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                package_id          INTEGER    NOT NULL,
                created_at          TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
-               FOREIGN KEY(package_id) REFERENCES packages(id),
+               FOREIGN KEY(package_id) REFERENCES packages(id) ON DELETE CASCADE,
                FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
             );
 
@@ -173,7 +173,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
                package_id          INTEGER    NOT NULL,
                created_at          TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
-               FOREIGN KEY(package_id) REFERENCES packages(id)
+               FOREIGN KEY(package_id) REFERENCES packages(id) ON DELETE CASCADE
             );
         ",
     );
