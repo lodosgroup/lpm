@@ -22,8 +22,8 @@ impl<'a> ProgressBar<'a> {
         Self {
             init_message,
             final_message,
-            states: todo!(),
-            status: todo!(),
+            states: Vec::new(),
+            status: false.into(),
         }
     }
 
@@ -63,3 +63,8 @@ fn main() -> io::Result<()> {
 // TODO
 // Keep printing the duration
 // and let the progress state trigger manually
+//
+//
+// while !status {
+//     print duration and state
+// }
