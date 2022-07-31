@@ -1,6 +1,6 @@
 use std::{
-    io::{self, Write},
-    sync::{Arc, Mutex, RwLock},
+    io::{self, Stderr, Stdout, Write},
+    sync::{Arc, Mutex},
     thread,
     time::Duration,
 };
@@ -8,13 +8,14 @@ use std::{
 struct ProgressBar<'a> {
     init_message: &'a str,
     final_message: &'a str,
-    states: Vec<Arc<RwLock<ProgressState>>>,
-    status: bool,
+    states: Vec<Arc<Mutex<ProgressState>>>,
+    status: Arc<bool>,
 }
 
 struct ProgressState {
     state: u8,
     max_val: u8,
+    stdout: Stdout,
 }
 
 impl<'a> ProgressBar<'a> {
@@ -27,10 +28,11 @@ impl<'a> ProgressBar<'a> {
         }
     }
 
-    fn add_bar(&mut self) -> Arc<RwLock<ProgressState>> {
-        let state = Arc::new(RwLock::new(ProgressState {
+    fn add_bar(&mut self) -> Arc<Mutex<ProgressState>> {
+        let state = Arc::new(Mutex::new(ProgressState {
             state: 0,
             max_val: 100,
+            stdout: io::stdout(),
         }));
 
         self.states.push(state.clone());
@@ -40,13 +42,12 @@ impl<'a> ProgressBar<'a> {
 }
 
 impl ProgressState {
-    fn start(&self) -> io::Result<()> {
-        let mut stdout = io::stdout();
-        let mut handle = stdout.lock();
+    fn start(&mut self) -> io::Result<()> {
+        let mut handle = self.stdout.lock();
 
-        while self.state != self.max_val {
+        while self.state <= self.max_val {
             handle.write_all(format!("\r{}", self.state).as_bytes())?;
-            stdout.flush()?;
+            self.stdout.flush()?;
 
             thread::sleep(Duration::from_millis(61));
         }
@@ -58,10 +59,14 @@ impl ProgressState {
     }
 
     fn increment(&mut self, by: u8) {
-        self.state += by;
+        if self.state + by > self.max_val {
+            self.finish();
+        } else {
+            self.state += by;
+        }
     }
 
-    fn finish(&mut self, by: u8) {
+    fn finish(&mut self) {
         self.state = self.max_val;
     }
 }
@@ -94,13 +99,12 @@ fn main() -> io::Result<()> {
 
     let pstate_thread = pstate.clone();
     let pthread = thread::spawn(move || {
-        let x = pstate_thread.read().unwrap();
+        let mut x = pstate_thread.lock().unwrap();
         x.start().unwrap();
     });
 
     loop {
-        thread::sleep(Duration::from_millis(61));
-        let mut x = pstate.write().unwrap();
+        let mut x = pstate.lock().unwrap();
         x.increment(1);
     }
 
