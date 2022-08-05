@@ -165,10 +165,6 @@ fn main() -> io::Result<()> {
 // and let the progress state trigger manually
 //
 //
-// while !status {
-//     print duration and state
-// }
+// single or seperated sterr/stdouts? -> Single
 //
-// single or seperated sterr/stdouts?
-//
-// channels or shared reference?
+// Position calculation via `\x1B[s\x1B[{position}A\r`
