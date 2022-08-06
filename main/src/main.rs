@@ -1,3 +1,5 @@
+#![allow(dead_code)] // for debugging
+
 use std::{
     io::{self, Stderr, Stdout, Write},
     sync::{Arc, Mutex},
@@ -11,8 +13,8 @@ struct ProgressBar<'a> {
     states: Vec<Arc<Mutex<ProgressState>>>,
 }
 
-#[derive(Debug)]
 struct ProgressState {
+    index: usize,
     state: usize,
     max_val: usize,
     stdout: Stdout,
@@ -30,6 +32,7 @@ impl<'a> ProgressBar<'a> {
 
     fn add_bar(&mut self, max_val: usize) -> Arc<Mutex<ProgressState>> {
         let state = Arc::new(Mutex::new(ProgressState {
+            index: self.states.len(),
             state: 0,
             max_val,
             stdout: io::stdout(),
@@ -42,8 +45,8 @@ impl<'a> ProgressBar<'a> {
     }
 
     fn did_all_finished(&self) -> bool {
-        for state in self.states.clone() {
-            println!("{:?}", state.lock().unwrap());
+        for _state in self.states.clone() {
+            // println!("{:?}", state.lock().unwrap());
         }
         true
     }
@@ -56,23 +59,28 @@ impl ProgressState {
         }
 
         let mut handle = self.stdout.lock();
-        //        if self.state == 0 {
-        //            // \n
-        //            handle.write_all(&[10]).unwrap();
-        //        }
-        
+
+        // Only if drawing multiple bars
+        // (moves cursor to it's bar's position)
+        handle
+            .write_all(format!("\x1B[s\x1B[{}A\r", self.index).as_bytes())
+            .unwrap();
 
         if self.state + by >= self.max_val {
             self.finish();
             handle
-                .write_all(format!("\r{}\n", self.state).as_bytes())
+                .write_all(format!("{}", self.state).as_bytes())
                 .unwrap();
         } else {
             self.state += by;
             handle
-                .write_all(format!("\r{}", self.state).as_bytes())
+                .write_all(format!("{}", self.state).as_bytes())
                 .unwrap();
         }
+
+        // Only if drawing multiple bars
+        // (returns cursor to it's position back)
+        handle.write_all(format!("\x1B[u\r").as_bytes()).unwrap();
 
         self.stdout.flush().unwrap();
     }
