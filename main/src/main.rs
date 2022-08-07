@@ -11,14 +11,14 @@ struct ProgressBar<'a> {
     init_message: &'a str,
     final_message: &'a str,
     states: Vec<Arc<Mutex<ProgressState>>>,
+    stdout: Stdout,
+    stderr: Stderr,
 }
 
 struct ProgressState {
     index: usize,
     state: usize,
     max_val: usize,
-    stdout: Stdout,
-    stderr: Stderr,
 }
 
 impl<'a> ProgressBar<'a> {
@@ -27,23 +27,22 @@ impl<'a> ProgressBar<'a> {
             init_message,
             final_message,
             states: Vec::new(),
+            stdout: io::stdout(),
+            stderr: io::stderr(),
         }
     }
 
     fn add_bar(&mut self, max_val: usize) -> Arc<Mutex<ProgressState>> {
-        let mut stdout = io::stdout();
-        let mut handle = stdout.lock();
+        let mut handle = self.stdout.lock();
 
         // Write new line
         handle.write_all(b"\n").unwrap();
-        stdout.flush().unwrap();
+        self.stdout.flush().unwrap();
 
         let state = Arc::new(Mutex::new(ProgressState {
             index: self.states.len(),
             state: 0,
             max_val,
-            stdout,
-            stderr: io::stderr(),
         }));
 
         self.states.push(state.clone());
@@ -67,7 +66,7 @@ impl<'a> ProgressBar<'a> {
             return;
         }
 
-        let mut handle = progress_state.stdout.lock();
+        let mut handle = self.stdout.lock();
 
         // Only if drawing multiple bars
         // (moves cursor to it's bar's position)
@@ -97,7 +96,7 @@ impl<'a> ProgressBar<'a> {
         // (returns cursor to it's position back)
         handle.write_all("\x1B[u\r".as_bytes()).unwrap();
 
-        progress_state.stdout.flush().unwrap();
+        self.stdout.flush().unwrap();
     }
 }
 
@@ -176,7 +175,5 @@ fn main() -> io::Result<()> {
 // Keep printing the duration
 // and let the progress state trigger manually
 //
-//
-// single or seperated sterr/stdouts? -> Single
 //
 // optimize the runtime performance (try and measure mpsc performance)
