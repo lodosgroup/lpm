@@ -179,4 +179,4 @@ fn main() -> io::Result<()> {
 //
 // single or seperated sterr/stdouts? -> Single
 //
-// Position calculation via `\x1B[s\x1B[{position}A\r`
+// optimize the runtime performance (try and measure mpsc performance)
