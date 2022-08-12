@@ -1,5 +1,59 @@
 #![allow(dead_code)] // for debugging
 
+// BEGIN TERMINAL SIZE CALCULATION POC
+use std::os::raw::{c_int, c_ulong, c_ushort};
+use std::os::unix::io::RawFd;
+pub const STDIN_FD: RawFd = 0;
+pub const STDOUT_FD: RawFd = 1;
+pub const STDERR_FD: RawFd = 2;
+static TIOCGWINSZ: c_ulong = 0x5413;
+
+// winsize port of C
+#[derive(Default, Debug)]
+pub struct TermController {
+    rows: c_ushort,
+    columns: c_ushort,
+    x_pixels: c_ushort,
+    y_pixels: c_ushort,
+}
+
+impl TermController {
+    fn execute_ioctl(&mut self) {
+        for fd in [STDOUT_FD, STDIN_FD, STDERR_FD] {
+            #[allow(unsafe_code)]
+            unsafe {
+                if ioctl(fd, TIOCGWINSZ, &mut *self) != -1 {
+                    break;
+                }
+            }
+        }
+    }
+
+    fn new() -> TermController {
+        let mut w: TermController = Default::default();
+        w.execute_ioctl();
+        w
+    }
+
+    fn get_columns_and_rows() -> (usize, usize) {
+        let mut w: TermController = Default::default();
+        w.execute_ioctl();
+        (w.columns as usize, w.rows as usize)
+    }
+
+    fn get_xy_pixels() -> (usize, usize) {
+        let mut w: TermController = Default::default();
+        w.execute_ioctl();
+        (w.x_pixels as usize, w.y_pixels as usize)
+    }
+}
+
+extern "C" {
+    fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
+}
+
+// END TERMINAL SIZE CALCULATION POC
+
 use std::{
     io::{self, Stderr, Stdout, Write},
     sync::{Arc, Mutex},
@@ -167,6 +221,13 @@ fn main() -> io::Result<()> {
 
     let mut buf: String = String::new();
     io::stdin().read_line(&mut buf).unwrap();
+
+    // Get terminal size
+    let (columns, rows) = TermController::get_columns_and_rows();
+    println!("Width: {} Height: {}", columns, rows);
+
+    let (x, y) = TermController::get_xy_pixels();
+    println!("X: {} Y: {}", x, y);
 
     Ok(())
 }
