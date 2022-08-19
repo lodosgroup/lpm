@@ -64,11 +64,12 @@ use std::{
 struct ProgressBar<'a> {
     init_message: &'a str,
     final_message: &'a str,
-    states: Vec<Arc<Mutex<ProgressState>>>,
+    states: Vec<ProgressState>,
     stdout: Stdout,
     stderr: Stderr,
 }
 
+#[derive(Clone)]
 struct ProgressState {
     index: usize,
     state: usize,
@@ -86,18 +87,18 @@ impl<'a> ProgressBar<'a> {
         }
     }
 
-    fn add_bar(&mut self, max_val: usize) -> Arc<Mutex<ProgressState>> {
+    fn add_bar(&mut self, max_val: usize) -> ProgressState {
         let mut handle = self.stdout.lock();
 
         // Write new line
         handle.write_all(b"\n").unwrap();
         self.stdout.flush().unwrap();
 
-        let state = Arc::new(Mutex::new(ProgressState {
+        let state = ProgressState {
             index: self.states.len(),
             state: 0,
             max_val,
-        }));
+        };
 
         self.states.push(state.clone());
 
@@ -168,10 +169,8 @@ fn main() -> io::Result<()> {
     let mpbar = Arc::new(Mutex::new(ProgressBar::new("Starting", "Finished")));
 
     let pbar = mpbar.clone();
-    let pstate = mpbar.lock().unwrap().add_bar(1000);
+    let mut pstate = mpbar.lock().unwrap().add_bar(1000);
     thread::spawn(move || loop {
-        let mut pstate = pstate.lock().unwrap();
-
         if pstate.is_completed() {
             break;
         }
@@ -181,10 +180,8 @@ fn main() -> io::Result<()> {
     });
 
     let pbar = mpbar.clone();
-    let pstate = pbar.lock().unwrap().add_bar(5000);
+    let mut pstate = pbar.lock().unwrap().add_bar(5000);
     thread::spawn(move || loop {
-        let mut pstate = pstate.lock().unwrap();
-
         if pstate.is_completed() {
             break;
         }
@@ -194,10 +191,8 @@ fn main() -> io::Result<()> {
     });
 
     let pbar = mpbar.clone();
-    let pstate = pbar.lock().unwrap().add_bar(1250);
+    let mut pstate = pbar.lock().unwrap().add_bar(1250);
     thread::spawn(move || loop {
-        let mut pstate = pstate.lock().unwrap();
-
         if pstate.is_completed() {
             break;
         }
@@ -207,10 +202,8 @@ fn main() -> io::Result<()> {
     });
 
     let pbar = mpbar.clone();
-    let pstate = pbar.lock().unwrap().add_bar(3000);
+    let mut pstate = pbar.lock().unwrap().add_bar(10000);
     thread::spawn(move || loop {
-        let mut pstate = pstate.lock().unwrap();
-
         if pstate.is_completed() {
             break;
         }
