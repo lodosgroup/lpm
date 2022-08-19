@@ -135,15 +135,35 @@ impl<'a> ProgressBar<'a> {
             )
             .unwrap();
 
+        let (columns, _rows) = TermController::get_columns_and_rows();
+
         if progress_state.state + by >= progress_state.max_val {
             progress_state.finish();
+            let text_position = columns - (progress_state.state.to_string().len() + 12);
             handle
-                .write_all(format!("{}", progress_state.state).as_bytes())
+                .write_all(
+                    format!(
+                        "{} {:width$} --:-- ETA",
+                        progress_state.state,
+                        "",
+                        width = text_position
+                    )
+                    .as_bytes(),
+                )
                 .unwrap();
         } else {
             progress_state.state += by;
+            let text_position = columns - (progress_state.state.to_string().len() + 12);
             handle
-                .write_all(format!("{}", progress_state.state).as_bytes())
+                .write_all(
+                    format!(
+                        "{} {:width$} --:-- ETA",
+                        progress_state.state,
+                        "",
+                        width = text_position
+                    )
+                    .as_bytes(),
+                )
                 .unwrap();
         }
 
