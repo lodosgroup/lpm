@@ -139,35 +139,23 @@ impl<'a> ProgressBar<'a> {
 
         if progress_state.state + by >= progress_state.max_val {
             progress_state.finish();
-            let eta_pos = self.term_controller.columns as usize
-                - (progress_state.state.to_string().len() + 12);
-            handle
-                .write_all(
-                    format!(
-                        "{} {:eta_pos$} --:-- ETA",
-                        progress_state.state,
-                        "",
-                        eta_pos = eta_pos
-                    )
-                    .as_bytes(),
-                )
-                .unwrap();
         } else {
             progress_state.state += by;
-            let eta_pos = self.term_controller.columns as usize
-                - (progress_state.state.to_string().len() + 12);
-            handle
-                .write_all(
-                    format!(
-                        "{} {:eta_pos$} --:-- ETA",
-                        progress_state.state,
-                        "",
-                        eta_pos = eta_pos
-                    )
-                    .as_bytes(),
-                )
-                .unwrap();
         }
+
+        let eta_pos =
+            self.term_controller.columns as usize - (progress_state.state.to_string().len() + 12);
+        handle
+            .write_all(
+                format!(
+                    "{} {:eta_pos$} --:-- ETA",
+                    progress_state.state,
+                    "",
+                    eta_pos = eta_pos
+                )
+                .as_bytes(),
+            )
+            .unwrap();
 
         // Only if drawing multiple bars
         // (returns cursor to it's position back)
