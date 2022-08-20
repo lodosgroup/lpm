@@ -10,9 +10,7 @@ pub struct ProgressBar<'a> {
     term_controller: TermController,
 }
 
-#[derive(Clone)]
-pub struct ProgressState {
-    index: usize,
+struct ProgressState {
     state: usize,
     max_val: usize,
 }
@@ -29,26 +27,22 @@ impl<'a> ProgressBar<'a> {
         }
     }
 
-    pub fn add_bar(&mut self, max_val: usize) -> ProgressState {
+    pub fn add_bar(&mut self, max_val: usize) -> usize {
         let mut handle = self.stdout.lock();
 
         // Write new line
         handle.write_all(b"\n").unwrap();
         self.stdout.flush().unwrap();
 
-        let state = ProgressState {
-            index: self.states.len(),
-            state: 0,
-            max_val,
-        };
+        let state = ProgressState { state: 0, max_val };
 
-        self.states.push(state.clone());
+        self.states.push(state);
 
-        state
+        self.states.len() - 1
     }
 
-    fn did_all_finished(&self) -> bool {
-        for state in self.states.clone() {
+    pub fn did_all_finished(&self) -> bool {
+        for state in self.states.iter() {
             if !state.is_completed() {
                 return false;
             }
@@ -57,12 +51,16 @@ impl<'a> ProgressBar<'a> {
         true
     }
 
-    fn get_bar_cursor_position(&self, bar: &ProgressState) -> usize {
-        self.states.len() - bar.index
+    fn get_bar_cursor_position(&self, state_id: usize) -> usize {
+        self.states.len() - state_id
     }
 
-    pub fn increment_and_draw(&mut self, progress_state: &mut ProgressState, by: usize) {
-        if progress_state.state == progress_state.max_val {
+    pub fn is_state_completed(&self, state_id: usize) -> bool {
+        self.states[state_id].is_completed()
+    }
+
+    pub fn increment_and_draw(&mut self, state_id: usize, by: usize) {
+        if self.states[state_id].state == self.states[state_id].max_val {
             return;
         }
 
@@ -72,27 +70,23 @@ impl<'a> ProgressBar<'a> {
         // (moves cursor to it's bar's position)
         handle
             .write_all(
-                format!(
-                    "\x1B[s\x1B[{}A\r",
-                    self.get_bar_cursor_position(progress_state)
-                )
-                .as_bytes(),
+                format!("\x1B[s\x1B[{}A\r", self.get_bar_cursor_position(state_id)).as_bytes(),
             )
             .unwrap();
 
-        if progress_state.state + by >= progress_state.max_val {
-            progress_state.finish();
+        if self.states[state_id].state + by >= self.states[state_id].max_val {
+            self.states[state_id].finish();
         } else {
-            progress_state.state += by;
+            self.states[state_id].state += by;
         }
 
         let eta_pos =
-            self.term_controller.columns() - (progress_state.state.to_string().len() + 12);
+            self.term_controller.columns() - (self.states[state_id].state.to_string().len() + 12);
         handle
             .write_all(
                 format!(
                     "{} {:eta_pos$} --:-- ETA",
-                    progress_state.state,
+                    self.states[state_id].state,
                     "",
                     eta_pos = eta_pos
                 )
@@ -113,7 +107,7 @@ impl ProgressState {
         self.state = self.max_val;
     }
 
-    pub fn is_completed(&self) -> bool {
+    fn is_completed(&self) -> bool {
         self.state == self.max_val
     }
 }
