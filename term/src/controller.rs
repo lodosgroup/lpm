@@ -39,10 +39,24 @@ impl TermController {
         }
     }
 
-    pub fn new() -> TermController {
-        let mut w: TermController = Default::default();
-        w.execute_ioctl();
-        w
+    #[cfg(not(test))]
+    pub fn new() -> Self {
+        let mut c: Self = Default::default();
+        c.execute_ioctl();
+        c
+    }
+
+    #[cfg(test)]
+    pub fn new() -> Self {
+        let mut c: Self = Default::default();
+        c.execute_ioctl();
+
+        if c.rows() == 0 || c.columns() == 0 {
+            c.rows = 100;
+            c.columns = 100;
+        }
+
+        c
     }
 
     #[inline(always)]
