@@ -1,63 +1,61 @@
-#![allow(dead_code)] // for debugging
+use common::pkg::LodPkg;
+use core::{deletion::DeletionTasks, installation::InstallationTasks};
+use db::init_db;
+use db::pkg::LodPkgCoreDbOps;
+use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
+use min_sqlite3_sys::prelude::*;
+use std::env;
+use std::path::Path;
 
-use std::{
-    io,
-    sync::{Arc, Mutex},
-    thread,
-    time::Duration,
-};
-use term::progress_bar::ProgressBar;
+#[allow(unused_imports)]
+use ehandle::{RuntimeError, RuntimeErrorKind};
 
-fn main() -> io::Result<()> {
-    let mpbar = Arc::new(Mutex::new(ProgressBar::new("Starting", "Finished")));
+#[cfg(target_os = "linux")]
+fn main() -> Result<(), RuntimeError> {
+    init_db()?;
 
-    let pstate_id = mpbar.lock().unwrap().add_bar(1000);
-    let pbar = mpbar.clone();
-    thread::spawn(move || loop {
-        if pbar.lock().unwrap().is_state_completed(pstate_id) {
-            break;
-        }
+    let args: Vec<String> = env::args().collect();
 
-        pbar.lock().unwrap().increment_and_draw(pstate_id, 12);
-        thread::sleep(Duration::from_millis(34));
-    });
+    let cli = |arg: &str| -> Result<(), RuntimeError> {
+        match arg {
+            "--install" => {
+                let mut pkg = LodPkg::from_fs(args.get(2).expect("Package path is missing."));
+                pkg.start_installation()?;
+            }
+            "--delete" => {
+                let db = Database::open(Path::new(DB_PATH)).unwrap();
+                let pkg = LodPkg::from_db(&db, args.get(2).expect("Package name is missing."))?;
+                db.close();
 
-    let pstate_id = mpbar.lock().unwrap().add_bar(5000);
-    let pbar = mpbar.clone();
-    thread::spawn(move || loop {
-        if pbar.lock().unwrap().is_state_completed(pstate_id) {
-            break;
-        }
+                pkg.start_deletion()?;
+            }
+            "--add-pkg-kind" => {
+                let db = Database::open(Path::new(DB_PATH))?;
+                let kinds = &args[2..];
+                insert_pkg_kinds(&db, kinds.to_vec())?;
+                db.close();
+            }
+            "--delete-pkg-kind" => {
+                let db = Database::open(Path::new(DB_PATH))?;
+                let kinds = &args[2..];
+                delete_pkg_kinds(&db, kinds.to_vec())?;
+                db.close();
+            }
+            _ => panic!("Invalid argument."),
+        };
 
-        pbar.lock().unwrap().increment_and_draw(pstate_id, 250);
-        thread::sleep(Duration::from_millis(61));
-    });
+        Ok(())
+    };
 
-    let pstate_id = mpbar.lock().unwrap().add_bar(1250);
-    let pbar = mpbar.clone();
-    thread::spawn(move || loop {
-        if pbar.lock().unwrap().is_state_completed(pstate_id) {
-            break;
-        }
-
-        pbar.lock().unwrap().increment_and_draw(pstate_id, 70);
-        thread::sleep(Duration::from_millis(61));
-    });
-
-    let pstate_id = mpbar.lock().unwrap().add_bar(10000);
-    let pbar = mpbar.clone();
-    thread::spawn(move || loop {
-        if pbar.lock().unwrap().is_state_completed(pstate_id) {
-            break;
-        }
-
-        pbar.lock().unwrap().increment_and_draw(pstate_id, 350);
-        thread::sleep(Duration::from_millis(61));
-    });
-
-    loop {
-        if mpbar.lock().unwrap().did_all_finished() {
-            return Ok(());
-        }
+    match args.get(1) {
+        Some(arg) => cli(arg)?,
+        None => panic!("Missing argument"),
     }
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn main() -> Result<(), RuntimeError> {
+    Err(RuntimeErrorKind::UnsupportedPlatform(None).throw())
 }
