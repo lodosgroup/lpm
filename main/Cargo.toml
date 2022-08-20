@@ -11,4 +11,5 @@ core = { path = "../core" }
 ehandle = { path = "../ehandle" }
 db = { path = "../db" }
 common = { path = "../common" }
+term = { path = "../term" }
 min-sqlite3-sys = "1.3"
