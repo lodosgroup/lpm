@@ -138,7 +138,7 @@ impl<'a> ProgressBar<'a> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::{
         sync::{Arc, Mutex},
         thread,
