@@ -1,3 +1,3 @@
 pub mod controller;
-pub mod progress_bar;
 pub mod logger;
+pub mod progress_bar;
