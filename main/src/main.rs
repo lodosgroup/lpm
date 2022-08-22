@@ -8,15 +8,15 @@ use std::env;
 use std::path::Path;
 
 #[allow(unused_imports)]
-use ehandle::{RuntimeError, RuntimeErrorKind};
+use ehandle::{lpm::LpmError, RuntimeError, RuntimeErrorKind};
 
 #[cfg(target_os = "linux")]
-fn main() -> Result<(), RuntimeError> {
+fn main() -> Result<(), LpmError<RuntimeError>> {
     init_db()?;
 
     let args: Vec<String> = env::args().collect();
 
-    let cli = |arg: &str| -> Result<(), RuntimeError> {
+    let cli = |arg: &str| -> Result<(), LpmError<RuntimeError>> {
         match arg {
             "--install" => {
                 let mut pkg = LodPkg::from_fs(args.get(2).expect("Package path is missing."));

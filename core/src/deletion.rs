@@ -1,15 +1,15 @@
 use common::pkg::LodPkg;
 use db::{enable_foreign_keys, pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
-use ehandle::{pkg::PackageErrorKind, simple_e_fmt, ErrorCommons, RuntimeError};
+use ehandle::{lpm::LpmError, pkg::PackageErrorKind, simple_e_fmt, ErrorCommons, RuntimeError};
 use min_sqlite3_sys::prelude::*;
 use std::{fs, path::Path};
 
 pub trait DeletionTasks {
-    fn start_deletion(&self) -> Result<(), RuntimeError>;
+    fn start_deletion(&self) -> Result<(), LpmError<RuntimeError>>;
 }
 
 impl<'a> DeletionTasks for LodPkg<'a> {
-    fn start_deletion(&self) -> Result<(), RuntimeError> {
+    fn start_deletion(&self) -> Result<(), LpmError<RuntimeError>> {
         let meta_dir = self.meta_dir.as_ref().expect("Package is not loaded.");
 
         let db = Database::open(Path::new(DB_PATH)).unwrap();
@@ -21,11 +21,13 @@ impl<'a> DeletionTasks for LodPkg<'a> {
             Err(_) => {
                 transaction_op(&db, Transaction::Rollback)?;
 
-                return Err(PackageErrorKind::DeletionFailed(Some(simple_e_fmt!(
-                    "Deletion transaction has been failed for \"{}\" package.",
-                    meta_dir.meta.name
-                )))
-                .throw()
+                return Err(LpmError::new(
+                    PackageErrorKind::DeletionFailed(Some(simple_e_fmt!(
+                        "Deletion transaction has been failed for \"{}\" package.",
+                        meta_dir.meta.name
+                    )))
+                    .throw(),
+                )
                 .into());
             }
         };

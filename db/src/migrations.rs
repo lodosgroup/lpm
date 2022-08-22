@@ -3,6 +3,7 @@
 use common::lpm_version::get_lpm_version;
 use ehandle::{
     db::{MigrationError, MigrationErrorKind, SqlError},
+    lpm::LpmError,
     simple_e_fmt, try_execute, try_execute_prepared, ErrorCommons,
 };
 use min_sqlite3_sys::prelude::*;
@@ -10,7 +11,7 @@ use std::path::Path;
 
 const INITIAL_VERSION: i64 = 0;
 
-pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
+pub(crate) fn start_db_migrations() -> Result<(), LpmError<MigrationError>> {
     let db = Database::open(Path::new(super::DB_PATH))?;
     super::enable_foreign_keys(&db)?;
 
@@ -25,22 +26,24 @@ pub(crate) fn start_db_migrations() -> Result<(), MigrationError> {
     Ok(())
 }
 
-fn set_migration_version(db: &Database, version: i64) -> Result<(), MigrationError> {
+fn set_migration_version(db: &Database, version: i64) -> Result<(), LpmError<MigrationError>> {
     let statement = format!("PRAGMA user_version = {};", version);
 
     match db.execute(statement.clone(), super::SQL_NO_CALLBACK_FN) {
         Ok(_) => Ok(()),
         Err(_) => {
-            return Err(MigrationErrorKind::VersionCouldNotSet(Some(simple_e_fmt!(
-                "Failed executing SQL statement `{}`.",
-                statement
-            )))
-            .throw());
+            return Err(LpmError::new(
+                MigrationErrorKind::VersionCouldNotSet(Some(simple_e_fmt!(
+                    "Failed executing SQL statement `{}`.",
+                    statement
+                )))
+                .throw(),
+            ));
         }
     }
 }
 
-fn can_migrate(db: &Database, version: i64) -> Result<bool, SqlError> {
+fn can_migrate(db: &Database, version: i64) -> Result<bool, LpmError<SqlError>> {
     let statement = String::from("PRAGMA user_version;");
 
     let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
@@ -58,7 +61,7 @@ fn can_migrate(db: &Database, version: i64) -> Result<bool, SqlError> {
     Ok(result)
 }
 
-fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationError> {
+fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<MigrationError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
         return Ok(());
@@ -194,7 +197,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), MigrationEr
 fn create_update_triggers_for_core_tables(
     db: &Database,
     version: &mut i64,
-) -> Result<(), MigrationError> {
+) -> Result<(), LpmError<MigrationError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
         return Ok(());
@@ -250,7 +253,7 @@ fn create_update_triggers_for_core_tables(
     Ok(())
 }
 
-fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), MigrationError> {
+fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<MigrationError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
         return Ok(());

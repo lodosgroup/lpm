@@ -1,4 +1,5 @@
 use crate::{
+    lpm::LpmError,
     pkg::{PackageError, PackageErrorKind},
     ErrorCommons, RuntimeError,
 };
@@ -10,12 +11,11 @@ macro_rules! try_bind_val {
         let status = $sql.bind_val($c_index, $val);
         if status != min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok {
             $sql.kill();
-            return Err(ehandle::db::SqlErrorKind::FailedExecuting(Some(format!(
+            return Err(ehandle::lpm::LpmError::new(ehandle::db::SqlErrorKind::FailedExecuting(Some(format!(
                 "Raised 'SqlitePrimaryResult::{:?}' error status on binding parameter to SQL query.",
                 status
             )))
-            .throw()
-            .into());
+            .throw()).into());
         }
     };
 }
@@ -32,9 +32,10 @@ macro_rules! try_execute_prepared {
             }
             _ => {
                 $sql.kill();
-                return Err(ehandle::db::SqlErrorKind::FailedExecuting($err)
-                    .throw()
-                    .into());
+                return Err(ehandle::lpm::LpmError::new(
+                    ehandle::db::SqlErrorKind::FailedExecuting($err).throw(),
+                )
+                .into());
             }
         }
     };
@@ -46,9 +47,10 @@ macro_rules! try_execute {
         match $db.execute($statement, crate::SQL_NO_CALLBACK_FN)? {
             min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok => SqlitePrimaryResult::Ok,
             _ => {
-                return Err(ehandle::db::SqlErrorKind::FailedExecuting($err)
-                    .throw()
-                    .into());
+                return Err(ehandle::lpm::LpmError::new(
+                    ehandle::db::SqlErrorKind::FailedExecuting($err).throw(),
+                )
+                .into());
             }
         }
     };
@@ -157,60 +159,66 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
     }
 }
 
-impl From<MigrationError> for RuntimeError {
-    #[inline(always)]
-    fn from(error: MigrationError) -> Self {
-        RuntimeError {
-            kind: error.kind.as_str().to_string(),
-            reason: error.reason,
-        }
+impl From<LpmError<MigrationError>> for LpmError<RuntimeError> {
+    #[track_caller]
+    fn from(error: LpmError<MigrationError>) -> Self {
+        let e = RuntimeError {
+            kind: error.error_type.kind.as_str().to_string(),
+            reason: error.error_type.reason,
+        };
+
+        LpmError::new_with_traces(e, error.error_stack)
     }
 }
 
-impl From<MinSqliteWrapperError<'_>> for RuntimeError {
-    #[inline(always)]
+impl From<MinSqliteWrapperError<'_>> for LpmError<RuntimeError> {
+    #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        RuntimeError {
+        LpmError::new(RuntimeError {
             kind: error.kind.to_string(),
             reason: error.reason,
-        }
+        })
     }
 }
 
-impl From<MinSqliteWrapperError<'_>> for MigrationError {
-    #[inline(always)]
+impl From<MinSqliteWrapperError<'_>> for LpmError<MigrationError> {
+    #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        MigrationErrorKind::SqliteWrapperError(Some(error.reason)).throw()
+        LpmError::new(MigrationErrorKind::SqliteWrapperError(Some(error.reason)).throw())
     }
 }
 
-impl From<SqlError> for RuntimeError {
-    #[inline(always)]
-    fn from(error: SqlError) -> Self {
-        RuntimeError {
-            kind: error.kind.as_str().to_string(),
-            reason: error.reason,
-        }
+impl From<LpmError<SqlError>> for LpmError<RuntimeError> {
+    #[track_caller]
+    fn from(error: LpmError<SqlError>) -> Self {
+        let e = RuntimeError {
+            kind: error.error_type.kind.as_str().to_string(),
+            reason: error.error_type.reason,
+        };
+
+        LpmError::new_with_traces(e, error.error_stack)
     }
 }
 
-impl From<SqlError> for PackageError {
-    #[inline(always)]
-    fn from(error: SqlError) -> Self {
-        PackageErrorKind::InstallationFailed(Some(error.reason)).throw()
+impl From<LpmError<SqlError>> for LpmError<PackageError> {
+    #[track_caller]
+    fn from(error: LpmError<SqlError>) -> Self {
+        let e = PackageErrorKind::InstallationFailed(Some(error.error_type.reason)).throw();
+        LpmError::new_with_traces(e, error.error_stack)
     }
 }
 
-impl From<SqlError> for MigrationError {
-    #[inline(always)]
-    fn from(error: SqlError) -> Self {
-        MigrationErrorKind::FailedExecuting(Some(error.reason)).throw()
+impl From<LpmError<SqlError>> for LpmError<MigrationError> {
+    #[track_caller]
+    fn from(error: LpmError<SqlError>) -> Self {
+        let e = MigrationErrorKind::FailedExecuting(Some(error.error_type.reason)).throw();
+        LpmError::new_with_traces(e, error.error_stack)
     }
 }
 
-impl From<MinSqliteWrapperError<'_>> for SqlError {
-    #[inline(always)]
+impl From<MinSqliteWrapperError<'_>> for LpmError<SqlError> {
+    #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        SqlErrorKind::FailedExecuting(Some(error.reason)).throw()
+        LpmError::new(SqlErrorKind::FailedExecuting(Some(error.reason)).throw())
     }
 }

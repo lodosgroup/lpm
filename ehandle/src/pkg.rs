@@ -1,4 +1,4 @@
-use crate::{ErrorCommons, RuntimeError};
+use crate::{lpm::LpmError, ErrorCommons, RuntimeError};
 use min_sqlite3_sys::prelude::MinSqliteWrapperError;
 
 #[non_exhaustive]
@@ -114,19 +114,21 @@ pub struct PackageError {
     pub reason: String,
 }
 
-impl From<PackageError> for RuntimeError {
-    #[inline(always)]
-    fn from(error: PackageError) -> Self {
-        RuntimeError {
-            kind: error.kind.as_str().to_string(),
-            reason: error.reason,
-        }
+impl From<LpmError<PackageError>> for LpmError<RuntimeError> {
+    #[track_caller]
+    fn from(error: LpmError<PackageError>) -> Self {
+        let e = RuntimeError {
+            kind: error.error_type.kind.as_str().to_string(),
+            reason: error.error_type.reason,
+        };
+
+        LpmError::new_with_traces(e, error.error_stack)
     }
 }
 
-impl From<MinSqliteWrapperError<'_>> for PackageError {
-    #[inline(always)]
+impl From<MinSqliteWrapperError<'_>> for LpmError<PackageError> {
+    #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        PackageErrorKind::InstallationFailed(Some(error.reason)).throw()
+        LpmError::new(PackageErrorKind::InstallationFailed(Some(error.reason)).throw())
     }
 }

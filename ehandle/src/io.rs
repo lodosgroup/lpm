@@ -1,13 +1,31 @@
-use crate::RuntimeError;
+use crate::{lpm::LpmError, RuntimeError};
 use std::io::{self, ErrorKind};
 
-impl From<io::Error> for RuntimeError {
-    #[inline(always)]
+impl From<io::Error> for LpmError<io::Error> {
+    #[track_caller]
     fn from(error: io::Error) -> Self {
-        RuntimeError {
+        LpmError::new(error)
+    }
+}
+
+impl From<io::Error> for LpmError<RuntimeError> {
+    #[track_caller]
+    fn from(error: io::Error) -> Self {
+        LpmError::new(RuntimeError {
             kind: parse_io_error_kind(error.kind()).to_string(),
             reason: error.to_string(),
-        }
+        })
+    }
+}
+
+impl From<LpmError<io::Error>> for LpmError<RuntimeError> {
+    #[track_caller]
+    fn from(error: LpmError<io::Error>) -> Self {
+        let e = RuntimeError {
+            kind: parse_io_error_kind(error.error_type.kind()).to_string(),
+            reason: error.error_type.to_string(),
+        };
+        LpmError::new_with_traces(e, error.error_stack)
     }
 }
 

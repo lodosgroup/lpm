@@ -1,6 +1,7 @@
 use crate::extraction::ExtractionTasks;
 use common::meta::Files;
 use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
+use ehandle::lpm::LpmError;
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
     simple_e_fmt, ErrorCommons, RuntimeError,
@@ -40,18 +41,19 @@ impl ChecksumKind {
 }
 
 pub trait ValidationTasks {
-    fn start_validations(&self) -> Result<(), RuntimeError>;
+    fn start_validations(&self) -> Result<(), LpmError<RuntimeError>>;
 }
 
 impl<'a> ValidationTasks for LodPkg<'a> {
-    fn start_validations(&self) -> Result<(), RuntimeError> {
+    fn start_validations(&self) -> Result<(), LpmError<RuntimeError>> {
         if let Some(meta_dir) = &self.meta_dir {
             // check architecture compatibility
             if meta_dir.meta.arch != NO_ARCH && meta_dir.meta.arch != SYSTEM_ARCH {
                 let e = format!("Package '{}' is built for '{}' architecture that is not supported by this machine.", meta_dir.meta.name, meta_dir.meta.arch);
-                return Err(PackageErrorKind::UnsupportedPackageArchitecture(Some(e))
-                    .throw()
-                    .into());
+                return Err(LpmError::new(
+                    PackageErrorKind::UnsupportedPackageArchitecture(Some(e)).throw(),
+                )
+                .into());
             }
 
             check_program_checksums(self.get_pkg_output_path(), &meta_dir.files)?
@@ -61,7 +63,7 @@ impl<'a> ValidationTasks for LodPkg<'a> {
     }
 }
 
-fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), RuntimeError> {
+fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmError<RuntimeError>> {
     for file in &files.0 {
         // Read file as byte-array
         let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path)?;
@@ -79,22 +81,24 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), Runtim
             };
 
             if file_hash.ne(&file.checksum) {
-                return Err(PackageErrorKind::InvalidPackageFiles(Some(simple_e_fmt!(
-                    "File \"{}\" is not valid.",
-                    file.path
-                )))
-                .throw()
+                return Err(LpmError::new(
+                    PackageErrorKind::InvalidPackageFiles(Some(simple_e_fmt!(
+                        "File \"{}\" is not valid.",
+                        file.path
+                    )))
+                    .throw(),
+                )
                 .into());
             }
         } else {
-            return Err(
+            return Err(LpmError::new(
                 PackageErrorKind::UnsupportedChecksumAlgorithm(Some(simple_e_fmt!(
                     "Algorithm \"{}\" is not supported by lpm.",
                     file.checksum_algorithm
                 )))
-                .throw()
-                .into(),
-            );
+                .throw(),
+            )
+            .into());
         }
     }
 
