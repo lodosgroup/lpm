@@ -25,7 +25,7 @@ impl From<LpmError<io::Error>> for LpmError<RuntimeError> {
             kind: parse_io_error_kind(error.error_type.kind()).to_string(),
             reason: error.error_type.to_string(),
         };
-        LpmError::new_with_traces(e, error.error_stack)
+        LpmError::new_with_traces(e, error.chain)
     }
 }
 

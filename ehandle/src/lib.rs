@@ -61,5 +61,5 @@ pub struct RuntimeError {
 
 pub mod db;
 mod io;
-pub mod pkg;
 pub mod lpm;
+pub mod pkg;

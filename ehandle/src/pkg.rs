@@ -122,7 +122,7 @@ impl From<LpmError<PackageError>> for LpmError<RuntimeError> {
             reason: error.error_type.reason,
         };
 
-        LpmError::new_with_traces(e, error.error_stack)
+        LpmError::new_with_traces(e, error.chain)
     }
 }
 

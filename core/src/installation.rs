@@ -1,7 +1,7 @@
 use crate::{extraction::ExtractionTasks, validation::ValidationTasks};
 use common::pkg::LodPkg;
 use db::{pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
-use ehandle::{RuntimeError, lpm::LpmError};
+use ehandle::{lpm::LpmError, RuntimeError};
 use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},

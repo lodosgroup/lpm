@@ -167,7 +167,7 @@ impl From<LpmError<MigrationError>> for LpmError<RuntimeError> {
             reason: error.error_type.reason,
         };
 
-        LpmError::new_with_traces(e, error.error_stack)
+        LpmError::new_with_traces(e, error.chain)
     }
 }
 
@@ -196,7 +196,7 @@ impl From<LpmError<SqlError>> for LpmError<RuntimeError> {
             reason: error.error_type.reason,
         };
 
-        LpmError::new_with_traces(e, error.error_stack)
+        LpmError::new_with_traces(e, error.chain)
     }
 }
 
@@ -204,7 +204,7 @@ impl From<LpmError<SqlError>> for LpmError<PackageError> {
     #[track_caller]
     fn from(error: LpmError<SqlError>) -> Self {
         let e = PackageErrorKind::InstallationFailed(Some(error.error_type.reason)).throw();
-        LpmError::new_with_traces(e, error.error_stack)
+        LpmError::new_with_traces(e, error.chain)
     }
 }
 
@@ -212,7 +212,7 @@ impl From<LpmError<SqlError>> for LpmError<MigrationError> {
     #[track_caller]
     fn from(error: LpmError<SqlError>) -> Self {
         let e = MigrationErrorKind::FailedExecuting(Some(error.error_type.reason)).throw();
-        LpmError::new_with_traces(e, error.error_stack)
+        LpmError::new_with_traces(e, error.chain)
     }
 }
 

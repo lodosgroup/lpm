@@ -1,18 +1,18 @@
-use std::{io, panic::Location};
+use std::panic::Location;
 
-use crate::{
-    db::{MigrationError, SqlError},
-    pkg::PackageError,
-};
-
-#[derive(Debug)]
-pub struct ErrorStackTrace {
+pub struct ErrorStack {
     pub file: String,
     pub column: u32,
     pub line: u32,
 }
 
-impl ErrorStackTrace {
+impl std::fmt::Debug for ErrorStack {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\"{}:{}\"", self.file, self.line)
+    }
+}
+
+impl ErrorStack {
     #[track_caller]
     fn new() -> Self {
         let caller = Location::caller();
@@ -27,7 +27,7 @@ impl ErrorStackTrace {
 #[derive(Debug)]
 pub struct LpmError<E> {
     pub error_type: E,
-    pub error_stack: Vec<ErrorStackTrace>,
+    pub chain: Vec<ErrorStack>,
 }
 
 impl<E> LpmError<E> {
@@ -35,17 +35,17 @@ impl<E> LpmError<E> {
     pub fn new(e: E) -> Self {
         Self {
             error_type: e,
-            error_stack: vec![ErrorStackTrace::new()],
+            chain: vec![ErrorStack::new()],
         }
     }
 
     #[track_caller]
-    pub fn new_with_traces(e: E, error_stack: Vec<ErrorStackTrace>) -> Self {
+    pub fn new_with_traces(e: E, chain: Vec<ErrorStack>) -> Self {
         let mut e = Self {
             error_type: e,
-            error_stack,
+            chain,
         };
-        e.error_stack.push(ErrorStackTrace::new());
+        e.chain.push(ErrorStack::new());
 
         e
     }
