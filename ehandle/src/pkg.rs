@@ -15,7 +15,6 @@ pub enum PackageErrorKind {
 }
 
 impl ErrorCommons<PackageError> for PackageErrorKind {
-    #[inline(always)]
     fn as_str(&self) -> &str {
         match self {
             Self::InvalidPackageFiles(_) => "InvalidPackageFiles",
@@ -29,7 +28,6 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
         }
     }
 
-    #[inline(always)]
     fn throw(&self) -> PackageError {
         match self {
             Self::InvalidPackageFiles(ref err) => PackageError {

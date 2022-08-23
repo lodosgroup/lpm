@@ -23,6 +23,7 @@ pub struct MetaDir {
 }
 
 impl MetaDir {
+    #[inline]
     pub fn new(str_path: &str) -> Self {
         Self {
             path: String::from(str_path),

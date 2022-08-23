@@ -56,7 +56,6 @@ pub enum Transaction {
 }
 
 impl Transaction {
-    #[inline(always)]
     fn to_statement(&self) -> String {
         match self {
             Transaction::Begin => String::from("BEGIN;"),
@@ -66,7 +65,6 @@ impl Transaction {
     }
 }
 
-#[inline(always)]
 pub fn transaction_op(
     db: &Database,
     transaction: Transaction,

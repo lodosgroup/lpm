@@ -65,7 +65,6 @@ pub enum MigrationErrorKind {
 }
 
 impl ErrorCommons<MigrationError> for MigrationErrorKind {
-    #[inline(always)]
     fn as_str(&self) -> &str {
         match self {
             Self::VersionCouldNotSet(_) => "VersionCouldNotSet",
@@ -74,7 +73,6 @@ impl ErrorCommons<MigrationError> for MigrationErrorKind {
         }
     }
 
-    #[inline(always)]
     fn throw(&self) -> MigrationError {
         match self {
             Self::VersionCouldNotSet(ref err) => MigrationError {
@@ -126,7 +124,6 @@ pub struct SqlError {
 }
 
 impl ErrorCommons<SqlError> for SqlErrorKind {
-    #[inline(always)]
     fn as_str(&self) -> &str {
         match self {
             Self::FailedExecuting(_) => "FailedExecuting",
@@ -134,7 +131,6 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
         }
     }
 
-    #[inline(always)]
     fn throw(&self) -> SqlError {
         match self {
             Self::FailedExecuting(ref err) => SqlError {

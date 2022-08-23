@@ -30,14 +30,13 @@ pub enum RuntimeErrorKind {
 }
 
 impl ErrorCommons<RuntimeError> for RuntimeErrorKind {
-    #[inline(always)]
+    #[inline]
     fn as_str(&self) -> &str {
         match self {
             RuntimeErrorKind::UnsupportedPlatform(_) => "UnsupportedPlatform",
         }
     }
 
-    #[inline(always)]
     fn throw(&self) -> RuntimeError {
         match self {
             Self::UnsupportedPlatform(ref err) => RuntimeError {

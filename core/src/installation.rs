@@ -52,11 +52,11 @@ impl<'a> InstallationTasks for LodPkg<'a> {
         Ok(())
     }
 
+    #[inline(always)]
     fn install_program(&self) -> Result<(), LpmError<io::Error>> {
         self.copy_programs()
     }
 
-    #[inline(always)]
     fn copy_programs(&self) -> Result<(), LpmError<io::Error>> {
         let source_path = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"

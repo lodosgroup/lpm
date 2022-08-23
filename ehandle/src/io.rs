@@ -29,7 +29,6 @@ impl From<LpmError<io::Error>> for LpmError<RuntimeError> {
     }
 }
 
-#[inline(always)]
 fn parse_io_error_kind(kind: ErrorKind) -> &'static str {
     match &kind {
         ErrorKind::NotFound => "NotFound",
