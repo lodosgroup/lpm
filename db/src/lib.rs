@@ -1,5 +1,5 @@
 use ehandle::{
-    db::{MigrationError, SqlError, SqlErrorKind},
+    db::{SqlError, SqlErrorKind},
     lpm::LpmError,
     simple_e_fmt, try_execute_prepared, ErrorCommons,
 };
@@ -14,7 +14,7 @@ pub const DB_PATH: &str = "/var/lib/lodpm/lpm.db";
 pub const DB_PATH: &str = "lpm.db";
 
 #[inline(always)]
-pub fn init_db() -> Result<(), LpmError<MigrationError>> {
+pub fn init_db() -> Result<(), LpmError<SqlError>> {
     start_db_migrations()
 }
 
@@ -38,10 +38,7 @@ fn get_last_insert_row_id(db: &Database) -> Result<i64, LpmError<SqlError>> {
 
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!(
-            "Failed executing SQL statement `{}`.",
-            statement
-        ))
+        simple_e_fmt!("Failed executing SQL statement `{}`.", statement)
     );
 
     let data = sql.get_data::<i64>(0).unwrap();
@@ -72,12 +69,8 @@ pub fn transaction_op(
     #[allow(clippy::disallowed_methods)]
     match db.execute(transaction.to_statement(), SQL_NO_CALLBACK_FN)? {
         SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
-        _ => Err(LpmError::new(
-            SqlErrorKind::FailedExecuting(Some(simple_e_fmt!(
-                "Failed executing SQL statement `{}`.",
-                transaction.to_statement()
-            )))
-            .throw(),
+        e => Err(LpmError::new(
+            SqlErrorKind::FailedExecuting(transaction.to_statement(), e).throw(),
         )),
     }
 }

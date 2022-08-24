@@ -144,7 +144,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         try_bind_val!(sql, 1, name);
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!("Error SELECT query on \"packages\" table."))
+            simple_e_fmt!("Error SELECT query on \"packages\" table.")
         );
         let id = sql.get_data::<i64>(0).unwrap_or(0);
 
@@ -260,7 +260,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         try_bind_val!(sql, 1, pkg_name.clone());
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!("Error on deleting package \"{}\".", pkg_name))
+            simple_e_fmt!("Error on deleting package \"{}\".", pkg_name)
         );
         sql.kill();
 
@@ -300,10 +300,7 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmErro
         try_bind_val!(sql, 4, checksum_id.unwrap());
         try_bind_val!(sql, 5, pkg_id);
 
-        try_execute_prepared!(
-            sql,
-            Some(simple_e_fmt!("Could not insert to \"files\" table."))
-        );
+        try_execute_prepared!(sql, simple_e_fmt!("Could not insert to \"files\" table."));
 
         sql.kill();
     }
@@ -319,7 +316,7 @@ pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, LpmError<Sql
     try_bind_val!(sql, 1, name);
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!("Error SELECT query on \"packages\" table."))
+        simple_e_fmt!("Error SELECT query on \"packages\" table.")
     );
 
     let result = sql.get_data::<i64>(0).unwrap_or(0);
@@ -339,9 +336,7 @@ pub fn get_repository_id_by_repository(
     try_bind_val!(sql, 1, repository);
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!(
-            "Error SELECT query on \"repositories\" table."
-        ))
+        simple_e_fmt!("Error SELECT query on \"repositories\" table.")
     );
 
     let result = sql.get_data::<Option<i64>>(0)?;
@@ -358,9 +353,7 @@ pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, Lpm
     try_bind_val!(sql, 1, id);
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!(
-            "Error SELECT query on \"checksum_kinds\" table."
-        ))
+        simple_e_fmt!("Error SELECT query on \"checksum_kinds\" table.")
     );
 
     let result = sql.get_data::<String>(0).unwrap();
@@ -380,9 +373,7 @@ pub fn get_checksum_algorithm_id_by_kind(
     try_bind_val!(sql, 1, algorithm);
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!(
-            "Error SELECT query on \"checksum_kinds\" table."
-        ))
+        simple_e_fmt!("Error SELECT query on \"checksum_kinds\" table.")
     );
 
     let result = sql.get_data::<i64>(0).unwrap();
@@ -413,7 +404,7 @@ pub fn insert_pkg_tags(
         try_bind_val!(sql, 2, pkg_id);
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!("Error on inserting package tag \"{}\".", tag))
+            simple_e_fmt!("Error on inserting package tag \"{}\".", tag)
         );
         sql.kill();
     }
@@ -440,10 +431,7 @@ pub fn insert_pkg_kinds(
         try_bind_val!(sql, 1, &*kind);
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!(
-                "Error on inserting package kind \"{}\".",
-                kind
-            ))
+            simple_e_fmt!("Error on inserting package kind \"{}\".", kind)
         );
         sql.kill();
     }
@@ -469,10 +457,7 @@ pub fn delete_pkg_kinds(
         try_bind_val!(sql, 1, &*kind);
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!(
-                "Error on deleting package kind \"{}\".",
-                kind
-            ))
+            simple_e_fmt!("Error on deleting package kind \"{}\".", kind)
         );
         sql.kill();
     }

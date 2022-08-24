@@ -2,7 +2,7 @@
 
 use common::lpm_version::get_lpm_version;
 use ehandle::{
-    db::{MigrationError, MigrationErrorKind, SqlError},
+    db::{MigrationErrorKind, SqlError, SqlErrorKind},
     lpm::LpmError,
     simple_e_fmt, try_execute, try_execute_prepared, ErrorCommons,
 };
@@ -11,7 +11,7 @@ use std::path::Path;
 
 const INITIAL_VERSION: i64 = 0;
 
-pub(crate) fn start_db_migrations() -> Result<(), LpmError<MigrationError>> {
+pub(crate) fn start_db_migrations() -> Result<(), LpmError<SqlError>> {
     let db = Database::open(Path::new(super::DB_PATH))?;
     super::enable_foreign_keys(&db)?;
 
@@ -26,17 +26,13 @@ pub(crate) fn start_db_migrations() -> Result<(), LpmError<MigrationError>> {
     Ok(())
 }
 
-fn set_migration_version(db: &Database, version: i64) -> Result<(), LpmError<MigrationError>> {
+fn set_migration_version(db: &Database, version: i64) -> Result<(), LpmError<SqlError>> {
     let statement = format!("PRAGMA user_version = {};", version);
 
-    match db.execute(statement.clone(), super::SQL_NO_CALLBACK_FN) {
+    match db.execute(statement, super::SQL_NO_CALLBACK_FN) {
         Ok(_) => Ok(()),
         Err(_) => Err(LpmError::new(
-            MigrationErrorKind::VersionCouldNotSet(Some(simple_e_fmt!(
-                "Failed executing SQL statement `{}`.",
-                statement
-            )))
-            .throw(),
+            SqlErrorKind::MigrationError(MigrationErrorKind::VersionCouldNotSet).throw(),
         )),
     }
 }
@@ -47,10 +43,7 @@ fn can_migrate(db: &Database, version: i64) -> Result<bool, LpmError<SqlError>> 
     let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!(
-            "Failed executing SQL statement `{}`.",
-            statement
-        ))
+        simple_e_fmt!("Failed executing SQL statement `{}`.", statement)
     );
 
     let db_user_version = sql.clone().get_data::<i64>(0).unwrap();
@@ -59,7 +52,7 @@ fn can_migrate(db: &Database, version: i64) -> Result<bool, LpmError<SqlError>> 
     Ok(result)
 }
 
-fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<MigrationError>> {
+fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
         return Ok(());
@@ -179,13 +172,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<Mi
         ",
     );
 
-    try_execute!(
-        db,
-        statement,
-        Some(simple_e_fmt!(
-            "Migration `create_table_core` has been failed."
-        ))
-    );
+    try_execute!(db, statement);
 
     set_migration_version(db, *version)?;
 
@@ -195,7 +182,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<Mi
 fn create_update_triggers_for_core_tables(
     db: &Database,
     version: &mut i64,
-) -> Result<(), LpmError<MigrationError>> {
+) -> Result<(), LpmError<SqlError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
         return Ok(());
@@ -238,20 +225,14 @@ fn create_update_triggers_for_core_tables(
         ",
     );
 
-    try_execute!(
-        db,
-        statement,
-        Some(simple_e_fmt!(
-            "Migration `create_update_triggers_for_core_tables` has been failed."
-        ))
-    );
+    try_execute!(db, statement);
 
     set_migration_version(db, *version)?;
 
     Ok(())
 }
 
-fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<MigrationError>> {
+fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
         return Ok(());
@@ -287,13 +268,7 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<Migr
         sys_defaults, checksum_kind_defaults
     );
 
-    try_execute!(
-        db,
-        statement,
-        Some(simple_e_fmt!(
-            "Migration `insert_defaults` has been failed."
-        ))
-    );
+    try_execute!(db, statement);
 
     set_migration_version(db, *version)?;
 
