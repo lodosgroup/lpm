@@ -26,7 +26,10 @@ macro_rules! try_or_error {
 
 macro_rules! log_and_panic {
     ($log: expr) => {
-        error!($log)
+        error!($log);
+
+        // Terminate app with panic code
+        process::exit(101);
     };
 }
 
@@ -65,7 +68,9 @@ fn main() {
                 try_or_error!(delete_pkg_kinds(&db, kinds.to_vec()));
                 db.close();
             }
-            _ => log_and_panic!("Invalid argument."),
+            _ => {
+                log_and_panic!("Invalid argument.");
+            }
         };
 
         Ok(())
@@ -73,7 +78,9 @@ fn main() {
 
     match args.get(1) {
         Some(arg) => try_or_error!(cli(arg)),
-        None => log_and_panic!("Missing argument."),
+        None => {
+            log_and_panic!("Missing argument.");
+        }
     }
 }
 
