@@ -1,7 +1,7 @@
 use crate::{extraction::ExtractionTasks, validation::ValidationTasks};
 use common::pkg::LodPkg;
 use db::{pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
-use ehandle::RuntimeError;
+use ehandle::{lpm::LpmError, MainError};
 use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},
@@ -10,13 +10,13 @@ use std::{
 };
 
 pub trait InstallationTasks {
-    fn copy_programs(&self) -> Result<(), io::Error>;
-    fn start_installation(&mut self) -> Result<(), RuntimeError>;
-    fn install_program(&self) -> Result<(), io::Error>;
+    fn copy_programs(&self) -> Result<(), LpmError<io::Error>>;
+    fn start_installation(&mut self) -> Result<(), LpmError<MainError>>;
+    fn install_program(&self) -> Result<(), LpmError<io::Error>>;
 }
 
 impl<'a> InstallationTasks for LodPkg<'a> {
-    fn start_installation(&mut self) -> Result<(), RuntimeError> {
+    fn start_installation(&mut self) -> Result<(), LpmError<MainError>> {
         self.start_extraction()?;
         self.start_validations()?;
 
@@ -27,7 +27,7 @@ impl<'a> InstallationTasks for LodPkg<'a> {
             Ok(_) => {}
             Err(err) => {
                 transaction_op(&db, Transaction::Rollback)?;
-                return Err(err.into());
+                return Err(LpmError::from(err));
             }
         };
 
@@ -52,12 +52,12 @@ impl<'a> InstallationTasks for LodPkg<'a> {
         Ok(())
     }
 
-    fn install_program(&self) -> Result<(), io::Error> {
+    #[inline(always)]
+    fn install_program(&self) -> Result<(), LpmError<io::Error>> {
         self.copy_programs()
     }
 
-    #[inline(always)]
-    fn copy_programs(&self) -> Result<(), io::Error> {
+    fn copy_programs(&self) -> Result<(), LpmError<io::Error>> {
         let source_path = super::EXTRACTION_OUTPUT_PATH.to_string()
             + "/"
             + self.path.unwrap().file_stem().unwrap().to_str().unwrap()

@@ -1,24 +1,24 @@
-use crate::{ErrorCommons, RuntimeError};
+use crate::{lpm::LpmError, ErrorCommons, MainError};
 use min_sqlite3_sys::prelude::MinSqliteWrapperError;
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum PackageErrorKind {
-    InvalidPackageFiles(Option<String>),
-    UnsupportedPackageArchitecture(Option<String>),
-    UnsupportedChecksumAlgorithm(Option<String>),
-    InstallationFailed(Option<String>),
-    DeletionFailed(Option<String>),
-    AlreadyInstalled(Option<String>),
-    DoesNotExists(Option<String>),
-    UnrecognizedRepository(Option<String>),
+    InvalidPackageFiles,
+    UnsupportedPackageArchitecture(String),
+    UnsupportedChecksumAlgorithm(String),
+    InstallationFailed(String),
+    DeletionFailed(String),
+    AlreadyInstalled(String),
+    DoesNotExists(String),
+    UnrecognizedRepository(String),
+    DbOperationFailed(String),
 }
 
 impl ErrorCommons<PackageError> for PackageErrorKind {
-    #[inline(always)]
     fn as_str(&self) -> &str {
         match self {
-            Self::InvalidPackageFiles(_) => "InvalidPackageFiles",
+            Self::InvalidPackageFiles => "InvalidPackageFiles",
             Self::UnsupportedChecksumAlgorithm(_) => "UnsupportedChecksumAlgorithm",
             Self::UnsupportedPackageArchitecture(_) => "UnsupportedPackageArchitecture",
             Self::InstallationFailed(_) => "InstallationFailed",
@@ -26,107 +26,86 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
             Self::AlreadyInstalled(_) => "AlreadyInstalled",
             Self::DoesNotExists(_) => "DoesNotExists",
             Self::UnrecognizedRepository(_) => "UnrecognizedRepository",
+            Self::DbOperationFailed(_) => "DbOperationFailed",
         }
     }
 
-    #[inline(always)]
-    fn throw(&self) -> PackageError {
+    fn to_err(&self) -> PackageError {
         match self {
-            Self::InvalidPackageFiles(ref err) => PackageError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "According to the checksum file, the package files are not valid.",
-                    ))
-                    .to_owned(),
+            Self::InvalidPackageFiles => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: String::from(
+                    "According to the checksum file, the package files are not valid.",
+                ),
             },
-            Self::UnsupportedChecksumAlgorithm(ref err) => PackageError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "The checksum algorithm of the package is not supported.",
-                    ))
-                    .to_owned(),
+            Self::UnsupportedChecksumAlgorithm(ref algorithm) => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: format!("Checksum algorithm '{}' is not supported.", algorithm),
             },
-            Self::UnsupportedPackageArchitecture(ref err) => PackageError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "The package you are trying to install is built for different system architecture and not supported by this machine.",
-                    ))
-                    .to_owned(),
+            Self::UnsupportedPackageArchitecture(ref arch) => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: format!(
+                    "The package you are trying to install is built for '{}' architecture.",
+                    arch
+                ),
             },
-            Self::InstallationFailed(ref err) => PackageError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "The installation process could not be completed.",
-                    ))
-                    .to_owned(),
+            Self::InstallationFailed(ref package) => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: format!(
+                    "Installation process of '{}' package has been failed.",
+                    package
+                ),
             },
-            Self::DeletionFailed(ref err) => PackageError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "The deletion process could not be completed.",
-                    ))
-                    .to_owned(),
+            Self::DeletionFailed(ref package) => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: format!("Deletion process of '{}' package has been failed.", package),
             },
-            Self::AlreadyInstalled(ref err) => PackageError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "The package you are trying to install is already installed in the system.",
-                    ))
-                    .to_owned(),
+            Self::AlreadyInstalled(ref package) => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: format!("Package '{}' already installed on your machine.", package),
             },
-            Self::DoesNotExists(ref err) => PackageError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "The package you are trying to reach is not installed in the system.",
-                    ))
-                    .to_owned(),
+            Self::DoesNotExists(ref package) => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: format!("Package '{}' is not installed in the system.", package),
             },
-            Self::UnrecognizedRepository(ref err) => PackageError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "The repository specified in the package is not defined in your system.",
-                    ))
-                    .to_owned(),
+            Self::UnrecognizedRepository(ref repository) => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: format!("Repository '{}' in the package you'r installing is not defined in your system.", repository)
+            },
+            Self::DbOperationFailed(ref error) => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: error.to_string()
             },
         }
+    }
+
+    #[inline]
+    fn to_lpm_err(&self) -> LpmError<PackageError> {
+        LpmError::new(self.to_err())
     }
 }
 
 #[derive(Debug)]
 pub struct PackageError {
-    pub kind: PackageErrorKind,
-    pub reason: String,
+    kind: String,
+    reason: String,
 }
 
-impl From<PackageError> for RuntimeError {
-    #[inline(always)]
-    fn from(error: PackageError) -> Self {
-        RuntimeError {
-            kind: error.kind.as_str().to_string(),
-            reason: error.reason,
-        }
+impl From<LpmError<PackageError>> for LpmError<MainError> {
+    #[track_caller]
+    fn from(error: LpmError<PackageError>) -> Self {
+        let e = MainError {
+            kind: error.error_type.kind.as_str().to_string(),
+            reason: error.error_type.reason,
+        };
+
+        LpmError::new_with_traces(e, error.chain)
     }
 }
 
-impl From<MinSqliteWrapperError<'_>> for PackageError {
-    #[inline(always)]
+impl From<MinSqliteWrapperError<'_>> for LpmError<PackageError> {
+    #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        PackageErrorKind::InstallationFailed(Some(error.reason)).throw()
+        PackageErrorKind::DbOperationFailed(error.reason).to_lpm_err()
     }
 }

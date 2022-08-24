@@ -1,9 +1,10 @@
 use crate::extraction::ExtractionTasks;
 use common::meta::Files;
 use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
+use ehandle::lpm::LpmError;
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
-    simple_e_fmt, ErrorCommons, RuntimeError,
+    ErrorCommons, MainError,
 };
 use hash::{md5, sha256, sha512};
 use std::{fs, io::Read};
@@ -30,28 +31,25 @@ impl ChecksumKind {
             "md5" => Ok(ChecksumKind::Md5),
             "sha256" => Ok(ChecksumKind::Sha256),
             "sha512" => Ok(ChecksumKind::Sha512),
-            _ => Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
-                "{} algorithm is not supported from current lpm version.",
-                kind
-            )))
-            .throw()),
+            _ => Err(PackageErrorKind::UnsupportedChecksumAlgorithm(kind.to_string()).to_err()),
         }
     }
 }
 
 pub trait ValidationTasks {
-    fn start_validations(&self) -> Result<(), RuntimeError>;
+    fn start_validations(&self) -> Result<(), LpmError<MainError>>;
 }
 
 impl<'a> ValidationTasks for LodPkg<'a> {
-    fn start_validations(&self) -> Result<(), RuntimeError> {
+    fn start_validations(&self) -> Result<(), LpmError<MainError>> {
         if let Some(meta_dir) = &self.meta_dir {
             // check architecture compatibility
             if meta_dir.meta.arch != NO_ARCH && meta_dir.meta.arch != SYSTEM_ARCH {
-                let e = format!("Package '{}' is built for '{}' architecture that is not supported by this machine.", meta_dir.meta.name, meta_dir.meta.arch);
-                return Err(PackageErrorKind::UnsupportedPackageArchitecture(Some(e))
-                    .throw()
-                    .into());
+                return Err(PackageErrorKind::UnsupportedPackageArchitecture(
+                    meta_dir.meta.arch.clone(),
+                )
+                .to_lpm_err()
+                .into());
             }
 
             check_program_checksums(self.get_pkg_output_path(), &meta_dir.files)?
@@ -61,7 +59,7 @@ impl<'a> ValidationTasks for LodPkg<'a> {
     }
 }
 
-fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), RuntimeError> {
+fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmError<MainError>> {
     for file in &files.0 {
         // Read file as byte-array
         let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path)?;
@@ -79,22 +77,14 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), Runtim
             };
 
             if file_hash.ne(&file.checksum) {
-                return Err(PackageErrorKind::InvalidPackageFiles(Some(simple_e_fmt!(
-                    "File \"{}\" is not valid.",
-                    file.path
-                )))
-                .throw()
-                .into());
+                return Err(PackageErrorKind::InvalidPackageFiles.to_lpm_err().into());
             }
         } else {
-            return Err(
-                PackageErrorKind::UnsupportedChecksumAlgorithm(Some(simple_e_fmt!(
-                    "Algorithm \"{}\" is not supported by lpm.",
-                    file.checksum_algorithm
-                )))
-                .throw()
-                .into(),
-            );
+            return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(
+                file.checksum_algorithm.clone(),
+            )
+            .to_lpm_err()
+            .into());
         }
     }
 
