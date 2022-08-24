@@ -8,15 +8,15 @@ use std::env;
 use std::path::Path;
 
 #[allow(unused_imports)]
-use ehandle::{lpm::LpmError, RuntimeError, RuntimeErrorKind};
+use ehandle::{lpm::LpmError, BuildtimeErrorKind, MainError};
 
 #[cfg(target_os = "linux")]
-fn main() -> Result<(), LpmError<RuntimeError>> {
+fn main() -> Result<(), LpmError<MainError>> {
     init_db()?;
 
     let args: Vec<String> = env::args().collect();
 
-    let cli = |arg: &str| -> Result<(), LpmError<RuntimeError>> {
+    let cli = |arg: &str| -> Result<(), LpmError<MainError>> {
         match arg {
             "--install" => {
                 let mut pkg = LodPkg::from_fs(args.get(2).expect("Package path is missing."));
@@ -56,6 +56,6 @@ fn main() -> Result<(), LpmError<RuntimeError>> {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn main() -> Result<(), RuntimeError> {
-    Err(RuntimeErrorKind::UnsupportedPlatform(None).throw())
+fn main() -> Result<(), LpmError<MainError>> {
+    Err(BuildtimeErrorKind::UnsupportedPlatform(None).throw())
 }

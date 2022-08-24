@@ -1,15 +1,15 @@
 use common::pkg::LodPkg;
 use db::{enable_foreign_keys, pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
-use ehandle::{lpm::LpmError, pkg::PackageErrorKind, simple_e_fmt, ErrorCommons, RuntimeError};
+use ehandle::{lpm::LpmError, pkg::PackageErrorKind, simple_e_fmt, ErrorCommons, MainError};
 use min_sqlite3_sys::prelude::*;
 use std::{fs, path::Path};
 
 pub trait DeletionTasks {
-    fn start_deletion(&self) -> Result<(), LpmError<RuntimeError>>;
+    fn start_deletion(&self) -> Result<(), LpmError<MainError>>;
 }
 
 impl<'a> DeletionTasks for LodPkg<'a> {
-    fn start_deletion(&self) -> Result<(), LpmError<RuntimeError>> {
+    fn start_deletion(&self) -> Result<(), LpmError<MainError>> {
         let meta_dir = self.meta_dir.as_ref().expect("Package is not loaded.");
 
         let db = Database::open(Path::new(DB_PATH)).unwrap();

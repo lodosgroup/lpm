@@ -4,7 +4,7 @@ use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
 use ehandle::lpm::LpmError;
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
-    simple_e_fmt, ErrorCommons, RuntimeError,
+    simple_e_fmt, ErrorCommons, MainError,
 };
 use hash::{md5, sha256, sha512};
 use std::{fs, io::Read};
@@ -41,11 +41,11 @@ impl ChecksumKind {
 }
 
 pub trait ValidationTasks {
-    fn start_validations(&self) -> Result<(), LpmError<RuntimeError>>;
+    fn start_validations(&self) -> Result<(), LpmError<MainError>>;
 }
 
 impl<'a> ValidationTasks for LodPkg<'a> {
-    fn start_validations(&self) -> Result<(), LpmError<RuntimeError>> {
+    fn start_validations(&self) -> Result<(), LpmError<MainError>> {
         if let Some(meta_dir) = &self.meta_dir {
             // check architecture compatibility
             if meta_dir.meta.arch != NO_ARCH && meta_dir.meta.arch != SYSTEM_ARCH {
@@ -63,7 +63,7 @@ impl<'a> ValidationTasks for LodPkg<'a> {
     }
 }
 
-fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmError<RuntimeError>> {
+fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmError<MainError>> {
     for file in &files.0 {
         // Read file as byte-array
         let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path)?;

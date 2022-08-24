@@ -1,7 +1,7 @@
 use crate::{extraction::ExtractionTasks, validation::ValidationTasks};
 use common::pkg::LodPkg;
 use db::{pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
-use ehandle::{lpm::LpmError, RuntimeError};
+use ehandle::{lpm::LpmError, MainError};
 use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},
@@ -11,12 +11,12 @@ use std::{
 
 pub trait InstallationTasks {
     fn copy_programs(&self) -> Result<(), LpmError<io::Error>>;
-    fn start_installation(&mut self) -> Result<(), LpmError<RuntimeError>>;
+    fn start_installation(&mut self) -> Result<(), LpmError<MainError>>;
     fn install_program(&self) -> Result<(), LpmError<io::Error>>;
 }
 
 impl<'a> InstallationTasks for LodPkg<'a> {
-    fn start_installation(&mut self) -> Result<(), LpmError<RuntimeError>> {
+    fn start_installation(&mut self) -> Result<(), LpmError<MainError>> {
         self.start_extraction()?;
         self.start_validations()?;
 

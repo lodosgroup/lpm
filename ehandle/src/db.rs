@@ -1,7 +1,7 @@
 use crate::{
     lpm::LpmError,
     pkg::{PackageError, PackageErrorKind},
-    ErrorCommons, RuntimeError,
+    ErrorCommons, MainError,
 };
 use min_sqlite3_sys::prelude::MinSqliteWrapperError;
 
@@ -102,12 +102,17 @@ impl ErrorCommons<MigrationError> for MigrationErrorKind {
             },
         }
     }
+
+    #[inline(always)]
+    fn reason(&self) -> String {
+        self.throw().reason
+    }
 }
 
 #[derive(Debug)]
 pub struct MigrationError {
-    pub kind: MigrationErrorKind,
-    pub reason: String,
+    kind: MigrationErrorKind,
+    reason: String,
 }
 
 #[non_exhaustive]
@@ -119,8 +124,8 @@ pub enum SqlErrorKind {
 
 #[derive(Debug)]
 pub struct SqlError {
-    pub kind: SqlErrorKind,
-    pub reason: String,
+    kind: SqlErrorKind,
+    reason: String,
 }
 
 impl ErrorCommons<SqlError> for SqlErrorKind {
@@ -153,12 +158,17 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
             },
         }
     }
+
+    #[inline(always)]
+    fn reason(&self) -> String {
+        self.throw().reason
+    }
 }
 
-impl From<LpmError<MigrationError>> for LpmError<RuntimeError> {
+impl From<LpmError<MigrationError>> for LpmError<MainError> {
     #[track_caller]
     fn from(error: LpmError<MigrationError>) -> Self {
-        let e = RuntimeError {
+        let e = MainError {
             kind: error.error_type.kind.as_str().to_string(),
             reason: error.error_type.reason,
         };
@@ -167,10 +177,10 @@ impl From<LpmError<MigrationError>> for LpmError<RuntimeError> {
     }
 }
 
-impl From<MinSqliteWrapperError<'_>> for LpmError<RuntimeError> {
+impl From<MinSqliteWrapperError<'_>> for LpmError<MainError> {
     #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        LpmError::new(RuntimeError {
+        LpmError::new(MainError {
             kind: error.kind.to_string(),
             reason: error.reason,
         })
@@ -184,10 +194,10 @@ impl From<MinSqliteWrapperError<'_>> for LpmError<MigrationError> {
     }
 }
 
-impl From<LpmError<SqlError>> for LpmError<RuntimeError> {
+impl From<LpmError<SqlError>> for LpmError<MainError> {
     #[track_caller]
     fn from(error: LpmError<SqlError>) -> Self {
-        let e = RuntimeError {
+        let e = MainError {
             kind: error.error_type.kind.as_str().to_string(),
             reason: error.error_type.reason,
         };
