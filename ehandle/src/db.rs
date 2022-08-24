@@ -79,7 +79,7 @@ pub enum SqlErrorKind {
 
 #[derive(Debug)]
 pub struct SqlError {
-    kind: SqlErrorKind,
+    kind: String,
     reason: String,
 }
 
@@ -97,19 +97,19 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
     fn throw(&self) -> SqlError {
         match self {
             Self::FailedExecuting(ref statement, ref status) => SqlError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!(
                     "Failed executing '{}' statement. Error status: {:?}.",
                     statement, status
                 ),
             },
             Self::FailedPreparedExecuting(ref error) => SqlError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: error.clone(),
             },
             Self::FailedParameterBinding(ref param_index, ref param_value, ref result) => {
                 SqlError {
-                    kind: self.clone(),
+                    kind: self.as_str().to_owned(),
                     reason: format!(
                         "Failed binding '{}' value on {} index. Error: {:?}",
                         param_value, param_index, result
@@ -117,14 +117,14 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
                 }
             }
             SqlErrorKind::WrapperLibError(ref kind, ref reason) => SqlError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!(
                     "'{}' occurred from the wrapper library. Reason: '{}'.",
                     kind, reason
                 ),
             },
             SqlErrorKind::MigrationError(ref error) => SqlError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!(
                     "Migration process could not be completed. Error: '{:?}'",
                     error
@@ -159,7 +159,7 @@ impl From<LpmError<SqlError>> for LpmError<MainError> {
 impl From<LpmError<SqlError>> for LpmError<PackageError> {
     #[track_caller]
     fn from(error: LpmError<SqlError>) -> Self {
-        let e = PackageErrorKind::InstallationFailed(Some(error.error_type.reason)).throw();
+        let e = PackageErrorKind::DbOperationFailed(error.error_type.reason).throw();
         LpmError::new_with_traces(e, error.chain)
     }
 }

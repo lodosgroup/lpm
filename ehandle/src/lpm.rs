@@ -24,10 +24,18 @@ impl ErrorStack {
     }
 }
 
-#[derive(Debug)]
 pub struct LpmError<E> {
     pub error_type: E,
     pub chain: Vec<ErrorStack>,
+}
+
+impl<E> std::fmt::Debug for LpmError<E>
+where
+    E: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} From: {:?}", self.error_type, self.chain)
+    }
 }
 
 impl<E> LpmError<E> {

@@ -4,7 +4,7 @@ use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
 use ehandle::lpm::LpmError;
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
-    simple_e_fmt, ErrorCommons, MainError,
+    ErrorCommons, MainError,
 };
 use hash::{md5, sha256, sha512};
 use std::{fs, io::Read};
@@ -31,11 +31,7 @@ impl ChecksumKind {
             "md5" => Ok(ChecksumKind::Md5),
             "sha256" => Ok(ChecksumKind::Sha256),
             "sha512" => Ok(ChecksumKind::Sha512),
-            _ => Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
-                "{} algorithm is not supported from current lpm version.",
-                kind
-            )))
-            .throw()),
+            _ => Err(PackageErrorKind::UnsupportedChecksumAlgorithm(kind.to_string()).throw()),
         }
     }
 }
@@ -49,9 +45,9 @@ impl<'a> ValidationTasks for LodPkg<'a> {
         if let Some(meta_dir) = &self.meta_dir {
             // check architecture compatibility
             if meta_dir.meta.arch != NO_ARCH && meta_dir.meta.arch != SYSTEM_ARCH {
-                let e = format!("Package '{}' is built for '{}' architecture that is not supported by this machine.", meta_dir.meta.name, meta_dir.meta.arch);
                 return Err(LpmError::new(
-                    PackageErrorKind::UnsupportedPackageArchitecture(Some(e)).throw(),
+                    PackageErrorKind::UnsupportedPackageArchitecture(meta_dir.meta.arch.clone())
+                        .throw(),
                 )
                 .into());
             }
@@ -81,22 +77,12 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmErr
             };
 
             if file_hash.ne(&file.checksum) {
-                return Err(LpmError::new(
-                    PackageErrorKind::InvalidPackageFiles(Some(simple_e_fmt!(
-                        "File \"{}\" is not valid.",
-                        file.path
-                    )))
-                    .throw(),
-                )
-                .into());
+                return Err(LpmError::new(PackageErrorKind::InvalidPackageFiles.throw()).into());
             }
         } else {
             return Err(LpmError::new(
-                PackageErrorKind::UnsupportedChecksumAlgorithm(Some(simple_e_fmt!(
-                    "Algorithm \"{}\" is not supported by lpm.",
-                    file.checksum_algorithm
-                )))
-                .throw(),
+                PackageErrorKind::UnsupportedChecksumAlgorithm(file.checksum_algorithm.clone())
+                    .throw(),
             )
             .into());
         }

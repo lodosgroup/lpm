@@ -29,11 +29,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         if is_package_exists(db, &meta_dir.meta.name)? {
             return Err(LpmError::new(
-                PackageErrorKind::AlreadyInstalled(Some(format!(
-                    "{} is already installed in your system.",
-                    meta_dir.meta.name
-                )))
-                .throw(),
+                PackageErrorKind::AlreadyInstalled(meta_dir.meta.name.clone()).throw(),
             ));
         }
 
@@ -109,11 +105,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             transaction_op(db, Transaction::Rollback)?;
 
             return Err(LpmError::new(
-                PackageErrorKind::InstallationFailed(Some(simple_e_fmt!(
-                    "Installing package \"{}\" is failed.",
-                    meta_dir.meta.name
-                )))
-                .throw(),
+                PackageErrorKind::InstallationFailed(meta_dir.meta.name.clone()).throw(),
             ));
         }
 
@@ -151,11 +143,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         if id == 0 {
             sql.kill();
             return Err(LpmError::new(
-                PackageErrorKind::DoesNotExists(Some(format!(
-                    "{} is doesn't exists in your system.",
-                    name
-                )))
-                .throw(),
+                PackageErrorKind::DoesNotExists(name.to_string()).throw(),
             ));
         }
 
@@ -275,11 +263,8 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmErro
         let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm)?;
         if checksum_id.is_none() {
             return Err(LpmError::new(
-                PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
-                    "{} algorithm is not supported from current lpm version.",
-                    &file.checksum_algorithm
-                )))
-                .throw(),
+                PackageErrorKind::UnsupportedChecksumAlgorithm(file.checksum_algorithm.clone())
+                    .throw(),
             ));
         }
 

@@ -62,6 +62,7 @@ name = "ehandle"
 version = "0.1.0"
 dependencies = [
  "min-sqlite3-sys",
+ "term",
 ]
 
 [[package]]

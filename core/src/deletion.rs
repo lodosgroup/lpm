@@ -1,6 +1,6 @@
 use common::pkg::LodPkg;
 use db::{enable_foreign_keys, pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
-use ehandle::{lpm::LpmError, pkg::PackageErrorKind, simple_e_fmt, ErrorCommons, MainError};
+use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
 use min_sqlite3_sys::prelude::*;
 use std::{fs, path::Path};
 
@@ -22,11 +22,7 @@ impl<'a> DeletionTasks for LodPkg<'a> {
                 transaction_op(&db, Transaction::Rollback)?;
 
                 return Err(LpmError::new(
-                    PackageErrorKind::DeletionFailed(Some(simple_e_fmt!(
-                        "Deletion transaction has been failed for \"{}\" package.",
-                        meta_dir.meta.name
-                    )))
-                    .throw(),
+                    PackageErrorKind::DeletionFailed(meta_dir.meta.name.clone()).throw(),
                 )
                 .into());
             }
