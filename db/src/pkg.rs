@@ -8,6 +8,7 @@ use common::{
 };
 use ehandle::{
     db::SqlError,
+    lpm::LpmError,
     pkg::{PackageError, PackageErrorKind},
     simple_e_fmt, try_bind_val, try_execute_prepared, ErrorCommons,
 };
@@ -15,23 +16,21 @@ use min_sqlite3_sys::prelude::*;
 use std::path::Path;
 
 pub trait LodPkgCoreDbOps {
-    fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError>;
-    fn insert_to_db(&self, db: &Database) -> Result<(), PackageError>;
-    fn delete_from_db(&self, db: &Database) -> Result<(), PackageError>;
+    fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, LpmError<PackageError>>;
+    fn insert_to_db(&self, db: &Database) -> Result<(), LpmError<PackageError>>;
+    fn delete_from_db(&self, db: &Database) -> Result<(), LpmError<PackageError>>;
 }
 
 impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
-    fn insert_to_db(&self, db: &Database) -> Result<(), PackageError> {
+    fn insert_to_db(&self, db: &Database) -> Result<(), LpmError<PackageError>> {
         enable_foreign_keys(db)?;
 
         let meta_dir = &self.meta_dir.as_ref().unwrap();
 
         if is_package_exists(db, &meta_dir.meta.name)? {
-            return Err(PackageErrorKind::AlreadyInstalled(Some(format!(
-                "{} is already installed in your system.",
-                meta_dir.meta.name
-            )))
-            .throw());
+            return Err(
+                PackageErrorKind::AlreadyInstalled(meta_dir.meta.name.clone()).to_lpm_err(),
+            );
         }
 
         transaction_op(db, Transaction::Begin)?;
@@ -105,11 +104,9 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             sql.kill();
             transaction_op(db, Transaction::Rollback)?;
 
-            return Err(PackageErrorKind::InstallationFailed(Some(simple_e_fmt!(
-                "Installing package \"{}\" is failed.",
-                meta_dir.meta.name
-            )))
-            .throw());
+            return Err(
+                PackageErrorKind::InstallationFailed(meta_dir.meta.name.clone()).to_lpm_err(),
+            );
         }
 
         let pkg_id = super::get_last_insert_row_id(db)?;
@@ -133,23 +130,19 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         }
     }
 
-    fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, PackageError> {
+    fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, LpmError<PackageError>> {
         let statement = String::from("SELECT * FROM packages WHERE name = ?;");
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
         try_bind_val!(sql, 1, name);
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!("Error SELECT query on \"packages\" table."))
+            simple_e_fmt!("Error SELECT query on \"packages\" table.")
         );
         let id = sql.get_data::<i64>(0).unwrap_or(0);
 
         if id == 0 {
             sql.kill();
-            return Err(PackageErrorKind::DoesNotExists(Some(format!(
-                "{} is doesn't exists in your system.",
-                name
-            )))
-            .throw());
+            return Err(PackageErrorKind::DoesNotExists(name.to_string()).to_lpm_err());
         }
 
         let version = VersionStruct {
@@ -234,7 +227,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         })
     }
 
-    fn delete_from_db<'lpkg>(&self, db: &Database) -> Result<(), PackageError> {
+    fn delete_from_db<'lpkg>(&self, db: &Database) -> Result<(), LpmError<PackageError>> {
         let statement = String::from(
             "
                 DELETE FROM packages
@@ -253,7 +246,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         try_bind_val!(sql, 1, pkg_name.clone());
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!("Error on deleting package \"{}\".", pkg_name))
+            simple_e_fmt!("Error on deleting package \"{}\".", pkg_name)
         );
         sql.kill();
 
@@ -261,17 +254,16 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     }
 }
 
-fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), PackageError> {
+fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmError<PackageError>> {
     let files = &files.0;
 
     for file in files {
         let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm)?;
         if checksum_id.is_none() {
-            return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(Some(format!(
-                "{} algorithm is not supported from current lpm version.",
-                &file.checksum_algorithm
-            )))
-            .throw());
+            return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(
+                file.checksum_algorithm.clone(),
+            )
+            .to_lpm_err());
         }
 
         let file_path = Path::new(&file.path);
@@ -291,10 +283,7 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), Package
         try_bind_val!(sql, 4, checksum_id.unwrap());
         try_bind_val!(sql, 5, pkg_id);
 
-        try_execute_prepared!(
-            sql,
-            Some(simple_e_fmt!("Could not insert to \"files\" table."))
-        );
+        try_execute_prepared!(sql, simple_e_fmt!("Could not insert to \"files\" table."));
 
         sql.kill();
     }
@@ -302,7 +291,7 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), Package
     Ok(())
 }
 
-pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, SqlError> {
+pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
     let statement = String::from("SELECT EXISTS(SELECT 1 FROM packages WHERE name = ?);");
 
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
@@ -310,7 +299,7 @@ pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, SqlError> {
     try_bind_val!(sql, 1, name);
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!("Error SELECT query on \"packages\" table."))
+        simple_e_fmt!("Error SELECT query on \"packages\" table.")
     );
 
     let result = sql.get_data::<i64>(0).unwrap_or(0);
@@ -322,7 +311,7 @@ pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, SqlError> {
 pub fn get_repository_id_by_repository(
     db: &Database,
     repository: &str,
-) -> Result<Option<i64>, SqlError> {
+) -> Result<Option<i64>, LpmError<SqlError>> {
     let statement = String::from("SELECT id FROM repositories WHERE repository = ?;");
 
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
@@ -330,9 +319,7 @@ pub fn get_repository_id_by_repository(
     try_bind_val!(sql, 1, repository);
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!(
-            "Error SELECT query on \"repositories\" table."
-        ))
+        simple_e_fmt!("Error SELECT query on \"repositories\" table.")
     );
 
     let result = sql.get_data::<Option<i64>>(0)?;
@@ -341,7 +328,7 @@ pub fn get_repository_id_by_repository(
     Ok(result)
 }
 
-pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, SqlError> {
+pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, LpmError<SqlError>> {
     let statement = String::from("SELECT kind FROM checksum_kinds WHERE id = ?;");
 
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
@@ -349,9 +336,7 @@ pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, Sql
     try_bind_val!(sql, 1, id);
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!(
-            "Error SELECT query on \"checksum_kinds\" table."
-        ))
+        simple_e_fmt!("Error SELECT query on \"checksum_kinds\" table.")
     );
 
     let result = sql.get_data::<String>(0).unwrap();
@@ -363,7 +348,7 @@ pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, Sql
 pub fn get_checksum_algorithm_id_by_kind(
     db: &Database,
     algorithm: &str,
-) -> Result<Option<i64>, SqlError> {
+) -> Result<Option<i64>, LpmError<SqlError>> {
     let statement = String::from("SELECT id FROM checksum_kinds WHERE kind = ?;");
 
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
@@ -371,9 +356,7 @@ pub fn get_checksum_algorithm_id_by_kind(
     try_bind_val!(sql, 1, algorithm);
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!(
-            "Error SELECT query on \"checksum_kinds\" table."
-        ))
+        simple_e_fmt!("Error SELECT query on \"checksum_kinds\" table.")
     );
 
     let result = sql.get_data::<i64>(0).unwrap();
@@ -389,7 +372,7 @@ pub fn insert_pkg_tags(
     db: &Database,
     pkg_id: i64,
     tags: Vec<String>,
-) -> Result<SqlitePrimaryResult, SqlError> {
+) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
     for tag in tags {
         let statement = String::from(
             "
@@ -404,7 +387,7 @@ pub fn insert_pkg_tags(
         try_bind_val!(sql, 2, pkg_id);
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!("Error on inserting package tag \"{}\".", tag))
+            simple_e_fmt!("Error on inserting package tag \"{}\".", tag)
         );
         sql.kill();
     }
@@ -415,7 +398,7 @@ pub fn insert_pkg_tags(
 pub fn insert_pkg_kinds(
     db: &Database,
     kinds: Vec<String>,
-) -> Result<SqlitePrimaryResult, SqlError> {
+) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
     transaction_op(db, Transaction::Begin)?;
 
     for kind in kinds {
@@ -431,10 +414,7 @@ pub fn insert_pkg_kinds(
         try_bind_val!(sql, 1, &*kind);
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!(
-                "Error on inserting package kind \"{}\".",
-                kind
-            ))
+            simple_e_fmt!("Error on inserting package kind \"{}\".", kind)
         );
         sql.kill();
     }
@@ -445,7 +425,7 @@ pub fn insert_pkg_kinds(
 pub fn delete_pkg_kinds(
     db: &Database,
     kinds: Vec<String>,
-) -> Result<SqlitePrimaryResult, SqlError> {
+) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
     transaction_op(db, Transaction::Begin)?;
 
     for kind in kinds {
@@ -460,10 +440,7 @@ pub fn delete_pkg_kinds(
         try_bind_val!(sql, 1, &*kind);
         try_execute_prepared!(
             sql,
-            Some(simple_e_fmt!(
-                "Error on deleting package kind \"{}\".",
-                kind
-            ))
+            simple_e_fmt!("Error on deleting package kind \"{}\".", kind)
         );
         sql.kill();
     }

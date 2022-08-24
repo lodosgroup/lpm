@@ -1,5 +1,6 @@
 use ehandle::{
-    db::{MigrationError, SqlError, SqlErrorKind},
+    db::{SqlError, SqlErrorKind},
+    lpm::LpmError,
     simple_e_fmt, try_execute_prepared, ErrorCommons,
 };
 use migrations::start_db_migrations;
@@ -13,7 +14,7 @@ pub const DB_PATH: &str = "/var/lib/lodpm/lpm.db";
 pub const DB_PATH: &str = "lpm.db";
 
 #[inline(always)]
-pub fn init_db() -> Result<(), MigrationError> {
+pub fn init_db() -> Result<(), LpmError<SqlError>> {
     start_db_migrations()
 }
 
@@ -22,7 +23,7 @@ pub const SQL_NO_CALLBACK_FN: Option<
 > = None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>;
 
 #[allow(clippy::disallowed_methods)]
-pub fn enable_foreign_keys(db: &Database) -> Result<(), SqlError> {
+pub fn enable_foreign_keys(db: &Database) -> Result<(), LpmError<SqlError>> {
     db.execute(
         String::from("PRAGMA foreign_keys = on;"),
         SQL_NO_CALLBACK_FN,
@@ -31,16 +32,13 @@ pub fn enable_foreign_keys(db: &Database) -> Result<(), SqlError> {
     Ok(())
 }
 
-fn get_last_insert_row_id(db: &Database) -> Result<i64, SqlError> {
+fn get_last_insert_row_id(db: &Database) -> Result<i64, LpmError<SqlError>> {
     let statement = String::from("SELECT LAST_INSERT_ROWID();");
     let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN).unwrap();
 
     try_execute_prepared!(
         sql,
-        Some(simple_e_fmt!(
-            "Failed executing SQL statement `{}`.",
-            statement
-        ))
+        simple_e_fmt!("Failed executing SQL statement `{}`.", statement)
     );
 
     let data = sql.get_data::<i64>(0).unwrap();
@@ -55,7 +53,6 @@ pub enum Transaction {
 }
 
 impl Transaction {
-    #[inline(always)]
     fn to_statement(&self) -> String {
         match self {
             Transaction::Begin => String::from("BEGIN;"),
@@ -65,21 +62,14 @@ impl Transaction {
     }
 }
 
-#[inline(always)]
 pub fn transaction_op(
     db: &Database,
     transaction: Transaction,
-) -> Result<SqlitePrimaryResult, SqlError> {
+) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
     #[allow(clippy::disallowed_methods)]
     match db.execute(transaction.to_statement(), SQL_NO_CALLBACK_FN)? {
         SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
-        _ => {
-            return Err(SqlErrorKind::FailedExecuting(Some(simple_e_fmt!(
-                "Failed executing SQL statement `{}`.",
-                transaction.to_statement()
-            )))
-            .throw());
-        }
+        e => Err(SqlErrorKind::FailedExecuting(transaction.to_statement(), e).to_lpm_err()),
     }
 }
 

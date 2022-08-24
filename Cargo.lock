@@ -62,6 +62,7 @@ name = "ehandle"
 version = "0.1.0"
 dependencies = [
  "min-sqlite3-sys",
+ "term",
 ]
 
 [[package]]
@@ -101,6 +102,7 @@ dependencies = [
  "db",
  "ehandle",
  "min-sqlite3-sys",
+ "term",
 ]
 
 [[package]]
@@ -219,6 +221,10 @@ dependencies = [
  "filetime",
  "libc",
 ]
+
+[[package]]
+name = "term"
+version = "0.1.0"
 
 [[package]]
 name = "unicode-ident"

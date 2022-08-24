@@ -1,8 +1,9 @@
 use crate::{
+    lpm::LpmError,
     pkg::{PackageError, PackageErrorKind},
-    ErrorCommons, RuntimeError,
+    ErrorCommons, MainError,
 };
-use min_sqlite3_sys::prelude::MinSqliteWrapperError;
+use min_sqlite3_sys::prelude::{MinSqliteWrapperError, SqlitePrimaryResult};
 
 #[macro_export]
 macro_rules! try_bind_val {
@@ -10,11 +11,13 @@ macro_rules! try_bind_val {
         let status = $sql.bind_val($c_index, $val);
         if status != min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok {
             $sql.kill();
-            return Err(ehandle::db::SqlErrorKind::FailedExecuting(Some(format!(
-                "Raised 'SqlitePrimaryResult::{:?}' error status on binding parameter to SQL query.",
-                status
-            )))
-            .throw()
+
+            return Err(ehandle::db::SqlErrorKind::FailedParameterBinding(
+                $c_index,
+                format!("{:?}", $val),
+                status,
+            )
+            .to_lpm_err()
             .into());
         }
     };
@@ -32,8 +35,8 @@ macro_rules! try_execute_prepared {
             }
             _ => {
                 $sql.kill();
-                return Err(ehandle::db::SqlErrorKind::FailedExecuting($err)
-                    .throw()
+                return Err(ehandle::db::SqlErrorKind::FailedPreparedExecuting($err)
+                    .to_lpm_err()
                     .into());
             }
         }
@@ -42,12 +45,12 @@ macro_rules! try_execute_prepared {
 
 #[macro_export]
 macro_rules! try_execute {
-    ($db: expr, $statement: expr, $err: expr) => {
-        match $db.execute($statement, crate::SQL_NO_CALLBACK_FN)? {
+    ($db: expr, $statement: expr) => {
+        match $db.execute($statement.clone(), super::SQL_NO_CALLBACK_FN)? {
             min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok => SqlitePrimaryResult::Ok,
-            _ => {
-                return Err(ehandle::db::SqlErrorKind::FailedExecuting($err)
-                    .throw()
+            e => {
+                return Err(ehandle::db::SqlErrorKind::FailedExecuting($statement, e)
+                    .to_lpm_err()
                     .into());
             }
         }
@@ -57,160 +60,114 @@ macro_rules! try_execute {
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum MigrationErrorKind {
-    VersionCouldNotSet(Option<String>),
-    SqliteWrapperError(Option<String>),
-    FailedExecuting(Option<String>),
-}
-
-impl ErrorCommons<MigrationError> for MigrationErrorKind {
-    #[inline(always)]
-    fn as_str(&self) -> &str {
-        match self {
-            Self::VersionCouldNotSet(_) => "VersionCouldNotSet",
-            Self::FailedExecuting(_) => "FailedExecuting",
-            Self::SqliteWrapperError(_) => "SqliteWrapperError",
-        }
-    }
-
-    #[inline(always)]
-    fn throw(&self) -> MigrationError {
-        match self {
-            Self::VersionCouldNotSet(ref err) => MigrationError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from("Migration version could not set."))
-                    .to_owned(),
-            },
-            Self::SqliteWrapperError(ref err) => MigrationError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "An error has been occur from Sqlite wrapper library.",
-                    ))
-                    .to_owned(),
-            },
-            Self::FailedExecuting(ref err) => MigrationError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "Sqlite has returned the error status as a response of the SQL query.",
-                    ))
-                    .to_owned(),
-            },
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct MigrationError {
-    pub kind: MigrationErrorKind,
-    pub reason: String,
+    VersionCouldNotSet,
 }
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum SqlErrorKind {
-    FailedExecuting(Option<String>),
-    FailedParameterBinding(Option<String>),
+    FailedExecuting(String, SqlitePrimaryResult),
+    FailedPreparedExecuting(String),
+    FailedParameterBinding(usize, String, SqlitePrimaryResult),
+    WrapperLibError(String, String),
+    MigrationError(MigrationErrorKind),
 }
 
 #[derive(Debug)]
 pub struct SqlError {
-    pub kind: SqlErrorKind,
-    pub reason: String,
+    kind: String,
+    reason: String,
 }
 
 impl ErrorCommons<SqlError> for SqlErrorKind {
-    #[inline(always)]
     fn as_str(&self) -> &str {
         match self {
-            Self::FailedExecuting(_) => "FailedExecuting",
-            Self::FailedParameterBinding(_) => "FailedParameterBinding",
+            Self::FailedExecuting(..) => "FailedExecuting",
+            Self::FailedPreparedExecuting(_) => "FailedPreparedExecuting",
+            Self::FailedParameterBinding(..) => "FailedParameterBinding",
+            SqlErrorKind::WrapperLibError(..) => "WrapperLibError",
+            SqlErrorKind::MigrationError(_) => "MigrationError",
         }
     }
 
-    #[inline(always)]
-    fn throw(&self) -> SqlError {
+    fn to_err(&self) -> SqlError {
         match self {
-            Self::FailedExecuting(ref err) => SqlError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "Sqlite has returned the error status as a response of the SQL query.",
-                    ))
-                    .to_owned(),
+            Self::FailedExecuting(ref statement, ref status) => SqlError {
+                kind: self.as_str().to_owned(),
+                reason: format!(
+                    "Failed executing '{}' statement. Error status: {:?}.",
+                    statement, status
+                ),
             },
-            Self::FailedParameterBinding(ref err) => SqlError {
-                kind: self.clone(),
-                reason: err
-                    .as_ref()
-                    .unwrap_or(&String::from(
-                        "SQLite returned raised an error on binding parameter to SQL query.",
-                    ))
-                    .to_owned(),
+            Self::FailedPreparedExecuting(ref error) => SqlError {
+                kind: self.as_str().to_owned(),
+                reason: error.clone(),
+            },
+            Self::FailedParameterBinding(ref param_index, ref param_value, ref result) => {
+                SqlError {
+                    kind: self.as_str().to_owned(),
+                    reason: format!(
+                        "Failed binding '{}' value on {} index. Error: {:?}",
+                        param_value, param_index, result
+                    ),
+                }
+            }
+            SqlErrorKind::WrapperLibError(ref kind, ref reason) => SqlError {
+                kind: self.as_str().to_owned(),
+                reason: format!(
+                    "'{}' occurred from the wrapper library. Reason: '{}'.",
+                    kind, reason
+                ),
+            },
+            SqlErrorKind::MigrationError(ref error) => SqlError {
+                kind: self.as_str().to_owned(),
+                reason: format!(
+                    "Migration process could not be completed. Error: '{:?}'",
+                    error
+                ),
             },
         }
     }
-}
 
-impl From<MigrationError> for RuntimeError {
-    #[inline(always)]
-    fn from(error: MigrationError) -> Self {
-        RuntimeError {
-            kind: error.kind.as_str().to_string(),
-            reason: error.reason,
-        }
+    #[inline]
+    fn to_lpm_err(&self) -> LpmError<SqlError> {
+        LpmError::new(self.to_err())
     }
 }
 
-impl From<MinSqliteWrapperError<'_>> for RuntimeError {
-    #[inline(always)]
+impl From<MinSqliteWrapperError<'_>> for LpmError<MainError> {
+    #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        RuntimeError {
+        LpmError::new(MainError {
             kind: error.kind.to_string(),
             reason: error.reason,
-        }
+        })
     }
 }
 
-impl From<MinSqliteWrapperError<'_>> for MigrationError {
-    #[inline(always)]
+impl From<LpmError<SqlError>> for LpmError<MainError> {
+    #[track_caller]
+    fn from(error: LpmError<SqlError>) -> Self {
+        let e = MainError {
+            kind: error.error_type.kind.as_str().to_string(),
+            reason: error.error_type.reason,
+        };
+
+        LpmError::new_with_traces(e, error.chain)
+    }
+}
+
+impl From<LpmError<SqlError>> for LpmError<PackageError> {
+    #[track_caller]
+    fn from(error: LpmError<SqlError>) -> Self {
+        let e = PackageErrorKind::DbOperationFailed(error.error_type.reason).to_err();
+        LpmError::new_with_traces(e, error.chain)
+    }
+}
+
+impl From<MinSqliteWrapperError<'_>> for LpmError<SqlError> {
+    #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        MigrationErrorKind::SqliteWrapperError(Some(error.reason)).throw()
-    }
-}
-
-impl From<SqlError> for RuntimeError {
-    #[inline(always)]
-    fn from(error: SqlError) -> Self {
-        RuntimeError {
-            kind: error.kind.as_str().to_string(),
-            reason: error.reason,
-        }
-    }
-}
-
-impl From<SqlError> for PackageError {
-    #[inline(always)]
-    fn from(error: SqlError) -> Self {
-        PackageErrorKind::InstallationFailed(Some(error.reason)).throw()
-    }
-}
-
-impl From<SqlError> for MigrationError {
-    #[inline(always)]
-    fn from(error: SqlError) -> Self {
-        MigrationErrorKind::FailedExecuting(Some(error.reason)).throw()
-    }
-}
-
-impl From<MinSqliteWrapperError<'_>> for SqlError {
-    #[inline(always)]
-    fn from(error: MinSqliteWrapperError) -> Self {
-        SqlErrorKind::FailedExecuting(Some(error.reason)).throw()
+        SqlErrorKind::WrapperLibError(error.kind.to_string(), error.reason).to_lpm_err()
     }
 }
