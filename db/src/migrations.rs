@@ -31,15 +31,13 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), LpmError<Mig
 
     match db.execute(statement.clone(), super::SQL_NO_CALLBACK_FN) {
         Ok(_) => Ok(()),
-        Err(_) => {
-            return Err(LpmError::new(
-                MigrationErrorKind::VersionCouldNotSet(Some(simple_e_fmt!(
-                    "Failed executing SQL statement `{}`.",
-                    statement
-                )))
-                .throw(),
-            ));
-        }
+        Err(_) => Err(LpmError::new(
+            MigrationErrorKind::VersionCouldNotSet(Some(simple_e_fmt!(
+                "Failed executing SQL statement `{}`.",
+                statement
+            )))
+            .throw(),
+        )),
     }
 }
 

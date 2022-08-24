@@ -7,7 +7,6 @@ macro_rules! simple_e_fmt {
 pub trait ErrorCommons<T> {
     fn as_str(&self) -> &str;
     fn throw(&self) -> T;
-    fn reason(&self) -> String;
 }
 
 #[non_exhaustive]
@@ -37,16 +36,11 @@ impl ErrorCommons<MainError> for BuildtimeErrorKind {
             },
         }
     }
-
-    #[inline(always)]
-    fn reason(&self) -> String {
-        self.throw().reason
-    }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct MainError {
-    #[allow(dead_code)]
     kind: String,
     reason: String,
 }

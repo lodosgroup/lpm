@@ -104,11 +104,6 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
             },
         }
     }
-
-    #[inline(always)]
-    fn reason(&self) -> String {
-        self.throw().reason
-    }
 }
 
 #[derive(Debug)]

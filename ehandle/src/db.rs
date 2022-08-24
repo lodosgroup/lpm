@@ -44,7 +44,7 @@ macro_rules! try_execute_prepared {
 #[macro_export]
 macro_rules! try_execute {
     ($db: expr, $statement: expr, $err: expr) => {
-        match $db.execute($statement, crate::SQL_NO_CALLBACK_FN)? {
+        match $db.execute($statement, super::SQL_NO_CALLBACK_FN)? {
             min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok => SqlitePrimaryResult::Ok,
             _ => {
                 return Err(ehandle::lpm::LpmError::new(
@@ -102,11 +102,6 @@ impl ErrorCommons<MigrationError> for MigrationErrorKind {
             },
         }
     }
-
-    #[inline(always)]
-    fn reason(&self) -> String {
-        self.throw().reason
-    }
 }
 
 #[derive(Debug)]
@@ -157,11 +152,6 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
                     .to_owned(),
             },
         }
-    }
-
-    #[inline(always)]
-    fn reason(&self) -> String {
-        self.throw().reason
     }
 }
 

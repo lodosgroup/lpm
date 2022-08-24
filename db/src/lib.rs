@@ -72,15 +72,13 @@ pub fn transaction_op(
     #[allow(clippy::disallowed_methods)]
     match db.execute(transaction.to_statement(), SQL_NO_CALLBACK_FN)? {
         SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
-        _ => {
-            return Err(LpmError::new(
-                SqlErrorKind::FailedExecuting(Some(simple_e_fmt!(
-                    "Failed executing SQL statement `{}`.",
-                    transaction.to_statement()
-                )))
-                .throw(),
-            ));
-        }
+        _ => Err(LpmError::new(
+            SqlErrorKind::FailedExecuting(Some(simple_e_fmt!(
+                "Failed executing SQL statement `{}`.",
+                transaction.to_statement()
+            )))
+            .throw(),
+        )),
     }
 }
 
