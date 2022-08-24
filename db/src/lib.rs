@@ -69,9 +69,7 @@ pub fn transaction_op(
     #[allow(clippy::disallowed_methods)]
     match db.execute(transaction.to_statement(), SQL_NO_CALLBACK_FN)? {
         SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
-        e => Err(LpmError::new(
-            SqlErrorKind::FailedExecuting(transaction.to_statement(), e).throw(),
-        )),
+        e => Err(SqlErrorKind::FailedExecuting(transaction.to_statement(), e).to_lpm_err()),
     }
 }
 

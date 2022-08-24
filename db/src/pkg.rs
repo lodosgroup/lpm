@@ -28,9 +28,9 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         let meta_dir = &self.meta_dir.as_ref().unwrap();
 
         if is_package_exists(db, &meta_dir.meta.name)? {
-            return Err(LpmError::new(
-                PackageErrorKind::AlreadyInstalled(meta_dir.meta.name.clone()).throw(),
-            ));
+            return Err(
+                PackageErrorKind::AlreadyInstalled(meta_dir.meta.name.clone()).to_lpm_err(),
+            );
         }
 
         transaction_op(db, Transaction::Begin)?;
@@ -104,9 +104,9 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             sql.kill();
             transaction_op(db, Transaction::Rollback)?;
 
-            return Err(LpmError::new(
-                PackageErrorKind::InstallationFailed(meta_dir.meta.name.clone()).throw(),
-            ));
+            return Err(
+                PackageErrorKind::InstallationFailed(meta_dir.meta.name.clone()).to_lpm_err(),
+            );
         }
 
         let pkg_id = super::get_last_insert_row_id(db)?;
@@ -142,9 +142,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         if id == 0 {
             sql.kill();
-            return Err(LpmError::new(
-                PackageErrorKind::DoesNotExists(name.to_string()).throw(),
-            ));
+            return Err(PackageErrorKind::DoesNotExists(name.to_string()).to_lpm_err());
         }
 
         let version = VersionStruct {
@@ -262,10 +260,10 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmErro
     for file in files {
         let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm)?;
         if checksum_id.is_none() {
-            return Err(LpmError::new(
-                PackageErrorKind::UnsupportedChecksumAlgorithm(file.checksum_algorithm.clone())
-                    .throw(),
-            ));
+            return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(
+                file.checksum_algorithm.clone(),
+            )
+            .to_lpm_err());
         }
 
         let file_path = Path::new(&file.path);

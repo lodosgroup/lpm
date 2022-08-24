@@ -1,3 +1,5 @@
+use lpm::LpmError;
+
 #[macro_export]
 macro_rules! simple_e_fmt {
     ($format: expr, $($args: tt)+) => { format!($format, $($args)+) };
@@ -6,7 +8,9 @@ macro_rules! simple_e_fmt {
 
 pub trait ErrorCommons<T> {
     fn as_str(&self) -> &str;
-    fn throw(&self) -> T;
+    fn to_err(&self) -> T;
+    #[track_caller]
+    fn to_lpm_err(&self) -> LpmError<T>;
 }
 
 #[non_exhaustive]
@@ -23,7 +27,7 @@ impl ErrorCommons<MainError> for BuildtimeErrorKind {
         }
     }
 
-    fn throw(&self) -> MainError {
+    fn to_err(&self) -> MainError {
         match self {
             Self::UnsupportedPlatform(ref err) => MainError {
                 kind: self.as_str().to_string(),
@@ -35,6 +39,11 @@ impl ErrorCommons<MainError> for BuildtimeErrorKind {
                     .to_owned(),
             },
         }
+    }
+
+    #[inline]
+    fn to_lpm_err(&self) -> LpmError<MainError> {
+        LpmError::new(self.to_err())
     }
 }
 

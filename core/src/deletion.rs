@@ -21,10 +21,9 @@ impl<'a> DeletionTasks for LodPkg<'a> {
             Err(_) => {
                 transaction_op(&db, Transaction::Rollback)?;
 
-                return Err(LpmError::new(
-                    PackageErrorKind::DeletionFailed(meta_dir.meta.name.clone()).throw(),
-                )
-                .into());
+                return Err(PackageErrorKind::DeletionFailed(meta_dir.meta.name.clone())
+                    .to_lpm_err()
+                    .into());
             }
         };
 

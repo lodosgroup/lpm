@@ -31,7 +31,7 @@ impl ChecksumKind {
             "md5" => Ok(ChecksumKind::Md5),
             "sha256" => Ok(ChecksumKind::Sha256),
             "sha512" => Ok(ChecksumKind::Sha512),
-            _ => Err(PackageErrorKind::UnsupportedChecksumAlgorithm(kind.to_string()).throw()),
+            _ => Err(PackageErrorKind::UnsupportedChecksumAlgorithm(kind.to_string()).to_err()),
         }
     }
 }
@@ -45,10 +45,10 @@ impl<'a> ValidationTasks for LodPkg<'a> {
         if let Some(meta_dir) = &self.meta_dir {
             // check architecture compatibility
             if meta_dir.meta.arch != NO_ARCH && meta_dir.meta.arch != SYSTEM_ARCH {
-                return Err(LpmError::new(
-                    PackageErrorKind::UnsupportedPackageArchitecture(meta_dir.meta.arch.clone())
-                        .throw(),
+                return Err(PackageErrorKind::UnsupportedPackageArchitecture(
+                    meta_dir.meta.arch.clone(),
                 )
+                .to_lpm_err()
                 .into());
             }
 
@@ -77,13 +77,13 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmErr
             };
 
             if file_hash.ne(&file.checksum) {
-                return Err(LpmError::new(PackageErrorKind::InvalidPackageFiles.throw()).into());
+                return Err(PackageErrorKind::InvalidPackageFiles.to_lpm_err().into());
             }
         } else {
-            return Err(LpmError::new(
-                PackageErrorKind::UnsupportedChecksumAlgorithm(file.checksum_algorithm.clone())
-                    .throw(),
+            return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(
+                file.checksum_algorithm.clone(),
             )
+            .to_lpm_err()
             .into());
         }
     }

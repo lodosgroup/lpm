@@ -30,59 +30,64 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
         }
     }
 
-    fn throw(&self) -> PackageError {
+    fn to_err(&self) -> PackageError {
         match self {
             Self::InvalidPackageFiles => PackageError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: String::from(
                     "According to the checksum file, the package files are not valid.",
                 ),
             },
             Self::UnsupportedChecksumAlgorithm(ref algorithm) => PackageError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!("Checksum algorithm '{}' is not supported.", algorithm),
             },
             Self::UnsupportedPackageArchitecture(ref arch) => PackageError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!(
                     "The package you are trying to install is built for '{}' architecture.",
                     arch
                 ),
             },
             Self::InstallationFailed(ref package) => PackageError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!(
                     "Installation process of '{}' package has been failed.",
                     package
                 ),
             },
             Self::DeletionFailed(ref package) => PackageError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!("Deletion process of '{}' package has been failed.", package),
             },
             Self::AlreadyInstalled(ref package) => PackageError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!("Package '{}' already installed on your machine.", package),
             },
             Self::DoesNotExists(ref package) => PackageError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!("Package '{}' is not installed in the system.", package),
             },
             Self::UnrecognizedRepository(ref repository) => PackageError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: format!("Repository '{}' in the package you'r installing is not defined in your system.", repository)
             },
             Self::DbOperationFailed(ref error) => PackageError {
-                kind: self.clone(),
+                kind: self.as_str().to_owned(),
                 reason: error.to_string()
             },
         }
+    }
+
+    #[inline]
+    fn to_lpm_err(&self) -> LpmError<PackageError> {
+        LpmError::new(self.to_err())
     }
 }
 
 #[derive(Debug)]
 pub struct PackageError {
-    kind: PackageErrorKind,
+    kind: String,
     reason: String,
 }
 
@@ -101,6 +106,6 @@ impl From<LpmError<PackageError>> for LpmError<MainError> {
 impl From<MinSqliteWrapperError<'_>> for LpmError<PackageError> {
     #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        LpmError::new(PackageErrorKind::DbOperationFailed(error.reason).throw())
+        PackageErrorKind::DbOperationFailed(error.reason).to_lpm_err()
     }
 }

@@ -12,14 +12,12 @@ macro_rules! try_bind_val {
         if status != min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok {
             $sql.kill();
 
-            return Err(ehandle::lpm::LpmError::new(
-                ehandle::db::SqlErrorKind::FailedParameterBinding(
-                    $c_index,
-                    format!("{:?}", $val),
-                    status,
-                )
-                .throw(),
+            return Err(ehandle::db::SqlErrorKind::FailedParameterBinding(
+                $c_index,
+                format!("{:?}", $val),
+                status,
             )
+            .to_lpm_err()
             .into());
         }
     };
@@ -37,10 +35,9 @@ macro_rules! try_execute_prepared {
             }
             _ => {
                 $sql.kill();
-                return Err(ehandle::lpm::LpmError::new(
-                    ehandle::db::SqlErrorKind::FailedPreparedExecuting($err).throw(),
-                )
-                .into());
+                return Err(ehandle::db::SqlErrorKind::FailedPreparedExecuting($err)
+                    .to_lpm_err()
+                    .into());
             }
         }
     };
@@ -52,10 +49,9 @@ macro_rules! try_execute {
         match $db.execute($statement.clone(), super::SQL_NO_CALLBACK_FN)? {
             min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok => SqlitePrimaryResult::Ok,
             e => {
-                return Err(ehandle::lpm::LpmError::new(
-                    ehandle::db::SqlErrorKind::FailedExecuting($statement, e).throw(),
-                )
-                .into());
+                return Err(ehandle::db::SqlErrorKind::FailedExecuting($statement, e)
+                    .to_lpm_err()
+                    .into());
             }
         }
     };
@@ -94,7 +90,7 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
         }
     }
 
-    fn throw(&self) -> SqlError {
+    fn to_err(&self) -> SqlError {
         match self {
             Self::FailedExecuting(ref statement, ref status) => SqlError {
                 kind: self.as_str().to_owned(),
@@ -132,6 +128,11 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
             },
         }
     }
+
+    #[inline]
+    fn to_lpm_err(&self) -> LpmError<SqlError> {
+        LpmError::new(self.to_err())
+    }
 }
 
 impl From<MinSqliteWrapperError<'_>> for LpmError<MainError> {
@@ -159,7 +160,7 @@ impl From<LpmError<SqlError>> for LpmError<MainError> {
 impl From<LpmError<SqlError>> for LpmError<PackageError> {
     #[track_caller]
     fn from(error: LpmError<SqlError>) -> Self {
-        let e = PackageErrorKind::DbOperationFailed(error.error_type.reason).throw();
+        let e = PackageErrorKind::DbOperationFailed(error.error_type.reason).to_err();
         LpmError::new_with_traces(e, error.chain)
     }
 }
@@ -167,6 +168,6 @@ impl From<LpmError<SqlError>> for LpmError<PackageError> {
 impl From<MinSqliteWrapperError<'_>> for LpmError<SqlError> {
     #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        LpmError::new(SqlErrorKind::WrapperLibError(error.kind.to_string(), error.reason).throw())
+        SqlErrorKind::WrapperLibError(error.kind.to_string(), error.reason).to_lpm_err()
     }
 }

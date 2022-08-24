@@ -31,9 +31,9 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), LpmError<Sql
 
     match db.execute(statement, super::SQL_NO_CALLBACK_FN) {
         Ok(_) => Ok(()),
-        Err(_) => Err(LpmError::new(
-            SqlErrorKind::MigrationError(MigrationErrorKind::VersionCouldNotSet).throw(),
-        )),
+        Err(_) => {
+            Err(SqlErrorKind::MigrationError(MigrationErrorKind::VersionCouldNotSet).to_lpm_err())
+        }
     }
 }
 
