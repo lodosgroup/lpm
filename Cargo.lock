@@ -46,6 +46,7 @@ dependencies = [
  "hash",
  "min-sqlite3-sys",
  "tar",
+ "term",
  "xz2",
 ]
 
@@ -56,6 +57,7 @@ dependencies = [
  "common",
  "ehandle",
  "min-sqlite3-sys",
+ "term",
 ]
 
 [[package]]

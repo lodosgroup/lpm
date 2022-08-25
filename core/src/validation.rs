@@ -8,6 +8,7 @@ use ehandle::{
 };
 use hash::{md5, sha256, sha512};
 use std::{fs, io::Read};
+use term::debug;
 
 #[non_exhaustive]
 enum ChecksumKind {
@@ -43,6 +44,7 @@ pub trait ValidationTasks {
 impl<'a> ValidationTasks for LodPkg<'a> {
     fn start_validations(&self) -> Result<(), LpmError<MainError>> {
         if let Some(meta_dir) = &self.meta_dir {
+            // TODO
             // check architecture compatibility
             if meta_dir.meta.arch != NO_ARCH && meta_dir.meta.arch != SYSTEM_ARCH {
                 return Err(PackageErrorKind::UnsupportedPackageArchitecture(
@@ -62,13 +64,20 @@ impl<'a> ValidationTasks for LodPkg<'a> {
 fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmError<MainError>> {
     for file in &files.0 {
         // Read file as byte-array
-        let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path)?;
+        let f_path = dir_path.clone() + "/program/" + &file.path;
+        debug!("Reading {} in byte format", &f_path);
+        let mut f_reader = fs::File::open(&f_path)?;
         let mut buffer = Vec::new();
         f_reader.read_to_end(&mut buffer)?;
 
         if let Ok(checksum_algorithm) =
             ChecksumKind::from_str(file.checksum_algorithm.to_lowercase().as_str())
         {
+            debug!(
+                "Checksum algorithm of {} is specified as {}",
+                &f_path,
+                checksum_algorithm.as_str()
+            );
             // Generate hash with using same algorithm of pkg checksum
             let file_hash = match checksum_algorithm {
                 ChecksumKind::Md5 => hash::digest_to_hex_string(&md5::digest(&buffer)),
@@ -76,6 +85,10 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmErr
                 ChecksumKind::Sha512 => hash::digest_to_hex_string(&sha512::digest(&buffer)),
             };
 
+            debug!(
+                "Checking checksum value of {} if it's corrupted or not",
+                &f_path
+            );
             if file_hash.ne(&file.checksum) {
                 return Err(PackageErrorKind::InvalidPackageFiles.to_lpm_err().into());
             }

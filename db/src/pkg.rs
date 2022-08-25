@@ -13,6 +13,7 @@ use ehandle::{
 };
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
+use term::{debug, info};
 
 pub trait LodPkgCoreDbOps {
     fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, LpmError<PackageError>>;
@@ -133,6 +134,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     }
 
     fn from_db<'lpkg>(db: &Database, name: &str) -> Result<LodPkg<'lpkg>, LpmError<PackageError>> {
+        info!("Loading '{}' from database..", name);
         let statement = String::from("SELECT * FROM packages WHERE name = ?;");
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
         try_bind_val!(sql, 1, name);
@@ -220,6 +222,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             files,
         };
 
+        info!("Package '{}' successfully loaded.", name);
         Ok(LodPkg {
             path: None,
             meta_dir: Some(meta_dir),
@@ -403,6 +406,7 @@ pub fn insert_pkg_kinds(
     transaction_op(db, Transaction::Begin)?;
 
     for kind in kinds {
+        debug!("Inserting kind {}", kind);
         let statement = String::from(
             "
                 INSERT INTO package_kinds
@@ -415,7 +419,7 @@ pub fn insert_pkg_kinds(
         try_bind_val!(sql, 1, &*kind);
         try_execute_prepared!(
             sql,
-            simple_e_fmt!("Error on inserting package kind \"{}\".", kind)
+            simple_e_fmt!("Error on inserting package kind '{}'.", kind)
         );
         sql.kill();
     }
@@ -430,6 +434,7 @@ pub fn delete_pkg_kinds(
     transaction_op(db, Transaction::Begin)?;
 
     for kind in kinds {
+        debug!("Deleting kind {}", kind);
         let statement = String::from(
             "
                 DELETE FROM package_kinds

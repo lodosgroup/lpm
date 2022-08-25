@@ -10,6 +10,7 @@ use std::{
     path::Path,
     str::from_utf8,
 };
+use term::debug;
 use xz2::read::XzDecoder;
 
 pub trait ExtractionTasks {
@@ -56,8 +57,11 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
             output_path += "/";
             output_path += filename;
 
+            debug!("Extracting {} -> {}", filename, output_path);
+
             let output_path = Path::new(&output_path).to_path_buf();
             let mut output_file = File::create(&output_path)?;
+
             copy(&mut entry, &mut output_file)?;
         }
 
@@ -68,12 +72,14 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
         let pkg_dir = self.get_pkg_output_path();
 
         let tar_file_path = pkg_dir.clone() + "/meta.tar.xz";
-        let tar_file = File::open(tar_file_path)?;
+        let tar_file = File::open(&tar_file_path)?;
+        debug!("Extracting {} -> {}", tar_file_path, pkg_dir);
         let mut archive = tar::Archive::new(XzDecoder::new(tar_file));
         archive.unpack(&pkg_dir)?;
 
         let tar_file_path = pkg_dir.clone() + "/program.tar.xz";
-        let tar_file = File::open(tar_file_path)?;
+        let tar_file = File::open(&tar_file_path)?;
+        debug!("Extracting {} -> {}", tar_file_path, pkg_dir);
         let mut archive = tar::Archive::new(XzDecoder::new(tar_file));
         archive.unpack(&pkg_dir)?;
 
@@ -86,7 +92,12 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
         let meta_dir = pkg_dir.clone() + "/meta";
         let system_json = pkg_dir + "/system.json";
 
+        debug!(
+            "Reading meta data from {}/meta.json and {}/files.json",
+            &meta_dir, &meta_dir
+        );
         self.meta_dir = Some(MetaDir::new(&meta_dir));
+        debug!("Reading system data from {}", &system_json);
         self.system = Some(System::deserialize(&system_json));
     }
 

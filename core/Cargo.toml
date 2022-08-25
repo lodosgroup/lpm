@@ -15,3 +15,4 @@ hash = { path = "../hash" }
 ehandle = { path = "../ehandle" }
 common = { path = "../common" }
 db = { path = "../db" }
+term = { path = "../term" }
