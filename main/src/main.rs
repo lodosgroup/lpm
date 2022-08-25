@@ -6,36 +6,13 @@ use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
 use min_sqlite3_sys::prelude::*;
 use std::env;
 use std::path::Path;
-use term::error;
 
 #[allow(unused_imports)]
 use ehandle::{lpm::LpmError, BuildtimeErrorKind, MainError};
 
-macro_rules! try_or_error {
-    ($fn: expr) => {
-        match $fn {
-            Result::Ok(val) => val,
-            Result::Err(err) => {
-                error!("{:?}", err);
-                // Terminate app with panic code
-                process::exit(101);
-            }
-        }
-    };
-}
-
-macro_rules! log_and_panic {
-    ($log: expr) => {
-        error!($log);
-
-        // Terminate app with panic code
-        process::exit(101);
-    };
-}
-
 #[cfg(target_os = "linux")]
 fn main() {
-    use std::process;
+    use common::{log_and_panic, try_or_error};
 
     try_or_error!(init_db());
 
@@ -44,10 +21,11 @@ fn main() {
         match arg {
             "--install" => {
                 let mut pkg = LodPkg::from_fs(args.get(2).expect("Package path is missing."));
+                // info!("");
                 try_or_error!(pkg.start_installation());
             }
             "--delete" => {
-                let db = Database::open(Path::new(DB_PATH)).unwrap();
+                let db = Database::open(Path::new(DB_PATH))?;
                 let pkg = try_or_error!(LodPkg::from_db(
                     &db,
                     args.get(2).expect("Package name is missing.")

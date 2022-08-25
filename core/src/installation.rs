@@ -65,7 +65,7 @@ impl<'a> InstallationTasks for LodPkg<'a> {
 
         for file in &self.meta_dir.as_ref().unwrap().files.0 {
             let destination_path = Path::new("/").join(&file.path);
-            create_dir_all(destination_path.parent().unwrap()).unwrap();
+            create_dir_all(destination_path.parent().unwrap())?;
 
             fs::copy(source_path.clone() + &file.path, destination_path)?;
         }

@@ -63,15 +63,21 @@ pub fn build_log(mode: OutputMode, log: String) -> String {
 }
 
 pub fn log_to_stderr(log: &[u8]) {
-    io::stderr()
-        .write_all(log)
-        .expect("writing to stderr failed");
+    if io::stderr().write_all(log).is_err() {
+        log_to_stderr(
+            build_log(OutputMode::ERROR, String::from("writing to stderr failed")).as_bytes(),
+        );
+        std::process::exit(101);
+    }
 }
 
 pub fn log_to_stdout(log: &[u8]) {
-    io::stdout()
-        .write_all(log)
-        .expect("writing to stdout failed");
+    if io::stdout().write_all(log).is_err() {
+        log_to_stderr(
+            build_log(OutputMode::ERROR, String::from("writing to stdout failed")).as_bytes(),
+        );
+        std::process::exit(101);
+    }
 }
 
 #[cfg(debug_assertions)]

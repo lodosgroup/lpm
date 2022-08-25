@@ -10,9 +10,12 @@ pub trait DeletionTasks {
 
 impl<'a> DeletionTasks for LodPkg<'a> {
     fn start_deletion(&self) -> Result<(), LpmError<MainError>> {
-        let meta_dir = self.meta_dir.as_ref().expect("Package is not loaded.");
+        let meta_dir = self
+            .meta_dir
+            .as_ref()
+            .ok_or_else(|| PackageErrorKind::MetaDirCouldNotLoad.to_lpm_err())?;
 
-        let db = Database::open(Path::new(DB_PATH)).unwrap();
+        let db = Database::open(Path::new(DB_PATH))?;
         enable_foreign_keys(&db)?;
         transaction_op(&db, Transaction::Begin)?;
 

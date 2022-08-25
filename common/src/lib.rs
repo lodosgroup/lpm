@@ -19,3 +19,27 @@ pub const NO_ARCH: &str = "no-arch";
 pub const SYSTEM_ARCH: &str = "amd64";
 #[cfg(target_arch = "arm")]
 pub const SYSTEM_ARCH: &str = "arm";
+
+#[macro_export]
+macro_rules! try_or_error {
+    ($fn: expr) => {
+        match $fn {
+            Result::Ok(val) => val,
+            Result::Err(err) => {
+                term::error!("{:?}", err);
+                // Terminate app with panic code
+                std::process::exit(101);
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! log_and_panic {
+    ($log: expr) => {
+        term::error!("{}", $log);
+
+        // Terminate app with panic code
+        std::process::exit(101);
+    };
+}

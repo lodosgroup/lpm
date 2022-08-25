@@ -11,19 +11,8 @@ impl From<io::Error> for LpmError<io::Error> {
 impl From<io::Error> for LpmError<MainError> {
     #[track_caller]
     fn from(error: io::Error) -> Self {
-        // Reformat kind value
-        // e.g 'permission denied' value will be converted
-        // into 'PermissionDenied'
-        let words = error.kind().to_string();
-        let words = words.split(' ');
-        let mut kind = String::new();
-        for word in words {
-            let s = word[0..1].to_uppercase() + &word[1..];
-            kind = format!("{}{}", kind, s);
-        }
-
         LpmError::new(MainError {
-            kind,
+            kind: error.kind().to_string(),
             reason: error.to_string(),
         })
     }

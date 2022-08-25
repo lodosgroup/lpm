@@ -1,5 +1,4 @@
 use crate::{enable_foreign_keys, transaction_op, Transaction};
-
 use common::{
     meta::{FileStruct, Meta},
     pkg::{LodPkg, MetaDir},
@@ -25,7 +24,10 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     fn insert_to_db(&self, db: &Database) -> Result<(), LpmError<PackageError>> {
         enable_foreign_keys(db)?;
 
-        let meta_dir = &self.meta_dir.as_ref().unwrap();
+        let meta_dir = self
+            .meta_dir
+            .as_ref()
+            .ok_or_else(|| PackageErrorKind::MetaDirCouldNotLoad.to_lpm_err())?;
 
         if is_package_exists(db, &meta_dir.meta.name)? {
             return Err(
@@ -146,31 +148,31 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         }
 
         let version = VersionStruct {
-            major: sql.get_data(10).unwrap(),
-            minor: sql.get_data(11).unwrap(),
-            patch: sql.get_data(12).unwrap(),
-            tag: sql.get_data(13).unwrap(),
-            readable_format: sql.get_data(14).unwrap(),
+            major: sql.get_data(10)?,
+            minor: sql.get_data(11)?,
+            patch: sql.get_data(12)?,
+            tag: sql.get_data(13)?,
+            readable_format: sql.get_data(14)?,
         };
 
         let mut meta = Meta {
-            name: sql.get_data(1).unwrap(),
-            description: sql.get_data(2).unwrap(),
-            maintainer: sql.get_data(3).unwrap(),
+            name: sql.get_data(1)?,
+            description: sql.get_data(2)?,
+            maintainer: sql.get_data(3)?,
             source_pkg: None,
             repository: None,
-            homepage: sql.get_data(5).unwrap(),
+            homepage: sql.get_data(5)?,
             arch: String::new(),
             kind: String::new(),
-            installed_size: sql.get_data(8).unwrap(),
+            installed_size: sql.get_data(8)?,
             tags: Vec::new(),
             version: version.clone(),
-            license: sql.get_data(9).unwrap(),
+            license: sql.get_data(9)?,
             dependencies: Vec::new(),
             suggestions: Vec::new(),
         };
 
-        let kind_id = sql.get_data::<i64>(7).unwrap();
+        let kind_id = sql.get_data::<i64>(7)?;
         sql.kill();
 
         let kind_statement = String::from("SELECT kind FROM package_kinds WHERE id = ?;");
@@ -201,10 +203,9 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
             let file = FileStruct {
-                path: sql.get_data(2).unwrap(),
-                checksum_algorithm: get_checksum_algorithm_by_id(db, sql.get_data(4).unwrap())
-                    .unwrap(),
-                checksum: sql.get_data(3).unwrap(),
+                path: sql.get_data(2)?,
+                checksum_algorithm: get_checksum_algorithm_by_id(db, sql.get_data(4)?)?,
+                checksum: sql.get_data(3)?,
             };
 
             files.push(file);
@@ -238,7 +239,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         let pkg_name = &self
             .meta_dir
             .as_ref()
-            .expect("Package is not loaded.")
+            .ok_or_else(|| PackageErrorKind::MetaDirCouldNotLoad.to_lpm_err())?
             .meta
             .name;
 
@@ -339,7 +340,7 @@ pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, Lpm
         simple_e_fmt!("Error SELECT query on \"checksum_kinds\" table.")
     );
 
-    let result = sql.get_data::<String>(0).unwrap();
+    let result = sql.get_data::<String>(0)?;
     sql.kill();
 
     Ok(result)
@@ -359,7 +360,7 @@ pub fn get_checksum_algorithm_id_by_kind(
         simple_e_fmt!("Error SELECT query on \"checksum_kinds\" table.")
     );
 
-    let result = sql.get_data::<i64>(0).unwrap();
+    let result = sql.get_data::<i64>(0)?;
     sql.kill();
 
     Ok(Some(result))

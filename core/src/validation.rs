@@ -64,7 +64,7 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmErr
         // Read file as byte-array
         let mut f_reader = fs::File::open(dir_path.clone() + "/program/" + &file.path)?;
         let mut buffer = Vec::new();
-        f_reader.read_to_end(&mut buffer).unwrap();
+        f_reader.read_to_end(&mut buffer)?;
 
         if let Ok(checksum_algorithm) =
             ChecksumKind::from_str(file.checksum_algorithm.to_lowercase().as_str())
