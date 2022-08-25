@@ -34,14 +34,14 @@ pub fn enable_foreign_keys(db: &Database) -> Result<(), LpmError<SqlError>> {
 
 fn get_last_insert_row_id(db: &Database) -> Result<i64, LpmError<SqlError>> {
     let statement = String::from("SELECT LAST_INSERT_ROWID();");
-    let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN).unwrap();
+    let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
 
     try_execute_prepared!(
         sql,
         simple_e_fmt!("Failed executing SQL statement `{}`.", statement)
     );
 
-    let data = sql.get_data::<i64>(0).unwrap();
+    let data = sql.get_data::<i64>(0)?;
     sql.kill();
     Ok(data)
 }

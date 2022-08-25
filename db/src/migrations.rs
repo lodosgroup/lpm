@@ -46,7 +46,7 @@ fn can_migrate(db: &Database, version: i64) -> Result<bool, LpmError<SqlError>> 
         simple_e_fmt!("Failed executing SQL statement `{}`.", statement)
     );
 
-    let db_user_version = sql.clone().get_data::<i64>(0).unwrap();
+    let db_user_version = sql.clone().get_data::<i64>(0)?;
     let result = version > db_user_version;
     sql.kill();
     Ok(result)

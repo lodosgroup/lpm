@@ -48,11 +48,14 @@ macro_rules! impl_parser_tasks {
         $(impl ParserTasks for $t {
             fn deserialize(path: &str) -> Self {
                 let data_as_str =
-                    fs::read_to_string(path).unwrap_or_else(|_| panic!("{} could not found.", path));
+                    fs::read_to_string(path).unwrap_or_else(|_| {
+                        super::log_and_panic!(format!("{} could not found.", path));
+                    });
 
                 serde_json::from_str(&data_as_str)
-                    //.unwrap()
-                    .unwrap_or_else(|_| panic!("Failed to parse package meta."))
+                    .unwrap_or_else(|_| {
+                        super::log_and_panic!("Failed to parse package meta.");
+                    })
             }
         })+
     }

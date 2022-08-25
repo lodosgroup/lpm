@@ -8,6 +8,7 @@ use std::{
     io,
     path::Path,
 };
+use term::{debug, info};
 
 pub trait InstallationTasks {
     fn copy_programs(&self) -> Result<(), LpmError<io::Error>>;
@@ -17,12 +18,16 @@ pub trait InstallationTasks {
 
 impl<'a> InstallationTasks for LodPkg<'a> {
     fn start_installation(&mut self) -> Result<(), LpmError<MainError>> {
+        info!("Extracting..");
         self.start_extraction()?;
+        info!("Validating files..");
         self.start_validations()?;
 
         let db = Database::open(Path::new(DB_PATH))?;
+        info!("Syncing with package database..");
         self.insert_to_db(&db)?;
 
+        info!("Installing package files into system..");
         match self.install_program() {
             Ok(_) => {}
             Err(err) => {
@@ -31,6 +36,7 @@ impl<'a> InstallationTasks for LodPkg<'a> {
             }
         };
 
+        info!("Cleaning temporary files..");
         match self.cleanup() {
             Ok(_) => {}
             Err(err) => {
@@ -48,6 +54,7 @@ impl<'a> InstallationTasks for LodPkg<'a> {
         };
 
         db.close();
+        info!("Installation transaction completed.");
 
         Ok(())
     }
@@ -65,7 +72,13 @@ impl<'a> InstallationTasks for LodPkg<'a> {
 
         for file in &self.meta_dir.as_ref().unwrap().files.0 {
             let destination_path = Path::new("/").join(&file.path);
-            create_dir_all(destination_path.parent().unwrap()).unwrap();
+            create_dir_all(destination_path.parent().unwrap())?;
+
+            debug!(
+                "Copying {} -> {}",
+                source_path.clone() + &file.path,
+                destination_path.display()
+            );
 
             fs::copy(source_path.clone() + &file.path, destination_path)?;
         }

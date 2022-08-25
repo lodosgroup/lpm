@@ -8,11 +8,13 @@ pub enum PackageErrorKind {
     UnsupportedPackageArchitecture(String),
     UnsupportedChecksumAlgorithm(String),
     InstallationFailed(String),
+    UnsupportedStandard(String, String),
     DeletionFailed(String),
     AlreadyInstalled(String),
     DoesNotExists(String),
     UnrecognizedRepository(String),
     DbOperationFailed(String),
+    MetaDirCouldNotLoad,
 }
 
 impl ErrorCommons<PackageError> for PackageErrorKind {
@@ -22,11 +24,13 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
             Self::UnsupportedChecksumAlgorithm(_) => "UnsupportedChecksumAlgorithm",
             Self::UnsupportedPackageArchitecture(_) => "UnsupportedPackageArchitecture",
             Self::InstallationFailed(_) => "InstallationFailed",
+            Self::UnsupportedStandard(..) => "ExtractionFailed",
             Self::DeletionFailed(_) => "DeletionFailed",
             Self::AlreadyInstalled(_) => "AlreadyInstalled",
             Self::DoesNotExists(_) => "DoesNotExists",
             Self::UnrecognizedRepository(_) => "UnrecognizedRepository",
             Self::DbOperationFailed(_) => "DbOperationFailed",
+            Self::MetaDirCouldNotLoad => "MetaDirCouldNotLoad",
         }
     }
 
@@ -56,6 +60,13 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
                     package
                 ),
             },
+            Self::UnsupportedStandard(ref package, ref error) => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: format!(
+                    "Extraction process of '{}' package has been failed. Error: {}",
+                    package, error
+                ),
+            },
             Self::DeletionFailed(ref package) => PackageError {
                 kind: self.as_str().to_owned(),
                 reason: format!("Deletion process of '{}' package has been failed.", package),
@@ -75,6 +86,10 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
             Self::DbOperationFailed(ref error) => PackageError {
                 kind: self.as_str().to_owned(),
                 reason: error.to_string()
+            },
+            Self::MetaDirCouldNotLoad => PackageError {
+                kind: self.as_str().to_owned(),
+                reason: String::from("Meta directory of the package could not be loaded.")
             },
         }
     }
