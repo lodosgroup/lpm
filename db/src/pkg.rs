@@ -72,6 +72,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         // } else {
         //     try_bind_val!(sql, 4, SQLITE_NULL);
         // }
+        // TODO
         try_bind_val!(sql, 4, SQLITE_NULL);
 
         if let Some(homepage) = &meta_dir.meta.homepage {
@@ -80,9 +81,22 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
             try_bind_val!(sql, 5, SQLITE_NULL);
         }
 
+        // TODO
         try_bind_val!(sql, 6, SQLITE_NULL);
 
-        try_bind_val!(sql, 7, 1_i32); // TODO
+        let kind_id = get_kind_id_by_kind_name(db, &meta_dir.meta.kind)?.ok_or_else(|| {
+            PackageErrorKind::PackageKindNotFound(meta_dir.meta.kind.clone()).to_lpm_err()
+        });
+        let kind_id = match kind_id {
+            Ok(id) => id,
+            Err(e) => {
+                sql.kill();
+                transaction_op(db, Transaction::Rollback)?;
+                return Err(e);
+            }
+        };
+        try_bind_val!(sql, 7, kind_id);
+
         try_bind_val!(sql, 8, meta_dir.meta.installed_size as i64);
 
         if let Some(license) = &meta_dir.meta.license {
@@ -347,6 +361,30 @@ pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, Lpm
     sql.kill();
 
     Ok(result)
+}
+
+pub fn get_kind_id_by_kind_name(
+    db: &Database,
+    kind: &str,
+) -> Result<Option<i64>, LpmError<SqlError>> {
+    let statement = String::from("SELECT id FROM package_kinds WHERE kind = ?;");
+
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+
+    try_bind_val!(sql, 1, kind);
+    try_execute_prepared!(
+        sql,
+        simple_e_fmt!("Error SELECT query on \"package_kinds\" table.")
+    );
+
+    let result = sql.get_data::<i64>(0)?;
+    sql.kill();
+
+    if result == 0 {
+        return Ok(None);
+    }
+
+    Ok(Some(result))
 }
 
 pub fn get_checksum_algorithm_id_by_kind(
