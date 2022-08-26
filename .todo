@@ -1,3 +1,5 @@
+- [wip] sync db fields (specially for packages)
+
 - ? on pkg upgrading or downgrading, apply only differences between system-target pkg
 - transactional pkg operations
 - add scripts that will be executed on installation or uninstallation process
@@ -5,8 +7,5 @@
 - handle pkg version switching
 - provide version and pkg protection
 - re-export main functionality of LodPkg from single namespace
-- Deserialize LodPkg from database
-- sync db fields (specially for packages)
 - save each process on fs
 - provide prelude re-exports
-- [bug] wrong `package_id` on file inserts to db
