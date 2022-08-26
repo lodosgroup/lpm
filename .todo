@@ -9,3 +9,5 @@
 - re-export main functionality of LodPkg from single namespace
 - save each process on fs
 - provide prelude re-exports
+- do not allow deleting kind if any package belongs to it
+- abstract get id db operations and db table names
