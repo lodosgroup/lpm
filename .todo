@@ -1,6 +1,7 @@
 - [wip] sync db fields (specially for packages)
-- [wip] abstract get id db operations and db table names
-- [wip] not allow deleting kind if any package belongs to it
+- [p0] abstract get id db operations and db table names
+- [p0] not allow deleting kind if any package belongs to it
+- [p0] create app context
 
 - ? on pkg upgrading or downgrading, apply only differences between system-target pkg
 - transactional pkg operations
