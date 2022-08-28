@@ -41,12 +41,12 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         let statement = String::from(
             "
                 INSERT INTO packages
-                    (name, description, maintainer, repository_id,
-                    homepage, depended_package_id, package_kind_id,
+                    (name, description, maintainer, homepage, 
+                    depended_package_id, package_kind_id,
                     installed_size, license, v_major, v_minor, v_patch,
                     v_tag, v_readable)
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         );
 
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
@@ -55,35 +55,15 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         try_bind_val!(sql, 2, &*meta_dir.meta.description);
         try_bind_val!(sql, 3, &*meta_dir.meta.maintainer);
 
-        // if let Some(repository) = &meta_dir.meta.repository {
-        //     let repository_id = get_repository_id_by_repository(db, repository)?;
-
-        //     if let Some(r_id) = repository_id {
-        //         try_bind_val!(sql, 4, r_id);
-        //     } else {
-        //         sql.kill();
-        //         transaction_op(db, Transaction::Rollback)?;
-        //         return Err(PackageErrorKind::UnrecognizedRepository(Some(format!(
-        //             "Repository '{}' is not defined in your system. See 'TODO'",
-        //             repository
-        //         )))
-        //         .throw());
-        //     }
-        // } else {
-        //     try_bind_val!(sql, 4, SQLITE_NULL);
-        // }
-        // TODO
-        try_bind_val!(sql, 4, SQLITE_NULL);
-
         if let Some(homepage) = &meta_dir.meta.homepage {
-            try_bind_val!(sql, 5, &**homepage);
+            try_bind_val!(sql, 4, &**homepage);
         } else {
-            try_bind_val!(sql, 5, SQLITE_NULL);
+            try_bind_val!(sql, 4, SQLITE_NULL);
         }
 
         // TODO
         // will be used for sub-packages
-        try_bind_val!(sql, 6, SQLITE_NULL);
+        try_bind_val!(sql, 5, SQLITE_NULL);
 
         let kind_id = get_kind_id_by_kind_name(db, &meta_dir.meta.kind)?.ok_or_else(|| {
             PackageErrorKind::PackageKindNotFound(meta_dir.meta.kind.clone()).to_lpm_err()
@@ -96,27 +76,27 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
                 return Err(e);
             }
         };
-        try_bind_val!(sql, 7, kind_id);
+        try_bind_val!(sql, 6, kind_id);
 
-        try_bind_val!(sql, 8, meta_dir.meta.installed_size as i64);
+        try_bind_val!(sql, 7, meta_dir.meta.installed_size as i64);
 
         if let Some(license) = &meta_dir.meta.license {
-            try_bind_val!(sql, 9, &**license);
+            try_bind_val!(sql, 8, &**license);
         } else {
-            try_bind_val!(sql, 9, SQLITE_NULL);
+            try_bind_val!(sql, 8, SQLITE_NULL);
         }
 
-        try_bind_val!(sql, 10, self.version.major);
-        try_bind_val!(sql, 11, self.version.minor);
-        try_bind_val!(sql, 12, self.version.patch);
+        try_bind_val!(sql, 9, meta_dir.meta.version.major);
+        try_bind_val!(sql, 10, meta_dir.meta.version.minor);
+        try_bind_val!(sql, 11, meta_dir.meta.version.patch);
 
-        if let Some(vtag) = &self.version.tag {
-            try_bind_val!(sql, 13, &**vtag);
+        if let Some(vtag) = &meta_dir.meta.version.tag {
+            try_bind_val!(sql, 12, &**vtag);
         } else {
-            try_bind_val!(sql, 13, SQLITE_NULL);
+            try_bind_val!(sql, 12, SQLITE_NULL);
         }
 
-        try_bind_val!(sql, 14, &*self.version.readable_format);
+        try_bind_val!(sql, 13, &*meta_dir.meta.version.readable_format);
 
         if PreparedStatementStatus::Done != sql.execute_prepared() {
             sql.kill();
