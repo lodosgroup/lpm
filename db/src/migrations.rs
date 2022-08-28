@@ -119,7 +119,6 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<Sq
                name                     TEXT       NOT NULL       UNIQUE,
                description              TEXT,
                maintainer               TEXT       NOT NULL,
-               repository_id            INTEGER,
                homepage                 TEXT,
                depended_package_id      INTEGER,
                package_kind_id          INTEGER    NOT_NULL,
@@ -133,7 +132,6 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<Sq
                created_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
                updated_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
-               FOREIGN KEY(repository_id) REFERENCES repositories(id),
                FOREIGN KEY(depended_package_id) REFERENCES packages(id),
                FOREIGN KEY(package_kind_id) REFERENCES package_kinds(id)
             );
