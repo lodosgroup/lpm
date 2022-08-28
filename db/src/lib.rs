@@ -62,7 +62,6 @@ impl Transaction {
     }
 }
 
-#[inline(always)]
 pub fn transaction_op(
     db: &Database,
     transaction: Transaction,
@@ -72,6 +71,20 @@ pub fn transaction_op(
         SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
         e => Err(SqlErrorKind::FailedExecuting(transaction.to_statement(), e).to_lpm_err()),
     }
+}
+
+pub fn get_current_datetime(db: &Database) -> Result<String, LpmError<SqlError>> {
+    let statement = String::from("SELECT datetime(CURRENT_TIMESTAMP, 'localtime');");
+    let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
+
+    try_execute_prepared!(
+        sql,
+        simple_e_fmt!("Failed executing SQL statement `{}`.", statement)
+    );
+
+    let data = sql.get_data::<String>(0)?;
+    sql.kill();
+    Ok(data)
 }
 
 pub mod pkg;

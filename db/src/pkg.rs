@@ -82,6 +82,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         }
 
         // TODO
+        // will be used for sub-packages
         try_bind_val!(sql, 6, SQLITE_NULL);
 
         let kind_id = get_kind_id_by_kind_name(db, &meta_dir.meta.kind)?.ok_or_else(|| {
