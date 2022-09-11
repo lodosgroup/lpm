@@ -15,4 +15,25 @@ pub enum CreateOperationArg {
     IfNotExists,
 }
 
+pub enum ColVal {
+    Null,
+    SignedNumber(isize),
+    UnsignedNumber(usize),
+    Text(String),
+}
+
+pub enum Where {
+    Equal(String, ColVal),
+    NotEqual(String, ColVal),
+    LessThan(String, ColVal),
+    LessThanOrEqual(String, ColVal),
+    GreaterThan(String, ColVal),
+    GreaterThanOrEqual(String, ColVal),
+    Between(String, ColVal),
+    In(String, ColVal),
+    Like(String, ColVal),
+    And(Box<Vec<Where>>),
+    Or(Box<Vec<Where>>),
+}
+
 mod select;
