@@ -37,7 +37,13 @@ macro_rules! try_or_error {
 #[macro_export]
 macro_rules! log_and_panic {
     ($log: expr) => {
-        term::error!("{}", $log);
+        term::error!("{}", format!($log));
+
+        // Terminate app with panic code
+        std::process::exit(101);
+    };
+    ($log: expr, $($args: tt)+) => {
+        term::error!("{}", format!($log, $($args)+));
 
         // Terminate app with panic code
         std::process::exit(101);

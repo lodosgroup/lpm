@@ -49,7 +49,7 @@ macro_rules! impl_parser_tasks {
             fn deserialize(path: &str) -> Self {
                 let data_as_str =
                     fs::read_to_string(path).unwrap_or_else(|_| {
-                        super::log_and_panic!(format!("{} could not found.", path));
+                        super::log_and_panic!("{} could not found.", path);
                     });
 
                 serde_json::from_str(&data_as_str)
