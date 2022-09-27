@@ -1,6 +1,5 @@
 use super::*;
 
-#[derive(Clone)]
 struct Select(String);
 
 impl Select {
@@ -9,47 +8,56 @@ impl Select {
     }
 
     /// Adds '('
-    pub fn initialize_sub_statement(&mut self) -> Self {
-        self.0 = format!("{} (", self.0);
-        self.clone()
+    #[inline(always)]
+    pub fn open_parentheses(&self) -> Self {
+        Self(format!("{} (", self.0))
     }
 
     /// Adds ')'
-    pub fn end_sub_statement(&mut self) -> Self {
-        self.0 = format!("{} )", self.0);
-        self.clone()
+    #[inline(always)]
+    pub fn close_parentheses(&self) -> Self {
+        Self(format!("{} )", self.0))
     }
 
-    /// Only adds 'WHERE' keyword
-    pub fn where_keyword(&mut self) -> Self {
-        self.0 = format!("{} WHERE", self.0);
-        self.clone()
+    /// Only adds 'AND' keyword
+    #[inline(always)]
+    pub fn and_keyword(&self) -> Self {
+        Self(format!("{} AND", self.0))
+    }
+
+    /// Only adds 'OR' keyword
+    #[inline(always)]
+    pub fn or_keyword(&self) -> Self {
+        Self(format!("{} OR", self.0))
     }
 
     /// Adds contiditon
-    pub fn r#where(&mut self, w: Where) -> Self {
-        self.0 = format!("{} WHERE {}", self.0, w);
-        self.clone()
-    }
+    pub fn where_condition(&self, w: Where) -> Self {
+        if let Some((_, last)) = self.0.rsplit_once(" ") {
+            match last {
+                "WHERE" | "(" | "OR" | "AND" => {
+                    return Self(format!("{} {}", self.0, w));
+                }
+                _ => (),
+            };
+        }
 
-    /// Adds contiditon without 'WHERE' keyword
-    pub fn sub_where(&mut self, w: Where) -> Self {
-        self.0 = format!("{} {}", self.0, w);
-        self.clone()
+        Self(format!("{} WHERE {}", self.0, w))
     }
 
     /// Adds contiditon as 'AND'
-    pub fn and_where(&mut self, w: Where) -> Self {
-        self.0 = format!("{} AND {}", self.0, w);
-        self.clone()
+    #[inline(always)]
+    pub fn and_where(&self, w: Where) -> Self {
+        Self(format!("{} AND {}", self.0, w))
     }
 
     /// Adds contiditon as 'OR'
-    pub fn or_where(&mut self, w: Where) -> Self {
-        self.0 = format!("{} OR {}", self.0, w);
-        self.clone()
+    #[inline(always)]
+    pub fn or_where(&self, w: Where) -> Self {
+        Self(format!("{} OR {}", self.0, w))
     }
 
+    #[inline(always)]
     pub fn statement(&self) -> String {
         format!("{};", self.0.clone())
     }
@@ -58,10 +66,11 @@ impl Select {
 #[test]
 #[ignore]
 fn select_builder() {
-    const PRE_ID_USERNAME: u8 = 0;
-    const PRE_ID_AGE: u8 = 1;
-    const PRE_ID_RETIRED: u8 = 2;
-    const PRE_ID_RETIRED2: u8 = 3;
+    const PRE_ID_ACTIVE: u8 = 0;
+    const PRE_ID_USERNAME: u8 = 1;
+    const PRE_ID_AGE: u8 = 2;
+    const PRE_ID_RETIRED: u8 = 3;
+    const PRE_ID_RETIRED2: u8 = 4;
 
     let select_cols = vec![
         String::from("id"),
@@ -69,14 +78,16 @@ fn select_builder() {
         String::from("surname"),
     ];
 
-    let mut sql = Select::new(Some(select_cols), String::from("users"));
+    let sql = Select::new(Some(select_cols), String::from("users"));
 
-    sql.where_keyword()
-        .initialize_sub_statement()
-        .sub_where(Where::Equal(PRE_ID_USERNAME, String::from("username")))
+    let sql = sql
+        .where_condition(Where::NotEqual(PRE_ID_ACTIVE, String::from("active")))
+        .or_keyword()
+        .open_parentheses()
+        .where_condition(Where::Equal(PRE_ID_USERNAME, String::from("username")))
         .and_where(Where::GreaterThanOrEqual(PRE_ID_AGE, String::from("age")))
         .and_where(Where::NotEqual(PRE_ID_RETIRED, String::from("retired")))
-        .end_sub_statement()
+        .close_parentheses()
         .or_where(Where::NotEqual(PRE_ID_RETIRED2, String::from("retired")));
 
     println!("{}", sql.statement());
