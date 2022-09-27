@@ -57,9 +57,10 @@ impl Select {
         Self(format!("{} OR {}", self.0, w))
     }
 
+    /// Returns prepared statement in String form
     #[inline(always)]
-    pub fn statement(&self) -> String {
-        format!("{};", self.0.clone())
+    pub fn to_string(&self) -> String {
+        format!("{};", self.0)
     }
 }
 
@@ -90,7 +91,7 @@ fn select_builder() {
         .close_parentheses()
         .or_where(Where::NotEqual(PRE_ID_RETIRED2, String::from("retired")));
 
-    println!("{}", sql.statement());
+    println!("{}", sql.to_string());
 
     assert!(false);
 }
