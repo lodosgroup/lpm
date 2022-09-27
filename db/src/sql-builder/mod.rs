@@ -79,67 +79,42 @@ impl Display for CreateOperationArg {
     }
 }
 
-pub enum Where {
-    Criteria(WhereOperation),
-}
-
 impl Display for Where {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Where::Criteria(where_ops) => {
-                let condition = match where_ops {
-                    WhereOperation::Equal(index, name) => format!("{} = ?{}", name, index),
+            Where::Equal(index, name) => write!(f, "{} = ?{}", name, index),
 
-                    WhereOperation::NotEqual(index, name) => format!("{} != ?{}", name, index),
+            Where::NotEqual(index, name) => write!(f, "{} != ?{}", name, index),
 
-                    WhereOperation::LessThan(index, name) => format!("{} < ?{}", name, index),
+            Where::LessThan(index, name) => write!(f, "{} < ?{}", name, index),
 
-                    WhereOperation::LessThanOrEqual(index, name) => {
-                        format!("{} <= ?{}", name, index)
-                    }
+            Where::LessThanOrEqual(index, name) => write!(f, "{} <= ?{}", name, index),
 
-                    WhereOperation::GreaterThan(index, name) => format!("{} > ?{}", name, index),
+            Where::GreaterThan(index, name) => write!(f, "{} > ?{}", name, index),
 
-                    WhereOperation::GreaterThanOrEqual(index, name) => {
-                        format!("{} >= ?{}", name, index)
-                    }
+            Where::GreaterThanOrEqual(index, name) => write!(f, "{} >= ?{}", name, index),
 
-                    WhereOperation::Between(index1, index2, name) => {
-                        format!("{} BETWEEN ?{} AND ?{}", name, index1, index2)
-                    }
-
-                    WhereOperation::NotBetween(index1, index2, name) => {
-                        format!("{} NOT BETWEEN ?{} AND ?{}", name, index1, index2)
-                    }
-
-                    WhereOperation::In(index, name) => {
-                        format!("{} IN ?{}", name, index)
-                    }
-
-                    WhereOperation::NotIn(index, name) => {
-                        format!("{} NOT IN ?{}", name, index)
-                    }
-
-                    WhereOperation::Like(index, name) => {
-                        format!("{} LIKE ?{}", name, index)
-                    }
-
-                    WhereOperation::NotLike(index, name) => {
-                        format!("{} NOT LIKE ?{}", name, index)
-                    }
-
-                    WhereOperation::And(_) => todo!(),
-                    WhereOperation::Or(_) => todo!(),
-                };
-
-                write!(f, "WHERE {}", condition)
+            Where::Between(index1, index2, name) => {
+                write!(f, "{} BETWEEN ?{} AND ?{}", name, index1, index2)
             }
+
+            Where::NotBetween(index1, index2, name) => {
+                write!(f, "{} NOT BETWEEN ?{} AND ?{}", name, index1, index2)
+            }
+
+            Where::In(index, name) => write!(f, "{} IN ?{}", name, index),
+
+            Where::NotIn(index, name) => write!(f, "{} NOT IN ?{}", name, index),
+
+            Where::Like(index, name) => write!(f, "{} LIKE ?{}", name, index),
+
+            Where::NotLike(index, name) => write!(f, "{} NOT LIKE ?{}", name, index),
         }
     }
 }
 
 /// Column's index to bind value following with it's name
-pub enum WhereOperation {
+pub enum Where {
     Equal(u8, String),
     NotEqual(u8, String),
     LessThan(u8, String),
@@ -152,26 +127,6 @@ pub enum WhereOperation {
     NotIn(u8, String),
     Like(u8, String),
     NotLike(u8, String),
-    And(Box<Vec<WhereOperation>>),
-    Or(Box<Vec<WhereOperation>>),
 }
 
 mod select;
-
-#[test]
-#[ignore]
-fn custom_test() {
-    let sb = SqlBuilder {
-        operation: Operation::Select(
-            Some(vec![
-                String::from("id"),
-                String::from("name"),
-                String::from("surname"),
-            ]),
-            "users".to_string(),
-        ),
-        criteria: Where::Criteria(WhereOperation::Equal(1, "id".to_string())),
-    };
-    println!("{} {}", sb.operation, sb.criteria);
-    assert!(false);
-}
