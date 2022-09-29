@@ -1,7 +1,6 @@
 use super::*;
 
 pub enum SelectArg {
-    Distinct(String),
     Except(Select),
     Limit(u8),
     OrderByAsc(String),
@@ -17,8 +16,6 @@ pub enum SelectArg {
 impl Display for SelectArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Distinct(name) => write!(f, "DISTINCT {}", name),
-
             Self::Except(sql) => write!(f, "EXCEPT {}", sql.0),
 
             Self::Limit(limit) => write!(f, "LIMIT {}", limit),
@@ -56,6 +53,11 @@ impl Select {
     #[inline(always)]
     pub fn new(columns: Option<Vec<String>>, from: String) -> Self {
         Self(format!("{}", Operation::Select(columns, from)))
+    }
+
+    #[inline(always)]
+    pub fn new_distinct(columns: Vec<String>, from: String) -> Self {
+        Self(format!("{}", Operation::SelectDistinct(columns, from)))
     }
 
     #[inline(always)]
