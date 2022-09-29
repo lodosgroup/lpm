@@ -5,21 +5,11 @@ pub trait CommonInstructions {
     fn to_string(&self) -> String;
 }
 
-pub struct SqlBuilder {
-    pub operation: Operation,
-    pub criteria: Where,
-    // TODO
-    // Order By
-    // Limit
-    // etc
-}
-
 pub enum Operation {
     // 1st arg: Vector of column names. None means "*".
     // 2nd arg: Arg for "FROM".
-    // TODO
-    // handle Distinct
     Select(Option<Vec<String>>, String),
+    SelectDistinct(Vec<String>, String),
     Create(String, Option<CreateOperationArg>),
     Update(String),
     Delete(String),
@@ -37,6 +27,18 @@ impl Display for Operation {
                 };
 
                 write!(f, "SELECT {} FROM {}", columns, table)
+            }
+            Operation::SelectDistinct(columns, table) => {
+                if columns.is_empty() {
+                    common::log_and_panic!(
+                        "No columns were detected for inserting to table {}",
+                        table
+                    );
+                }
+
+                let columns = columns.join(", ");
+
+                write!(f, "SELECT DISTINCT {} FROM {}", columns, table)
             }
             Operation::Create(table, arg) => {
                 if let Some(arg) = arg {
