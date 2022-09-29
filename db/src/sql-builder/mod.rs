@@ -1,5 +1,10 @@
 use std::fmt::Display;
 
+pub trait CommonInstructions {
+    /// Returns constructed SQL statement in String form
+    fn to_string(&self) -> String;
+}
+
 pub struct SqlBuilder {
     pub operation: Operation,
     pub criteria: Where,
@@ -12,6 +17,8 @@ pub struct SqlBuilder {
 pub enum Operation {
     // 1st arg: Vector of column names. None means "*".
     // 2nd arg: Arg for "FROM".
+    // TODO
+    // handle Distinct
     Select(Option<Vec<String>>, String),
     Create(String, Option<CreateOperationArg>),
     Update(String),
@@ -79,6 +86,45 @@ impl Display for CreateOperationArg {
     }
 }
 
+/// Column's index to bind value following with it's name
+pub enum Where {
+    Equal(u8, String),
+    NotEqual(u8, String),
+    LessThan(u8, String),
+    LessThanOrEqual(u8, String),
+    GreaterThan(u8, String),
+    GreaterThanOrEqual(u8, String),
+    Between(u8, u8, String),
+    NotBetween(u8, u8, String),
+    In(u8, String),
+    NotIn(u8, String),
+    Like(u8, String),
+    NotLike(u8, String),
+}
+
+pub trait WhereInstructions {
+    /// Adds '('
+    fn open_parentheses(&self) -> Self;
+
+    /// Adds ')'
+    fn close_parentheses(&self) -> Self;
+
+    /// Only adds 'AND' keyword
+    fn and_keyword(&self) -> Self;
+
+    /// Only adds 'OR' keyword
+    fn or_keyword(&self) -> Self;
+
+    /// Adds contiditon
+    fn where_condition(&self, w: Where) -> Self;
+
+    /// Adds contiditon as 'AND'
+    fn and_where(&self, w: Where) -> Self;
+
+    /// Adds contiditon as 'OR'
+    fn or_where(&self, w: Where) -> Self;
+}
+
 impl Display for Where {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -111,22 +157,6 @@ impl Display for Where {
             Where::NotLike(index, name) => write!(f, "{} NOT LIKE ?{}", name, index),
         }
     }
-}
-
-/// Column's index to bind value following with it's name
-pub enum Where {
-    Equal(u8, String),
-    NotEqual(u8, String),
-    LessThan(u8, String),
-    LessThanOrEqual(u8, String),
-    GreaterThan(u8, String),
-    GreaterThanOrEqual(u8, String),
-    Between(u8, u8, String),
-    NotBetween(u8, u8, String),
-    In(u8, String),
-    NotIn(u8, String),
-    Like(u8, String),
-    NotLike(u8, String),
 }
 
 mod select;
