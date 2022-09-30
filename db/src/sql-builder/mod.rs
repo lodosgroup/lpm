@@ -31,8 +31,7 @@ impl Display for Operation {
             Operation::SelectDistinct(columns, table) => {
                 if columns.is_empty() {
                     common::log_and_panic!(
-                        "No columns were detected for inserting to table {}",
-                        table
+                        "At least one column must be defined for DISTINCT queries."
                     );
                 }
 
