@@ -136,6 +136,11 @@ mod tests {
         ];
         let sql = Select::new(Some(cols), String::from("packages"));
         assert_eq!(statement, sql.to_string());
+
+        let statement = "SELECT DISTINCT name FROM packages;";
+        let cols = vec![String::from("name")];
+        let sql = Select::new_distinct(cols, String::from("packages"));
+        assert_eq!(statement, sql.to_string());
     }
 
     #[test]
@@ -208,5 +213,12 @@ mod tests {
     }
 
     #[test]
-    fn test_select_with_nested_conditions() {}
+    fn test_select_with_args() {
+        todo!()
+    }
+
+    #[test]
+    fn test_select_with_nested_conditions() {
+        todo!()
+    }
 }
