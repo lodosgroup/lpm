@@ -286,6 +286,24 @@ mod tests {
 
     #[test]
     fn test_select_with_nested_conditions() {
-        todo!()
+        let expected = "SELECT last_name, first_name FROM employees WHERE first_name = ?1 OR ( last_name = ?2 AND first_name = ?3 ) OR ( employee_id = ?4 AND last_name = ?5 );";
+
+        let sql = Select::new(
+            Some(vec![String::from("last_name"), String::from("first_name")]),
+            String::from("employees"),
+        )
+        .where_condition(Where::Equal(1, String::from("first_name")))
+        .or_keyword()
+        .open_parentheses()
+        .where_condition(Where::Equal(2, String::from("last_name")))
+        .and_where(Where::Equal(3, String::from("first_name")))
+        .close_parentheses()
+        .or_keyword()
+        .open_parentheses()
+        .where_condition(Where::Equal(4, String::from("employee_id")))
+        .and_where(Where::Equal(5, String::from("last_name")))
+        .close_parentheses();
+
+        assert_eq!(expected, sql.to_string());
     }
 }
