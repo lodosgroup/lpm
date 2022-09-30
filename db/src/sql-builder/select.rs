@@ -1,16 +1,16 @@
 use super::*;
 
 pub enum SelectArg {
-    Except(Select),
-    Limit(u8),
+    Limit(usize),
+    Offset(usize),
     OrderByAsc(String),
     OrderByDesc(String),
-    Offset(u8),
-    GroupBy(String),
+    GroupBy(Vec<String>),
     Having(Where),
     InnerJoin(String, String, String),
     LeftJoin(String, String, String),
     CrossJoin(String),
+    Except(Select),
 }
 
 impl Display for SelectArg {
@@ -26,7 +26,17 @@ impl Display for SelectArg {
 
             Self::Offset(offset) => write!(f, "OFFSET {}", offset),
 
-            Self::GroupBy(cols) => write!(f, "GROUP BY {}", cols),
+            Self::GroupBy(columns) => {
+                if columns.is_empty() {
+                    common::log_and_panic!(
+                        "At least one column must be defined for DISTINCT queries."
+                    );
+                }
+
+                let columns = columns.join(", ");
+
+                write!(f, "GROUP BY {}", columns)
+            }
 
             Self::Having(condition) => write!(f, "HAVING {}", condition),
 
@@ -214,7 +224,64 @@ mod tests {
 
     #[test]
     fn test_select_with_args() {
-        todo!()
+        let expected = "SELECT * FROM people LIMIT 100;";
+        let sql = Select::new(None, String::from("people")).add_arg(SelectArg::Limit(100));
+        assert_eq!(expected, sql.to_string());
+
+        let expected = "SELECT * FROM people OFFSET 100;";
+        let sql = Select::new(None, String::from("people")).add_arg(SelectArg::Offset(100));
+        assert_eq!(expected, sql.to_string());
+
+        let expected = "SELECT * FROM people ORDER BY size ASC;";
+        let sql = Select::new(None, String::from("people"))
+            .add_arg(SelectArg::OrderByAsc(String::from("size")));
+        assert_eq!(expected, sql.to_string());
+
+        let expected = "SELECT * FROM people ORDER BY size DESC;";
+        let sql = Select::new(None, String::from("people"))
+            .add_arg(SelectArg::OrderByDesc(String::from("size")));
+        assert_eq!(expected, sql.to_string());
+
+        let expected = "SELECT * FROM people GROUP BY name, size;";
+        let columns = vec![String::from("name"), String::from("size")];
+        let sql = Select::new(None, String::from("people")).add_arg(SelectArg::GroupBy(columns));
+        assert_eq!(expected, sql.to_string());
+
+        let expected = "SELECT * FROM people HAVING size = ?1;";
+        let sql = Select::new(None, String::from("people"))
+            .add_arg(SelectArg::Having(Where::Equal(1, String::from("size"))));
+        assert_eq!(expected, sql.to_string());
+
+        let expected =
+            "SELECT id FROM people INNER JOIN employees ON employees.person_id = people.id;";
+        let sql = Select::new(Some(vec![String::from("id")]), String::from("people")).add_arg(
+            SelectArg::InnerJoin(
+                String::from("employees"),
+                String::from("employees.person_id"),
+                String::from("people.id"),
+            ),
+        );
+        assert_eq!(expected, sql.to_string());
+
+        let expected =
+            "SELECT id FROM people LEFT JOIN employees ON employees.person_id = people.id;";
+        let sql = Select::new(Some(vec![String::from("id")]), String::from("people")).add_arg(
+            SelectArg::LeftJoin(
+                String::from("employees"),
+                String::from("employees.person_id"),
+                String::from("people.id"),
+            ),
+        );
+        assert_eq!(expected, sql.to_string());
+
+        let expected = "SELECT surname FROM people EXCEPT SELECT surname FROM employees;";
+        let sql1 = Select::new(
+            Some(vec![String::from("surname")]),
+            String::from("employees"),
+        );
+        let sql = Select::new(Some(vec![String::from("surname")]), String::from("people"))
+            .add_arg(SelectArg::Except(sql1));
+        assert_eq!(expected, sql.to_string());
     }
 
     #[test]
