@@ -1,7 +1,7 @@
 - [wip] abstract get id db operations and db table names
 - [p0] not allow deleting kind if any package belongs to it
 - [p0] create app context
-- [p0] Provide detailed docs for whole sqlbuilder codebase
+- [p0] Provide detailed docs for whole sqlbuilder codebase, and replace raw sql statements with sqlbuilder
 
 - ? on pkg upgrading or downgrading, apply only differences between system-target pkg
 - transactional pkg operations
