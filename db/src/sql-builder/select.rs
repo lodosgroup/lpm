@@ -1,7 +1,7 @@
 use super::{CommonInstructions, Operation, Where, WhereInstructions};
 use std::fmt::Display;
 
-pub struct Select(String);
+pub struct Select(pub(crate) String);
 
 impl Select {
     #[inline(always)]

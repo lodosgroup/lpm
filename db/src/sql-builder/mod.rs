@@ -11,7 +11,8 @@ pub enum Operation {
     Select(Option<Vec<String>>, String),
     SelectDistinct(Vec<String>, String),
     Delete(String),
-    Insert(String, Vec<String>),
+    Insert(String, Option<Vec<insert::Column>>),
+    InsertFromSelect(String, select::Select),
 }
 
 impl Display for Operation {
@@ -19,7 +20,7 @@ impl Display for Operation {
         match self {
             Operation::Select(columns, table) => {
                 let columns = match columns {
-                    Some(t) if !t.is_empty() => t.join(", "),
+                    Some(columns) if !columns.is_empty() => columns.join(", "),
                     _ => String::from("*"),
                 };
 
@@ -39,23 +40,30 @@ impl Display for Operation {
             Operation::Delete(table) => {
                 write!(f, "DELETE FROM {}", table)
             }
-            Operation::Insert(table, columns) => {
-                if columns.is_empty() {
-                    common::log_and_panic!(
-                        "No columns were detected for inserting to table {}",
-                        table
-                    );
+            Operation::Insert(table, columns) => match columns {
+                Some(columns) if !columns.is_empty() => {
+                    let prepared_values: Vec<String> = columns
+                        .iter()
+                        .map(|column| format!("?{}", column.1))
+                        .collect();
+                    let prepared_values = prepared_values.join(", ");
+
+                    let columns: Vec<&str> =
+                        columns.iter().map(|column| column.0.as_str()).collect();
+                    let columns = columns.join(", ");
+
+                    write!(
+                        f,
+                        "INSERT INTO {} ({}) VALUES({})",
+                        table, columns, prepared_values
+                    )
                 }
-
-                let prepared_values: Vec<&str> = columns.iter().map(|_| "?").collect();
-                let prepared_values = prepared_values.join(", ");
-                let columns = columns.join(",");
-
-                write!(
-                    f,
-                    "INSERT INTO {} ({}) VALUES({})",
-                    table, columns, prepared_values
-                )
+                _ => {
+                    write!(f, "INSERT INTO {} DEFAULT VALUES", table)
+                }
+            },
+            Operation::InsertFromSelect(table, select) => {
+                write!(f, "INSERT INTO {} {}", table, select.0)
             }
         }
     }
@@ -135,4 +143,5 @@ impl Display for Where {
 }
 
 mod delete;
+mod insert;
 mod select;
