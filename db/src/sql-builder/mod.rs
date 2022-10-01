@@ -134,4 +134,5 @@ impl Display for Where {
     }
 }
 
+mod delete;
 mod select;

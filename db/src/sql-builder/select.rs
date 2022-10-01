@@ -1,63 +1,6 @@
 use super::{CommonInstructions, Operation, Where, WhereInstructions};
 use std::fmt::Display;
 
-pub enum SelectArg {
-    Limit(usize),
-    Offset(usize),
-    OrderByAsc(String),
-    OrderByDesc(String),
-    GroupBy(Vec<String>),
-    Having(Where),
-    InnerJoin(String, String, String),
-    LeftJoin(String, String, String),
-    CrossJoin(String),
-    Except(Select),
-}
-
-impl Display for SelectArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Except(sql) => write!(f, "EXCEPT {}", sql.0),
-
-            Self::Limit(limit) => write!(f, "LIMIT {}", limit),
-
-            Self::OrderByAsc(name) => write!(f, "ORDER BY {} ASC", name),
-
-            Self::OrderByDesc(name) => write!(f, "ORDER BY {} DESC", name),
-
-            Self::Offset(offset) => write!(f, "OFFSET {}", offset),
-
-            Self::GroupBy(columns) => {
-                if columns.is_empty() {
-                    common::log_and_panic!(
-                        "At least one column must be defined for DISTINCT queries."
-                    );
-                }
-
-                let columns = columns.join(", ");
-
-                write!(f, "GROUP BY {}", columns)
-            }
-
-            Self::Having(condition) => write!(f, "HAVING {}", condition),
-
-            Self::InnerJoin(table, current_table_column, target_table_column) => write!(
-                f,
-                "INNER JOIN {} ON {} = {}",
-                table, current_table_column, target_table_column
-            ),
-
-            Self::LeftJoin(table, current_table_column, target_table_column) => write!(
-                f,
-                "LEFT JOIN {} ON {} = {}",
-                table, current_table_column, target_table_column
-            ),
-
-            Self::CrossJoin(table) => write!(f, "CROSS JOIN {}", table),
-        }
-    }
-}
-
 pub struct Select(String);
 
 impl Select {
@@ -126,6 +69,63 @@ impl WhereInstructions for Select {
     #[inline(always)]
     fn or_where(&self, w: Where) -> Self {
         Self(format!("{} OR {}", self.0, w))
+    }
+}
+
+pub enum SelectArg {
+    Limit(usize),
+    Offset(usize),
+    OrderByAsc(String),
+    OrderByDesc(String),
+    GroupBy(Vec<String>),
+    Having(Where),
+    InnerJoin(String, String, String),
+    LeftJoin(String, String, String),
+    CrossJoin(String),
+    Except(Select),
+}
+
+impl Display for SelectArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Except(sql) => write!(f, "EXCEPT {}", sql.0),
+
+            Self::Limit(limit) => write!(f, "LIMIT {}", limit),
+
+            Self::OrderByAsc(name) => write!(f, "ORDER BY {} ASC", name),
+
+            Self::OrderByDesc(name) => write!(f, "ORDER BY {} DESC", name),
+
+            Self::Offset(offset) => write!(f, "OFFSET {}", offset),
+
+            Self::GroupBy(columns) => {
+                if columns.is_empty() {
+                    common::log_and_panic!(
+                        "At least one column must be defined for DISTINCT queries."
+                    );
+                }
+
+                let columns = columns.join(", ");
+
+                write!(f, "GROUP BY {}", columns)
+            }
+
+            Self::Having(condition) => write!(f, "HAVING {}", condition),
+
+            Self::InnerJoin(table, current_table_column, target_table_column) => write!(
+                f,
+                "INNER JOIN {} ON {} = {}",
+                table, current_table_column, target_table_column
+            ),
+
+            Self::LeftJoin(table, current_table_column, target_table_column) => write!(
+                f,
+                "LEFT JOIN {} ON {} = {}",
+                table, current_table_column, target_table_column
+            ),
+
+            Self::CrossJoin(table) => write!(f, "CROSS JOIN {}", table),
+        }
     }
 }
 
