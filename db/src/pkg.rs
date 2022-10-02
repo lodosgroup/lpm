@@ -82,7 +82,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
 
         let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
-        try_bind_val!(sql, NAME_COL_PRE_ID!() as usize, &*meta_dir.meta.name);
+        try_bind_val!(sql, NAME_COL_PRE_ID!(), &*meta_dir.meta.name);
         try_bind_val!(sql, DESCRIPTION_COL_PRE_ID!(), &*meta_dir.meta.description);
         try_bind_val!(sql, MAINTAINER_COL_PRE_ID!(), &*meta_dir.meta.maintainer);
 
