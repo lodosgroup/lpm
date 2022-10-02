@@ -5,7 +5,30 @@ pub trait CommonInstructions {
     fn to_string(&self) -> String;
 }
 
-pub enum Operation {
+pub trait WhereInstructions {
+    /// Adds '('
+    fn open_parentheses(&self) -> Self;
+
+    /// Adds ')'
+    fn close_parentheses(&self) -> Self;
+
+    /// Only adds 'AND' keyword
+    fn and_keyword(&self) -> Self;
+
+    /// Only adds 'OR' keyword
+    fn or_keyword(&self) -> Self;
+
+    /// Adds contiditon
+    fn where_condition(&self, w: Where) -> Self;
+
+    /// Adds contiditon as 'AND'
+    fn and_where(&self, w: Where) -> Self;
+
+    /// Adds contiditon as 'OR'
+    fn or_where(&self, w: Where) -> Self;
+}
+
+pub(crate) enum Operation {
     /// 1st arg: Vector of column names. None means "*".
     /// 2nd arg: Arg for "FROM".
     Select(Option<Vec<String>>, String),
@@ -85,29 +108,6 @@ pub enum Where {
     NotLike(u8, String),
 }
 
-pub trait WhereInstructions {
-    /// Adds '('
-    fn open_parentheses(&self) -> Self;
-
-    /// Adds ')'
-    fn close_parentheses(&self) -> Self;
-
-    /// Only adds 'AND' keyword
-    fn and_keyword(&self) -> Self;
-
-    /// Only adds 'OR' keyword
-    fn or_keyword(&self) -> Self;
-
-    /// Adds contiditon
-    fn where_condition(&self, w: Where) -> Self;
-
-    /// Adds contiditon as 'AND'
-    fn and_where(&self, w: Where) -> Self;
-
-    /// Adds contiditon as 'OR'
-    fn or_where(&self, w: Where) -> Self;
-}
-
 impl Display for Where {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -142,6 +142,6 @@ impl Display for Where {
     }
 }
 
-mod delete;
-mod insert;
-mod select;
+pub mod delete;
+pub mod insert;
+pub mod select;
