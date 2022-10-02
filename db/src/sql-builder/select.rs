@@ -50,7 +50,7 @@ impl WhereInstructions for Select {
     }
 
     fn where_condition(&self, w: Where) -> Self {
-        if let Some((_, last)) = self.0.rsplit_once(" ") {
+        if let Some((_, last)) = self.0.rsplit_once(' ') {
             match last {
                 "WHERE" | "(" | "OR" | "AND" => {
                     return Self(format!("{} {}", self.0, w));
