@@ -1,3 +1,4 @@
+- [wip] Create abstraction layer of SQL statements(only for supported operations by sql-builder) using sql-builder
 - [p0] do not allow deleting kind if any package belongs to it
 - [p0] create app context
 
