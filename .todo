@@ -1,5 +1,4 @@
-- [wip] abstract get id db operations and db table names
-- [p0] not allow deleting kind if any package belongs to it
+- [p0] do not allow deleting kind if any package belongs to it
 - [p0] create app context
 
 - ? on pkg upgrading or downgrading, apply only differences between system-target pkg
