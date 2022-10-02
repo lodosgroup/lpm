@@ -1,4 +1,5 @@
-use super::{CommonInstructions, Operation, Where, WhereInstructions};
+use super::Operation;
+pub use super::{CommonInstructions, Where, WhereInstructions};
 use std::fmt::Display;
 
 pub struct Select(pub(crate) String);

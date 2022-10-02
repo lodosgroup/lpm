@@ -1,4 +1,5 @@
-use super::{select::Select, CommonInstructions, Operation};
+pub use super::CommonInstructions;
+use super::{select::Select, Operation};
 
 pub struct Insert(String);
 pub struct Column(pub(crate) String, pub(crate) u8);
