@@ -492,8 +492,7 @@ pub fn get_checksum_algorithm_id_by_kind(
 }
 
 /// This is a non-transactional insert operation. (created for `LodPkg::get_by_name` which
-/// already has an opened transaction.)
-/// To make it transactional, open&close the transaction from caller stack.
+/// already has opened a transaction.)
 pub fn insert_pkg_tags(
     db: &Database,
     pkg_id: i64,
