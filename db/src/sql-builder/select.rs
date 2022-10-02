@@ -20,6 +20,11 @@ impl Select {
     pub fn add_arg(&self, arg: SelectArg) -> Self {
         Self(format!("{} {}", self.0, arg))
     }
+
+    #[inline(always)]
+    pub fn exists(&self) -> Self {
+        Self(format!("SELECT EXISTS({})", self.0))
+    }
 }
 
 impl CommonInstructions for Select {
@@ -163,10 +168,20 @@ mod tests {
         ];
         let sql = Select::new(Some(cols), String::from("packages"));
         assert_eq!(statement, sql.to_string());
+    }
 
+    #[test]
+    fn test_select_distinct() {
         let statement = "SELECT DISTINCT name FROM packages;";
         let cols = vec![String::from("name")];
         let sql = Select::new_distinct(cols, String::from("packages"));
+        assert_eq!(statement, sql.to_string());
+    }
+
+    #[test]
+    fn test_select_exists() {
+        let statement = "SELECT EXISTS(SELECT * FROM packages);";
+        let sql = Select::new(None, String::from("packages")).exists();
         assert_eq!(statement, sql.to_string());
     }
 
