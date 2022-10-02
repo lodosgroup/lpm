@@ -2,6 +2,7 @@ use super::Operation;
 pub use super::{CommonInstructions, Where, WhereInstructions};
 use std::fmt::Display;
 
+/// Controller for building `DELETE` SQL statements(prepared)
 pub struct Delete(String);
 
 impl Delete {
@@ -69,9 +70,13 @@ impl WhereInstructions for Delete {
 }
 
 pub enum DeleteArg {
+    /// 1st arg: Value for "LIMIT"
     Limit(usize),
+    /// 1st arg: Value for "OFFSET"
     Offset(usize),
+    /// 1st arg: Column name
     OrderByAsc(String),
+    /// 1st arg: Column name
     OrderByDesc(String),
 }
 

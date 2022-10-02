@@ -1,7 +1,9 @@
 pub use super::CommonInstructions;
 use super::{select::Select, Operation};
 
+/// Controller for building `INSERT` SQL statements(prepared)
 pub struct Insert(String);
+
 pub struct Column(pub(crate) String, pub(crate) u8);
 
 impl Column {
