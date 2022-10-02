@@ -29,12 +29,19 @@ pub trait WhereInstructions {
 }
 
 pub(crate) enum Operation {
-    /// 1st arg: Vector of column names. None means "*".
-    /// 2nd arg: Arg for "FROM".
+    /// 1st arg: Vector of column names. None and empty vector means "*".
+    /// 2nd arg: "FROM"
     Select(Option<Vec<String>>, String),
+    /// 1st arg: Vector of column names. None means "*".
+    /// 2nd arg: "FROM"
     SelectDistinct(Vec<String>, String),
+    /// 1st arg: "FROM"
     Delete(String),
+    /// 1st arg: "INTO"
+    /// 2nd arg: Column names and prepared statement ids.
     Insert(String, Option<Vec<insert::Column>>),
+    /// 1st arg: "INTO"
+    /// 2nd arg: "SELECT"
     InsertFromSelect(String, select::Select),
 }
 
@@ -92,19 +99,42 @@ impl Display for Operation {
     }
 }
 
-/// Column's index to bind value following with it's name
 pub enum Where {
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     Equal(u8, String),
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     NotEqual(u8, String),
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     LessThan(u8, String),
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     LessThanOrEqual(u8, String),
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     GreaterThan(u8, String),
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     GreaterThanOrEqual(u8, String),
+    /// 1st and 2nd args: Prepared statement id for later value binding
+    /// 3rd arg: Column name
     Between(u8, u8, String),
+    /// 1st and 2nd args: Prepared statement id for later value binding
+    /// 3rd arg: Column name
     NotBetween(u8, u8, String),
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     In(u8, String),
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     NotIn(u8, String),
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     Like(u8, String),
+    /// 1st arg: Prepared statement id for later value binding
+    /// 2nd arg: Column name
     NotLike(u8, String),
 }
 

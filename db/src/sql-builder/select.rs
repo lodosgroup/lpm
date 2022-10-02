@@ -2,6 +2,7 @@ use super::Operation;
 pub use super::{CommonInstructions, Where, WhereInstructions};
 use std::fmt::Display;
 
+/// Controller for building `SELECT` SQL statements(prepared)
 pub struct Select(pub(crate) String);
 
 impl Select {
@@ -74,15 +75,29 @@ impl WhereInstructions for Select {
 }
 
 pub enum SelectArg {
+    /// 1st arg: Value for "LIMIT"
     Limit(usize),
+    /// 1st arg: Value for "OFFSET"
     Offset(usize),
+    /// 1st arg: Column name
     OrderByAsc(String),
+    /// 1st arg: Column name
     OrderByDesc(String),
+    /// 1st arg: Vector of column names
     GroupBy(Vec<String>),
+    /// 1st arg: Where condition
     Having(Where),
+    /// 1st arg: Table to join
+    /// 2nd arg: Column name of joined table (Must include table name, like "table.column_name")
+    /// 3rd arg: Column name of FROM's to connect (Must include table name, like "table.column_name")
     InnerJoin(String, String, String),
+    /// 1st arg: Table to join
+    /// 2nd arg: Column name of joined table (Must include table name, like "table.column_name")
+    /// 3rd arg: Column name of FROM's to connect (Must include table name, like "table.column_name")
     LeftJoin(String, String, String),
+    /// 1st arg: Table to join
     CrossJoin(String),
+    /// 1st arg: Select controller
     Except(Select),
 }
 
