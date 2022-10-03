@@ -541,7 +541,7 @@ pub fn insert_pkg_kinds(
 
     let statement = sql_builder.to_string();
 
-    let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
     for (index, kind) in kinds.iter().enumerate() {
         let index = index + 1;
         try_bind_val!(sql, index, &**kind);
@@ -572,7 +572,7 @@ pub fn delete_pkg_kinds(
         .where_condition(Where::In(pre_ids, String::from("kind")))
         .to_string();
 
-    let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
     for (index, kind) in kinds.iter().enumerate() {
         try_bind_val!(sql, index + 1, &**kind);
     }
