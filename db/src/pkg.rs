@@ -525,45 +525,65 @@ pub fn insert_pkg_tags(
 pub fn insert_pkg_kinds(
     db: &Database,
     kinds: Vec<String>,
-) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
-    transaction_op(db, Transaction::Begin)?;
-
+) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
     from_preprocessor!(KIND_COL_PRE_ID, 1);
     let package_kind_columns = vec![Column::new(String::from("kind"), KIND_COL_PRE_ID!())];
-    let statement =
-        Insert::new(Some(package_kind_columns), String::from("package_kinds")).to_string();
+    let mut sql_builder = Insert::new(Some(package_kind_columns), String::from("package_kinds"));
 
-    for kind in kinds {
-        debug!("Inserting kind {}", kind);
+    for (index, _) in kinds.iter().enumerate() {
+        let index = index + 1;
+        if index == KIND_COL_PRE_ID!() {
+            continue;
+        }
 
-        let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, KIND_COL_PRE_ID!(), &*kind);
-        try_execute_prepared!(
-            sql,
-            simple_e_fmt!("Error on inserting package kind '{}'.", kind)
-        );
-        sql.kill();
+        sql_builder = sql_builder.insert_another_row(vec![index as u8]);
     }
 
-    transaction_op(db, Transaction::Commit)
+    let statement = sql_builder.to_string();
+
+    let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    for (index, kind) in kinds.iter().enumerate() {
+        let index = index + 1;
+        try_bind_val!(sql, index, &**kind);
+    }
+
+    let kinds = kinds.join(", ");
+    debug!("Inserting kinds {}", kinds);
+    let status = try_execute_prepared!(
+        sql,
+        simple_e_fmt!("Error on inserting package kinds '{}'.", kinds)
+    );
+
+    sql.kill();
+
+    Ok(status)
 }
 
 pub fn delete_pkg_kinds(
     db: &Database,
     kinds: Vec<String>,
 ) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
-    from_preprocessor!(KIND_COL_PRE_ID, 1);
-    let kinds = kinds.join(",");
+    let mut pre_ids = vec![];
+    for (index, _) in kinds.iter().enumerate() {
+        pre_ids.push(index as u8 + 1_u8);
+    }
+
     let statement = Delete::new(String::from("package_kinds"))
-        .where_condition(Where::In(KIND_COL_PRE_ID!(), String::from("kind")))
+        .where_condition(Where::In(pre_ids, String::from("kind")))
         .to_string();
 
     let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
-    try_bind_val!(sql, KIND_COL_PRE_ID!(), format!("({})", kinds));
+    for (index, kind) in kinds.iter().enumerate() {
+        try_bind_val!(sql, index + 1, &**kind);
+    }
+
+    let kinds = kinds.join(", ");
+    debug!("Deleting kinds {}", kinds);
     let status = try_execute_prepared!(
         sql,
-        simple_e_fmt!("Error on deleting package kind \"{}\".", kinds)
+        simple_e_fmt!("Error on deleting package kinds '{}'.", kinds)
     );
+
     sql.kill();
 
     Ok(status)

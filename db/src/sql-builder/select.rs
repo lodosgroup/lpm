@@ -233,14 +233,14 @@ mod tests {
         ));
         assert_eq!(expected, sql.to_string());
 
-        let expected = "SELECT * FROM people WHERE age IN ?1;";
+        let expected = "SELECT * FROM people WHERE age IN (?1);";
         let sql = Select::new(None, String::from("people"))
-            .where_condition(Where::In(1, String::from("age")));
+            .where_condition(Where::In(vec![1], String::from("age")));
         assert_eq!(expected, sql.to_string());
 
-        let expected = "SELECT * FROM people WHERE age NOT IN ?1;";
+        let expected = "SELECT * FROM people WHERE age NOT IN (?1, ?2, ?3, ?4);";
         let sql = Select::new(None, String::from("people"))
-            .where_condition(Where::NotIn(1, String::from("age")));
+            .where_condition(Where::NotIn(vec![1, 2, 3, 4], String::from("age")));
         assert_eq!(expected, sql.to_string());
 
         let expected = "SELECT * FROM people WHERE name LIKE ?1;";

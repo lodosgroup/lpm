@@ -26,8 +26,12 @@ impl Insert {
     }
 
     #[inline(always)]
-    pub fn another_row(&self, pre_id: u8) -> Self {
-        Self(format!("{}, (?{})", self.0, pre_id))
+    pub fn insert_another_row(&self, column_pre_ids: Vec<u8>) -> Self {
+        let prepared_ids: Vec<String> =
+            column_pre_ids.iter().map(|id| format!("?{}", id)).collect();
+        let prepared_ids = prepared_ids.join(", ");
+
+        Self(format!("{}, ({})", self.0, prepared_ids))
     }
 }
 

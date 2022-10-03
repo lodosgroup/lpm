@@ -126,10 +126,10 @@ pub enum Where {
     NotBetween(u8, u8, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    In(u8, String),
+    In(Vec<u8>, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    NotIn(u8, String),
+    NotIn(Vec<u8>, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
     Like(u8, String),
@@ -161,9 +161,19 @@ impl Display for Where {
                 write!(f, "{} NOT BETWEEN ?{} AND ?{}", name, index1, index2)
             }
 
-            Where::In(index, name) => write!(f, "{} IN ?{}", name, index),
+            Where::In(pre_ids, name) => {
+                let pre_ids: Vec<String> = pre_ids.iter().map(|id| format!("?{}", id)).collect();
+                let pre_ids = pre_ids.join(", ");
 
-            Where::NotIn(index, name) => write!(f, "{} NOT IN ?{}", name, index),
+                write!(f, "{} IN ({})", name, pre_ids)
+            }
+
+            Where::NotIn(pre_ids, name) => {
+                let pre_ids: Vec<String> = pre_ids.iter().map(|id| format!("?{}", id)).collect();
+                let pre_ids = pre_ids.join(", ");
+
+                write!(f, "{} NOT IN ({})", name, pre_ids)
+            }
 
             Where::Like(index, name) => write!(f, "{} LIKE ?{}", name, index),
 
