@@ -24,6 +24,11 @@ impl Insert {
     pub fn new_from_select(select: Select, into: String) -> Self {
         Self(format!("{}", Operation::InsertFromSelect(into, select)))
     }
+
+    #[inline(always)]
+    pub fn another_row(&self, pre_id: u8) -> Self {
+        Self(format!("{}, (?{})", self.0, pre_id))
+    }
 }
 
 impl CommonInstructions for Insert {

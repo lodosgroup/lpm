@@ -551,24 +551,20 @@ pub fn insert_pkg_kinds(
 pub fn delete_pkg_kinds(
     db: &Database,
     kinds: Vec<String>,
-) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
-    transaction_op(db, Transaction::Begin)?;
+) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
     from_preprocessor!(KIND_COL_PRE_ID, 1);
+    let kinds = kinds.join(",");
     let statement = Delete::new(String::from("package_kinds"))
-        .where_condition(Where::Equal(KIND_COL_PRE_ID!(), String::from("kind")))
+        .where_condition(Where::In(KIND_COL_PRE_ID!(), String::from("kind")))
         .to_string();
 
-    for kind in kinds {
-        debug!("Deleting kind {}", kind);
+    let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    try_bind_val!(sql, KIND_COL_PRE_ID!(), format!("({})", kinds));
+    let status = try_execute_prepared!(
+        sql,
+        simple_e_fmt!("Error on deleting package kind \"{}\".", kinds)
+    );
+    sql.kill();
 
-        let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, KIND_COL_PRE_ID!(), &*kind);
-        try_execute_prepared!(
-            sql,
-            simple_e_fmt!("Error on deleting package kind \"{}\".", kind)
-        );
-        sql.kill();
-    }
-
-    transaction_op(db, Transaction::Commit)
+    Ok(status)
 }
