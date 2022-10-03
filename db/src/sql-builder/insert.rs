@@ -25,7 +25,6 @@ impl Insert {
         Self(format!("{}", Operation::InsertFromSelect(into, select)))
     }
 
-    #[inline(always)]
     pub fn insert_another_row(&self, column_pre_ids: Vec<u8>) -> Self {
         let prepared_ids: Vec<String> =
             column_pre_ids.iter().map(|id| format!("?{}", id)).collect();
