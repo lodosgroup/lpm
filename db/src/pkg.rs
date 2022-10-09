@@ -272,7 +272,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
                 checksum_algorithm: get_string_value_by_id(
                     db,
                     String::from("checksum_kinds"),
-                    String::from("id"),
+                    String::from("kind"),
                     sql.get_data(4)?,
                 )?,
                 checksum: sql.get_data(3)?,
@@ -479,7 +479,6 @@ fn insert_pkg_tags(
     }
 
     let statement = sql_builder.to_string();
-    dbg!(statement.clone());
     let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     for (index, tag) in tags.iter().enumerate() {
