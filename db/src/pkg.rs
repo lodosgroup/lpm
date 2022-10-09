@@ -491,35 +491,50 @@ pub fn get_checksum_algorithm_id_by_kind(
     Ok(Some(result))
 }
 
-/// This is a non-transactional insert operation. (created for `LodPkg::get_by_name` which
-/// already has opened a transaction.)
 pub fn insert_pkg_tags(
     db: &Database,
     pkg_id: i64,
     tags: Vec<String>,
-) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
+) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
     from_preprocessor!(TAG_COL_PRE_ID, 1);
-    from_preprocessor!(PACKAGE_ID_COL_PRE_ID, 2);
+    from_preprocessor!(PACKAGE_ID_COL_PRE_ID, 255);
     let package_tag_columns = vec![
         Column::new(String::from("tag"), TAG_COL_PRE_ID!()),
         Column::new(String::from("package_id"), PACKAGE_ID_COL_PRE_ID!()),
     ];
 
-    let statement =
-        Insert::new(Some(package_tag_columns), String::from("package_tags")).to_string();
+    let mut sql_builder = Insert::new(Some(package_tag_columns), String::from("package_tags"));
 
-    for tag in tags {
-        let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, TAG_COL_PRE_ID!(), &*tag);
-        try_bind_val!(sql, PACKAGE_ID_COL_PRE_ID!(), pkg_id);
-        try_execute_prepared!(
-            sql,
-            simple_e_fmt!("Error on inserting package tag \"{}\".", tag)
-        );
-        sql.kill();
+    for (index, _) in tags.iter().enumerate() {
+        let index = index + 1;
+        if index == PACKAGE_ID_COL_PRE_ID!() || index == TAG_COL_PRE_ID!() {
+            continue;
+        }
+
+        sql_builder = sql_builder.insert_another_row(vec![index as u8, PACKAGE_ID_COL_PRE_ID!()]);
     }
 
-    Ok(SqlitePrimaryResult::Ok)
+    let statement = sql_builder.to_string();
+    dbg!(statement.clone());
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+
+    for (index, tag) in tags.iter().enumerate() {
+        let index = index + 1;
+        try_bind_val!(sql, index, &**tag);
+        try_bind_val!(sql, PACKAGE_ID_COL_PRE_ID!(), pkg_id);
+    }
+
+    let tags = tags.join(", ");
+    debug!("Inserting tags {}", tags);
+
+    let status = try_execute_prepared!(
+        sql,
+        simple_e_fmt!("Error on inserting package tags '{}'.", tags)
+    );
+
+    sql.kill();
+
+    Ok(status)
 }
 
 pub fn insert_pkg_kinds(
