@@ -96,7 +96,13 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         // will be used for sub-packages
         try_bind_val!(sql, DEPENDED_PACKAGE_ID_COL_PRE_ID!(), SQLITE_NULL);
 
-        let kind_id = get_kind_id_by_kind_name(db, &meta_dir.meta.kind)?.ok_or_else(|| {
+        let kind_id = get_id_by_single_col_condition(
+            db,
+            String::from("package_kinds"),
+            String::from("kind"),
+            &meta_dir.meta.kind,
+        )?
+        .ok_or_else(|| {
             PackageErrorKind::PackageKindNotFound(meta_dir.meta.kind.clone()).to_lpm_err()
         });
         let kind_id = match kind_id {
@@ -263,7 +269,12 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
         while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
             let file = FileStruct {
                 path: sql.get_data(2)?,
-                checksum_algorithm: get_checksum_algorithm_by_id(db, sql.get_data(4)?)?,
+                checksum_algorithm: get_string_value_by_id(
+                    db,
+                    String::from("checksum_kinds"),
+                    String::from("id"),
+                    sql.get_data(4)?,
+                )?,
                 checksum: sql.get_data(3)?,
             };
 
@@ -317,7 +328,12 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmErro
     let files = &files.0;
 
     for file in files {
-        let checksum_id = get_checksum_algorithm_id_by_kind(db, &file.checksum_algorithm)?;
+        let checksum_id = get_id_by_single_col_condition(
+            db,
+            String::from("checksum_kinds"),
+            String::from("kind"),
+            &file.checksum_algorithm,
+        )?;
         if checksum_id.is_none() {
             return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(
                 file.checksum_algorithm.clone(),
@@ -365,19 +381,20 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmErro
     Ok(())
 }
 
-pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
+fn is_package_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
     from_preprocessor!(NAME_COL_PRE_ID, 1);
-    let statement = Select::new(None, String::from("packages"))
+    let exists_statement = Select::new(None, String::from("packages"))
         .where_condition(Where::Equal(NAME_COL_PRE_ID!(), String::from("name")))
         .exists()
         .to_string();
 
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = db.prepare(exists_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, NAME_COL_PRE_ID!(), name);
+
     try_execute_prepared!(
         sql,
-        simple_e_fmt!("Error SELECT query on \"packages\" table.")
+        simple_e_fmt!("Select exists query failed. SQL:\n {}", exists_statement)
     );
 
     let result = sql.get_data::<i64>(0).unwrap_or(0);
@@ -386,24 +403,24 @@ pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, LpmError<Sql
     Ok(result == 1)
 }
 
-pub fn get_repository_id_by_repository(
+fn get_id_by_single_col_condition(
     db: &Database,
-    repository: &str,
+    table: String,
+    column: String,
+    value: &str,
 ) -> Result<Option<i64>, LpmError<SqlError>> {
-    from_preprocessor!(REPOSITORY_COL_PRE_ID, 1);
-    let statement = Select::new(Some(vec![String::from("id")]), String::from("repositories"))
-        .where_condition(Where::Equal(
-            REPOSITORY_COL_PRE_ID!(),
-            String::from("repository"),
-        ))
+    from_preprocessor!(COL_PRE_ID, 1);
+    let get_id_statement = Select::new(Some(vec![String::from("id")]), table)
+        .where_condition(Where::Equal(COL_PRE_ID!(), column))
         .to_string();
 
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = db.prepare(get_id_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
 
-    try_bind_val!(sql, REPOSITORY_COL_PRE_ID!(), repository);
+    try_bind_val!(sql, COL_PRE_ID!(), value);
+
     try_execute_prepared!(
         sql,
-        simple_e_fmt!("Error SELECT query on \"repositories\" table.")
+        simple_e_fmt!("Select id query failed. SQL:\n {}", get_id_statement)
     );
 
     let result = sql.get_data::<Option<i64>>(0)?;
@@ -412,21 +429,23 @@ pub fn get_repository_id_by_repository(
     Ok(result)
 }
 
-pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, LpmError<SqlError>> {
-    from_preprocessor!(ID_COL_PRE_ID, 1);
-    let statement = Select::new(
-        Some(vec![String::from("kind")]),
-        String::from("checksum_kinds"),
-    )
-    .where_condition(Where::Equal(ID_COL_PRE_ID!(), String::from("id")))
-    .to_string();
+fn get_string_value_by_id(
+    db: &Database,
+    table: String,
+    column: String,
+    id: u32,
+) -> Result<String, LpmError<SqlError>> {
+    from_preprocessor!(COL_PRE_ID, 1);
+    let statement = Select::new(Some(vec![column]), table)
+        .where_condition(Where::Equal(COL_PRE_ID!(), String::from("id")))
+        .to_string();
 
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
 
-    try_bind_val!(sql, ID_COL_PRE_ID!(), id);
+    try_bind_val!(sql, COL_PRE_ID!(), id);
     try_execute_prepared!(
         sql,
-        simple_e_fmt!("Error SELECT query on \"checksum_kinds\" table.")
+        simple_e_fmt!("Select query failed. SQL:\n {}", statement)
     );
 
     let result = sql.get_data::<String>(0)?;
@@ -435,140 +454,118 @@ pub fn get_checksum_algorithm_by_id(db: &Database, id: u8) -> Result<String, Lpm
     Ok(result)
 }
 
-pub fn get_kind_id_by_kind_name(
-    db: &Database,
-    kind: &str,
-) -> Result<Option<i64>, LpmError<SqlError>> {
-    from_preprocessor!(KIND_COL_PRE_ID, 1);
-    let statement = Select::new(
-        Some(vec![String::from("id")]),
-        String::from("package_kinds"),
-    )
-    .where_condition(Where::Equal(KIND_COL_PRE_ID!(), String::from("kind")))
-    .to_string();
-
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
-
-    try_bind_val!(sql, KIND_COL_PRE_ID!(), kind);
-    try_execute_prepared!(
-        sql,
-        simple_e_fmt!("Error SELECT query on \"package_kinds\" table.")
-    );
-
-    let result = sql.get_data::<i64>(0)?;
-    sql.kill();
-
-    if result == 0 {
-        return Ok(None);
-    }
-
-    Ok(Some(result))
-}
-
-pub fn get_checksum_algorithm_id_by_kind(
-    db: &Database,
-    algorithm: &str,
-) -> Result<Option<i64>, LpmError<SqlError>> {
-    from_preprocessor!(KIND_COL_PRE_ID, 1);
-    let statement = Select::new(
-        Some(vec![String::from("id")]),
-        String::from("checksum_kinds"),
-    )
-    .where_condition(Where::Equal(KIND_COL_PRE_ID!(), String::from("kind")))
-    .to_string();
-
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
-
-    try_bind_val!(sql, KIND_COL_PRE_ID!(), algorithm);
-    try_execute_prepared!(
-        sql,
-        simple_e_fmt!("Error SELECT query on \"checksum_kinds\" table.")
-    );
-
-    let result = sql.get_data::<i64>(0)?;
-    sql.kill();
-
-    Ok(Some(result))
-}
-
-/// This is a non-transactional insert operation. (created for `LodPkg::get_by_name` which
-/// already has opened a transaction.)
-pub fn insert_pkg_tags(
+/// Batch insert of package tags on sqlite
+fn insert_pkg_tags(
     db: &Database,
     pkg_id: i64,
     tags: Vec<String>,
-) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
+) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
     from_preprocessor!(TAG_COL_PRE_ID, 1);
-    from_preprocessor!(PACKAGE_ID_COL_PRE_ID, 2);
+    from_preprocessor!(PACKAGE_ID_COL_PRE_ID, 255);
     let package_tag_columns = vec![
         Column::new(String::from("tag"), TAG_COL_PRE_ID!()),
         Column::new(String::from("package_id"), PACKAGE_ID_COL_PRE_ID!()),
     ];
 
-    let statement =
-        Insert::new(Some(package_tag_columns), String::from("package_tags")).to_string();
+    let mut sql_builder = Insert::new(Some(package_tag_columns), String::from("package_tags"));
 
-    for tag in tags {
-        let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, TAG_COL_PRE_ID!(), &*tag);
-        try_bind_val!(sql, PACKAGE_ID_COL_PRE_ID!(), pkg_id);
-        try_execute_prepared!(
-            sql,
-            simple_e_fmt!("Error on inserting package tag \"{}\".", tag)
-        );
-        sql.kill();
+    for (index, _) in tags.iter().enumerate() {
+        let index = index + 1;
+        if index == PACKAGE_ID_COL_PRE_ID!() || index == TAG_COL_PRE_ID!() {
+            continue;
+        }
+
+        sql_builder = sql_builder.insert_another_row(vec![index as u8, PACKAGE_ID_COL_PRE_ID!()]);
     }
 
-    Ok(SqlitePrimaryResult::Ok)
+    let statement = sql_builder.to_string();
+    dbg!(statement.clone());
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+
+    for (index, tag) in tags.iter().enumerate() {
+        let index = index + 1;
+        try_bind_val!(sql, index, &**tag);
+        try_bind_val!(sql, PACKAGE_ID_COL_PRE_ID!(), pkg_id);
+    }
+
+    let tags = tags.join(", ");
+    debug!("Inserting tags {}", tags);
+
+    let status = try_execute_prepared!(
+        sql,
+        simple_e_fmt!("Error on inserting package tags '{}'.", tags)
+    );
+
+    sql.kill();
+
+    Ok(status)
 }
 
+/// Batch insert of package kinds on sqlite
 pub fn insert_pkg_kinds(
     db: &Database,
     kinds: Vec<String>,
-) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
-    transaction_op(db, Transaction::Begin)?;
-
+) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
     from_preprocessor!(KIND_COL_PRE_ID, 1);
     let package_kind_columns = vec![Column::new(String::from("kind"), KIND_COL_PRE_ID!())];
-    let statement =
-        Insert::new(Some(package_kind_columns), String::from("package_kinds")).to_string();
+    let mut sql_builder = Insert::new(Some(package_kind_columns), String::from("package_kinds"));
 
-    for kind in kinds {
-        debug!("Inserting kind {}", kind);
+    for (index, _) in kinds.iter().enumerate() {
+        let index = index + 1;
+        if index == KIND_COL_PRE_ID!() {
+            continue;
+        }
 
-        let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, KIND_COL_PRE_ID!(), &*kind);
-        try_execute_prepared!(
-            sql,
-            simple_e_fmt!("Error on inserting package kind '{}'.", kind)
-        );
-        sql.kill();
+        sql_builder = sql_builder.insert_another_row(vec![index as u8]);
     }
 
-    transaction_op(db, Transaction::Commit)
+    let statement = sql_builder.to_string();
+
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    for (index, kind) in kinds.iter().enumerate() {
+        let index = index + 1;
+        try_bind_val!(sql, index, &**kind);
+    }
+
+    let kinds = kinds.join(", ");
+    debug!("Inserting kinds {}", kinds);
+    let status = try_execute_prepared!(
+        sql,
+        simple_e_fmt!("Error on inserting package kinds '{}'.", kinds)
+    );
+
+    sql.kill();
+
+    Ok(status)
 }
 
+/// Batch delete of package kinds on sqlite
 pub fn delete_pkg_kinds(
     db: &Database,
     kinds: Vec<String>,
-) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
-    transaction_op(db, Transaction::Begin)?;
-    from_preprocessor!(KIND_COL_PRE_ID, 1);
-    let statement = Delete::new(String::from("package_kinds"))
-        .where_condition(Where::Equal(KIND_COL_PRE_ID!(), String::from("kind")))
-        .to_string();
-
-    for kind in kinds {
-        debug!("Deleting kind {}", kind);
-
-        let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, KIND_COL_PRE_ID!(), &*kind);
-        try_execute_prepared!(
-            sql,
-            simple_e_fmt!("Error on deleting package kind \"{}\".", kind)
-        );
-        sql.kill();
+) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
+    let mut pre_ids = vec![];
+    for (index, _) in kinds.iter().enumerate() {
+        pre_ids.push(index as u8 + 1_u8);
     }
 
-    transaction_op(db, Transaction::Commit)
+    let statement = Delete::new(String::from("package_kinds"))
+        .where_condition(Where::In(pre_ids, String::from("kind")))
+        .to_string();
+
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    for (index, kind) in kinds.iter().enumerate() {
+        try_bind_val!(sql, index + 1, &**kind);
+    }
+
+    let kinds = kinds.join(", ");
+    debug!("Deleting kinds {}", kinds);
+    let status = try_execute_prepared!(
+        sql,
+        simple_e_fmt!("Error on deleting package kinds '{}'.", kinds)
+    );
+
+    sql.kill();
+
+    Ok(status)
 }

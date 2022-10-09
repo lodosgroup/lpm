@@ -38,6 +38,11 @@ fn main() {
             "--add-pkg-kind" => {
                 let db = try_or_error!(Database::open(Path::new(DB_PATH)));
                 let kinds: &[String] = &args[2..];
+                if kinds.is_empty() {
+                    log_and_panic!("Missing value.");
+                    // TODO
+                    // Show example usage
+                }
                 info!("Inserting list of package kinds: {:?}", kinds);
                 try_or_error!(insert_pkg_kinds(&db, kinds.to_vec()));
                 db.close();
@@ -46,6 +51,11 @@ fn main() {
             "--delete-pkg-kind" => {
                 let db = try_or_error!(Database::open(Path::new(DB_PATH)));
                 let kinds: &[String] = &args[2..];
+                if kinds.is_empty() {
+                    log_and_panic!("Missing value.");
+                    // TODO
+                    // Show example usage
+                }
                 info!("Deleting list of package kinds: {:?}", kinds);
                 try_or_error!(delete_pkg_kinds(&db, kinds.to_vec()));
                 db.close();

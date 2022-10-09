@@ -24,6 +24,14 @@ impl Insert {
     pub fn new_from_select(select: Select, into: String) -> Self {
         Self(format!("{}", Operation::InsertFromSelect(into, select)))
     }
+
+    pub fn insert_another_row(&self, column_pre_ids: Vec<u8>) -> Self {
+        let prepared_ids: Vec<String> =
+            column_pre_ids.iter().map(|id| format!("?{}", id)).collect();
+        let prepared_ids = prepared_ids.join(", ");
+
+        Self(format!("{}, ({})", self.0, prepared_ids))
+    }
 }
 
 impl CommonInstructions for Insert {
