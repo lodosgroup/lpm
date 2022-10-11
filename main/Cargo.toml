@@ -13,3 +13,8 @@ db = { path = "../db" }
 common = { path = "../common" }
 term = { path = "../term" }
 min-sqlite3-sys = "1.3"
+
+
+[build-dependencies]
+common = { path = "../common" }
+term = { path = "../term" }

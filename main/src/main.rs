@@ -9,9 +9,8 @@ use std::path::Path;
 use term::info;
 
 #[allow(unused_imports)]
-use ehandle::{lpm::LpmError, BuildtimeErrorKind, MainError};
+use ehandle::{lpm::LpmError, MainError};
 
-#[cfg(target_os = "linux")]
 fn main() {
     try_or_error!(init_db());
 
@@ -75,9 +74,4 @@ fn main() {
             log_and_panic!("Missing argument.");
         }
     }
-}
-
-#[cfg(not(target_os = "linux"))]
-fn main() -> Result<(), LpmError<MainError>> {
-    Err(BuildtimeErrorKind::UnsupportedPlatform(None).throw())
 }
