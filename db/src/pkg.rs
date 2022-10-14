@@ -300,6 +300,7 @@ impl<'a> LodPkgCoreDbOps for LodPkg<'a> {
     }
 
     fn delete_from_db<'lpkg>(&self, db: &Database) -> Result<(), LpmError<PackageError>> {
+        enable_foreign_keys(db)?;
         from_preprocessor!(NAME_COL_PRE_ID, 1);
         let statement = Delete::new(String::from("packages"))
             .where_condition(Where::Equal(NAME_COL_PRE_ID!(), String::from("name")))
