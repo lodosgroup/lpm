@@ -1,7 +1,5 @@
-- [p0] do not allow deleting kind if any package belongs to it
-- [p0] create app context
-
 - ? on pkg upgrading or downgrading, apply only differences between system-target pkg
+- ? create app context
 - transactional pkg operations
 - add scripts that will be executed on installation or uninstallation process
 - lock-file for strict bulk installations

@@ -543,6 +543,8 @@ pub fn delete_pkg_kinds(
     db: &Database,
     kinds: Vec<String>,
 ) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
+    enable_foreign_keys(db)?;
+
     let mut pre_ids = vec![];
     for (index, _) in kinds.iter().enumerate() {
         pre_ids.push(index as u8 + 1_u8);
@@ -561,7 +563,7 @@ pub fn delete_pkg_kinds(
     debug!("Deleting kinds {}", kinds);
     let status = try_execute_prepared!(
         sql,
-        simple_e_fmt!("Error on deleting package kinds '{}'.", kinds)
+        simple_e_fmt!("Error on deleting package kinds '{}'. One of the kinds you are trying to delete might be in use from installed packages.", kinds)
     );
 
     sql.kill();
