@@ -1,3 +1,10 @@
+-- obje arraylerinde, objeleri array uzerine yazmakta problem yasaniyor, array
+-- state'i listedeki objelere gidemiyor.
+
+Once alt objeleri array olmadan islemeye calisiyor..
+
+[wip] Implement json deserializer algorithm and replace serde
+
 - ? on pkg upgrading or downgrading, apply only differences between system-target pkg
 - ? create app context
 - transactional pkg operations

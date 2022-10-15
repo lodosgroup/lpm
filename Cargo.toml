@@ -5,6 +5,7 @@ members = [
 	"db",
 	"ehandle",
 	"hash",
+	"json",
 	"main",
 	"term",
 ]

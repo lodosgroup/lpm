@@ -1,5 +1,5 @@
 use common::pkg::LodPkg;
-use db::{pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
+use db::{enable_foreign_keys, pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
 use min_sqlite3_sys::prelude::*;
 use std::{fs, path::Path};
@@ -17,6 +17,10 @@ impl<'a> DeletionTasks for LodPkg<'a> {
             .ok_or_else(|| PackageErrorKind::MetaDirCouldNotLoad.to_lpm_err())?;
 
         let db = Database::open(Path::new(DB_PATH))?;
+
+        // Enable constraits to remove records that are related with package
+        enable_foreign_keys(&db)?;
+
         transaction_op(&db, Transaction::Begin)?;
 
         info!("Syncing with package database..");
