@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt::Display;
+use std::ops::Index;
 
 const OBJECT_OPENER: char = '{';
 const OBJECT_CLOSER: char = '}';
@@ -24,6 +25,41 @@ pub enum JsonValue {
     Plain(String),
     Object(Object),
     Array(Vec<JsonValue>),
+    Null,
+}
+
+impl Default for &JsonValue {
+    fn default() -> Self {
+        &JsonValue::Null
+    }
+}
+
+impl Default for JsonValue {
+    fn default() -> Self {
+        JsonValue::Null
+    }
+}
+
+impl Index<usize> for JsonValue {
+    type Output = JsonValue;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match self {
+            JsonValue::Plain(_) | JsonValue::Object(_) | JsonValue::Null => &Self::Output::Null,
+            JsonValue::Array(array) => array.get(index).unwrap_or_default(),
+        }
+    }
+}
+
+impl Index<&str> for JsonValue {
+    type Output = JsonValue;
+
+    fn index(&self, index: &str) -> &Self::Output {
+        match self {
+            JsonValue::Plain(_) | JsonValue::Array(_) | JsonValue::Null => &Self::Output::Null,
+            JsonValue::Object(object) => object.get(index).unwrap_or_default(),
+        }
+    }
 }
 
 type Object = BTreeMap<String, JsonValue>;
@@ -107,7 +143,6 @@ impl<'a> Json<'a> {
         true
     }
 
-    // TODO
     fn iterate_tokens(
         chars: &mut Vec<char>,
         root_object: &mut JsonValue,
@@ -224,6 +259,10 @@ impl<'a> Json<'a> {
                                 //
                                 array.push(local_inner);
                             }
+                            JsonValue::Null => {
+                                // TODO
+                                // Error here
+                            }
                         };
                     };
 
@@ -269,6 +308,10 @@ impl<'a> Json<'a> {
                                 JsonValue::Array(array) => {
                                     //
                                     array.push(local_inner);
+                                }
+                                JsonValue::Null => {
+                                    // TODO
+                                    // Error here
                                 }
                             };
                         }
@@ -355,6 +398,10 @@ impl<'a> Json<'a> {
                                 //
                                 array.push(JsonValue::Plain(value));
                             }
+                            JsonValue::Null => {
+                                // TODO
+                                // Error here
+                            }
                         };
                     };
 
@@ -424,6 +471,10 @@ impl<'a> Json<'a> {
                                 //
                                 array.push(JsonValue::Plain(value));
                             }
+                            JsonValue::Null => {
+                                // TODO
+                                // Error here
+                            }
                         };
                     };
 
@@ -469,6 +520,10 @@ impl<'a> Json<'a> {
                                         //
                                         array.push(JsonValue::Plain(value));
                                     }
+                                    JsonValue::Null => {
+                                        // TODO
+                                        // Error here
+                                    }
                                 };
                             };
 
@@ -501,8 +556,7 @@ impl<'a> Json<'a> {
     fn parse(&self) -> JsonValue {
         let mut chars: Vec<char> = self.0.chars().collect();
 
-        let mut object: BTreeMap<String, JsonValue> = BTreeMap::new();
-        let mut root_object = JsonValue::Object(BTreeMap::default());
+        let mut root_object = JsonValue::default();
         Self::iterate_tokens(&mut chars, &mut root_object, None, None);
 
         root_object
@@ -541,6 +595,120 @@ mod tests {
         println!("Lpm json elapsed: {:.2?}", now.elapsed());
 
         assert!(false, "Failed intentionally.");
+    }
+
+    #[test]
+    fn test_json_value_index_access() {
+        let json_content = r#"{
+            "president": [
+                {
+                    "let": 1974033217,
+                    "nine": 1043848105,
+                    "differ": false,
+                    "animal": 1083488261,
+                    "section": "pale",
+                    "table": "fox"
+                },
+                false,
+                "movie",
+                "bee",
+                true,
+                -58333673.273878574
+            ],
+            "thought": true,
+            "with": true,
+            "village": "include"
+        }"#;
+
+        let mut president = vec![];
+
+        let mut president_inner_object = BTreeMap::new();
+        president_inner_object.insert(
+            "let".to_string(),
+            JsonValue::Plain("1974033217".to_string()),
+        );
+        president_inner_object.insert(
+            "nine".to_string(),
+            JsonValue::Plain("1043848105".to_string()),
+        );
+        president_inner_object.insert("differ".to_string(), JsonValue::Plain("false".to_string()));
+        president_inner_object.insert(
+            "animal".to_string(),
+            JsonValue::Plain("1083488261".to_string()),
+        );
+        president_inner_object.insert("section".to_string(), JsonValue::Plain("pale".to_string()));
+        president_inner_object.insert("table".to_string(), JsonValue::Plain("fox".to_string()));
+        president.push(JsonValue::Object(president_inner_object.clone()));
+
+        president.push(JsonValue::Plain("false".to_string()));
+        president.push(JsonValue::Plain("movie".to_string()));
+        president.push(JsonValue::Plain("bee".to_string()));
+        president.push(JsonValue::Plain("true".to_string()));
+        president.push(JsonValue::Plain("-58333673.273878574".to_string()));
+
+        let json = Json::new(&json_content);
+        let json_value = json.parse();
+
+        assert_eq!(json_value["president"], JsonValue::Array(president));
+        assert_eq!(
+            json_value["president"][0],
+            JsonValue::Object(president_inner_object)
+        );
+        assert_eq!(
+            json_value["president"][0]["let"],
+            JsonValue::Plain("1974033217".to_string())
+        );
+        assert_eq!(
+            json_value["president"][0]["nine"],
+            JsonValue::Plain("1043848105".to_string())
+        );
+        assert_eq!(
+            json_value["president"][0]["differ"],
+            JsonValue::Plain("false".to_string())
+        );
+        assert_eq!(
+            json_value["president"][0]["animal"],
+            JsonValue::Plain("1083488261".to_string())
+        );
+        assert_eq!(
+            json_value["president"][0]["section"],
+            JsonValue::Plain("pale".to_string())
+        );
+        assert_eq!(
+            json_value["president"][0]["table"],
+            JsonValue::Plain("fox".to_string())
+        );
+        assert_eq!(
+            json_value["president"][1],
+            JsonValue::Plain("false".to_string())
+        );
+        assert_eq!(
+            json_value["president"][2],
+            JsonValue::Plain("movie".to_string())
+        );
+        assert_eq!(
+            json_value["president"][3],
+            JsonValue::Plain("bee".to_string())
+        );
+        assert_eq!(
+            json_value["president"][4],
+            JsonValue::Plain("true".to_string())
+        );
+        assert_eq!(
+            json_value["president"][5],
+            JsonValue::Plain("-58333673.273878574".to_string())
+        );
+        assert_eq!(json_value["thought"], JsonValue::Plain("true".to_string()));
+        assert_eq!(json_value["with"], JsonValue::Plain("true".to_string()));
+        assert_eq!(
+            json_value["village"],
+            JsonValue::Plain("include".to_string())
+        );
+
+        assert_eq!(json_value["presssident"], JsonValue::Null);
+        assert_eq!(json_value["president"][0]["x"], JsonValue::Null);
+        assert_eq!(json_value["president"][1]["x"], JsonValue::Null);
+        assert_eq!(json_value["president"][6], JsonValue::Null);
     }
 
     #[test]
