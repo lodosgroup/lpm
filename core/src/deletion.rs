@@ -17,7 +17,10 @@ impl<'a> DeletionTasks for LodPkg<'a> {
             .ok_or_else(|| PackageErrorKind::MetaDirCouldNotLoad.to_lpm_err())?;
 
         let db = Database::open(Path::new(DB_PATH))?;
+
+        // Enable constraits to remove records that are related with package
         enable_foreign_keys(&db)?;
+
         transaction_op(&db, Transaction::Begin)?;
 
         info!("Syncing with package database..");

@@ -1,11 +1,36 @@
 use super::ParserTasks;
 use crate::{log_and_panic, version::VersionStruct};
-use serde::Deserialize;
+use json::{Deserialize, JsonValue};
 use std::fs;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct System {
     pub lod_version: VersionStruct,
+}
+
+impl json::Deserialize for System {
+    type Error = String;
+
+    fn from_json_object(json: &json::JsonValue) -> Result<Self, Self::Error> {
+        Ok(Self {
+            lod_version: VersionStruct::from_json_object(&json["lod_version"])?,
+        })
+    }
+
+    fn from_json_array(json: &json::JsonValue) -> Result<Vec<Self>, Self::Error> {
+        let mut object_array = vec![];
+        match json {
+            JsonValue::Array(array) => {
+                for item in array {
+                    let object = Self::from_json_object(item)?;
+                    object_array.push(object);
+                }
+            }
+            _ => return Err("Wrong input, expected an array".to_string()),
+        };
+
+        Ok(object_array)
+    }
 }
 
 impl ParserTasks for System {
@@ -14,8 +39,17 @@ impl ParserTasks for System {
             log_and_panic!("{} could not found.", path);
         });
 
-        serde_json::from_str(&data_as_str).unwrap_or_else(|_| {
-            log_and_panic!("Failed to parse package system.");
+        let json = json::Json::new(&data_as_str)
+            .parse()
+            .unwrap_or_else(|error| {
+                term::debug!("Error: {}", error);
+                super::log_and_panic!(
+                    "Package is either invalid or corrupted. Failed deserializing system data."
+                );
+            });
+
+        Self::from_json_object(&json).unwrap_or_else(|error| {
+            super::log_and_panic!("INTERNAL: {}", error);
         })
     }
 }
