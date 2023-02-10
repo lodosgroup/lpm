@@ -27,14 +27,12 @@ impl json::Deserialize for Meta {
     fn from_json_object(json: &json::JsonValue) -> Result<Self, Self::Error> {
         let mut tags = vec![];
         match &json["tags"] {
-            json::JsonValue::Plain(_) => todo!(),
-            json::JsonValue::Object(_) => todo!(),
             json::JsonValue::Array(array) => {
                 for item in array {
-                    tags.push(item.to_string().unwrap());
+                    tags.push(item.to_string().ok_or("An invalid data in 'tags'.")?);
                 }
             }
-            json::JsonValue::Null => todo!(),
+            _ => return Err("".to_string()),
         };
 
         let version = VersionStruct::from_json_object(&json["version"])?;
@@ -42,15 +40,15 @@ impl json::Deserialize for Meta {
         let suggestions = SuggestionStruct::from_json_array(&json["suggestions"])?;
 
         Ok(Self {
-            name: json["name"].to_string().unwrap(),
-            description: json["description"].to_string().unwrap(),
-            maintainer: json["maintainer"].to_string().unwrap(),
+            name: de_required_field!(json["name"].to_string(), "name"),
+            description: de_required_field!(json["description"].to_string(), "description"),
+            maintainer: de_required_field!(json["maintainer"].to_string(), "maintainer"),
             source_pkg: json["source_pkg"].to_string(),
             repository: json["repository"].to_string(),
             homepage: json["homepage"].to_string(),
-            arch: json["arch"].to_string().unwrap(),
-            kind: json["kind"].to_string().unwrap(),
-            installed_size: json["installed_size"].as_i64().unwrap(),
+            arch: de_required_field!(json["arch"].to_string(), "arch"),
+            kind: de_required_field!(json["kind"].to_string(), "kind"),
+            installed_size: de_required_field!(json["installed_size"].as_i64(), "installed_size"),
             tags,
             version,
             license: json["license"].to_string(),
