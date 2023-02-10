@@ -21,6 +21,21 @@ pub const SYSTEM_ARCH: &str = "amd64";
 pub const SYSTEM_ARCH: &str = "arm";
 
 #[macro_export]
+macro_rules! de_required_field {
+    ($json: expr, $field: expr) => {
+        match $json {
+            Some(val) => val,
+            None => {
+                return Err(format!(
+                    "Field '{}' is required and must be provided.",
+                    $field
+                ))
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! from_preprocessor {
     ($name: ident, $val: expr) => {
         macro_rules! $name {
