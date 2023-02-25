@@ -1,5 +1,5 @@
 use common::{
-    pkg::{LodPkg, MetaDir},
+    pkg::{MetaDir, PkgDataFromFs},
     system::System,
     ParserTasks,
 };
@@ -13,33 +13,30 @@ use std::{
 use term::debug;
 use xz2::read::XzDecoder;
 
-pub trait ExtractionTasks {
-    fn start_extraction(&mut self) -> Result<(), LpmError<io::Error>>;
-    fn get_pkg_output_path(&self) -> String;
-    fn half_extract(&self) -> Result<(), LpmError<io::Error>>;
-    fn extract_meta_and_program(&self) -> Result<(), LpmError<io::Error>>;
-    fn read_pkg_data(&mut self);
+pub trait PkgExtractTasks {
+    fn start_extract_task(pkg_path: &Path) -> Result<Self, LpmError<io::Error>>
+    where
+        Self: Sized;
+    fn half_extract(pkg_path: &Path) -> Result<(), LpmError<io::Error>>;
+    fn extract_meta_and_program(pkg_path: &Path) -> Result<(), LpmError<io::Error>>;
+    fn read_pkg_data(pkg_path: &Path) -> PkgDataFromFs;
     fn cleanup(&self) -> Result<(), LpmError<io::Error>>;
 }
 
-impl<'a> ExtractionTasks for LodPkg<'a> {
-    fn start_extraction(&mut self) -> Result<(), LpmError<io::Error>> {
-        self.half_extract()?;
-        self.extract_meta_and_program()?;
-        self.read_pkg_data();
+impl PkgExtractTasks for PkgDataFromFs {
+    fn start_extract_task(pkg_path: &Path) -> Result<Self, LpmError<io::Error>>
+    where
+        Self: Sized,
+    {
+        PkgDataFromFs::half_extract(pkg_path)?;
+        PkgDataFromFs::extract_meta_and_program(pkg_path)?;
+        let pkg_data = PkgDataFromFs::read_pkg_data(pkg_path);
 
-        Ok(())
+        Ok(pkg_data)
     }
 
-    #[inline]
-    fn get_pkg_output_path(&self) -> String {
-        super::EXTRACTION_OUTPUT_PATH.to_string()
-            + "/"
-            + self.path.unwrap().file_stem().unwrap().to_str().unwrap()
-    }
-
-    fn half_extract(&self) -> Result<(), LpmError<io::Error>> {
-        let input_file = File::open(self.path.unwrap())?;
+    fn half_extract(pkg_path: &Path) -> Result<(), LpmError<io::Error>> {
+        let input_file = File::open(pkg_path)?;
         let mut archive = ar::Archive::new(input_file);
 
         while let Some(entry) = archive.next_entry() {
@@ -50,7 +47,7 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
                     "Package has a file with non UTF-8 filename.",
                 )
             })?;
-            let mut output_path = self.get_pkg_output_path();
+            let mut output_path = get_pkg_output_path(pkg_path);
 
             create_dir_all(output_path.clone())?;
 
@@ -68,8 +65,8 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
         Ok(())
     }
 
-    fn extract_meta_and_program(&self) -> Result<(), LpmError<io::Error>> {
-        let pkg_dir = self.get_pkg_output_path();
+    fn extract_meta_and_program(pkg_path: &Path) -> Result<(), LpmError<io::Error>> {
+        let pkg_dir = get_pkg_output_path(pkg_path);
 
         let tar_file_path = pkg_dir.clone() + "/meta.tar.xz";
         let tar_file = File::open(&tar_file_path)?;
@@ -86,8 +83,8 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
         Ok(())
     }
 
-    fn read_pkg_data(&mut self) {
-        let pkg_dir = self.get_pkg_output_path();
+    fn read_pkg_data(pkg_path: &Path) -> PkgDataFromFs {
+        let pkg_dir = get_pkg_output_path(pkg_path);
 
         let meta_dir = pkg_dir.clone() + "/meta";
         let system_json = pkg_dir + "/system.json";
@@ -96,15 +93,28 @@ impl<'a> ExtractionTasks for LodPkg<'a> {
             "Reading meta data from {}/meta.json and {}/files.json",
             &meta_dir, &meta_dir
         );
-        self.meta_dir = Some(MetaDir::new(&meta_dir));
+        let meta_dir = MetaDir::new(&meta_dir);
         debug!("Reading system data from {}", &system_json);
-        self.system = Some(System::deserialize(&system_json));
+        let system = System::deserialize(&system_json);
+        PkgDataFromFs {
+            path: pkg_path.to_path_buf(),
+            meta_dir,
+            system,
+        }
     }
 
     fn cleanup(&self) -> Result<(), LpmError<io::Error>> {
-        let pkg_dir = self.get_pkg_output_path();
+        let path = get_pkg_output_path(&self.path);
+        debug!("Cleaning {}", &path);
+        remove_dir_all(path)?;
 
-        remove_dir_all(pkg_dir)?;
         Ok(())
     }
+}
+
+#[inline]
+pub fn get_pkg_output_path(pkg_path: &Path) -> String {
+    super::EXTRACTION_OUTPUT_PATH.to_string()
+        + "/"
+        + pkg_path.file_stem().unwrap().to_str().unwrap()
 }

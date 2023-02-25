@@ -1,6 +1,8 @@
-use crate::extraction::ExtractionTasks;
+use crate::extract::get_pkg_output_path;
+
 use common::meta::Files;
-use common::{pkg::LodPkg, NO_ARCH, SYSTEM_ARCH};
+use common::pkg::PkgDataFromFs;
+use common::{NO_ARCH, SYSTEM_ARCH};
 use ehandle::lpm::LpmError;
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
@@ -37,27 +39,22 @@ impl ChecksumKind {
     }
 }
 
-pub trait ValidationTasks {
-    fn start_validations(&self) -> Result<(), LpmError<MainError>>;
+pub(crate) trait PkgValidateTasks {
+    fn start_validate_task(&self) -> Result<(), LpmError<MainError>>;
 }
 
-impl<'a> ValidationTasks for LodPkg<'a> {
-    fn start_validations(&self) -> Result<(), LpmError<MainError>> {
-        if let Some(meta_dir) = &self.meta_dir {
-            // TODO
-            // check architecture compatibility
-            if meta_dir.meta.arch != NO_ARCH && meta_dir.meta.arch != SYSTEM_ARCH {
-                return Err(PackageErrorKind::UnsupportedPackageArchitecture(
-                    meta_dir.meta.arch.clone(),
-                )
-                .to_lpm_err()
-                .into());
-            }
-
-            check_program_checksums(self.get_pkg_output_path(), &meta_dir.files)?
+impl PkgValidateTasks for PkgDataFromFs {
+    fn start_validate_task(&self) -> Result<(), LpmError<MainError>> {
+        if self.meta_dir.meta.arch != NO_ARCH && self.meta_dir.meta.arch != SYSTEM_ARCH {
+            return Err(PackageErrorKind::UnsupportedPackageArchitecture(
+                self.meta_dir.meta.arch.clone(),
+            )
+            .to_lpm_err()
+            .into());
         }
 
-        Ok(())
+        let pkg_output_path = get_pkg_output_path(&self.path);
+        check_program_checksums(pkg_output_path, &self.meta_dir.files)
     }
 }
 

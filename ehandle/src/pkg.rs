@@ -15,7 +15,6 @@ pub enum PackageErrorKind {
     UnrecognizedRepository(String),
     DbOperationFailed(String),
     PackageKindNotFound(String),
-    MetaDirCouldNotLoad,
 }
 
 impl ErrorCommons<PackageError> for PackageErrorKind {
@@ -32,7 +31,6 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
             Self::UnrecognizedRepository(_) => "UnrecognizedRepository",
             Self::DbOperationFailed(_) => "DbOperationFailed",
             Self::PackageKindNotFound(_) => "PackageKindNotFound",
-            Self::MetaDirCouldNotLoad => "MetaDirCouldNotLoad",
         }
     }
 
@@ -92,10 +90,6 @@ impl ErrorCommons<PackageError> for PackageErrorKind {
             Self::PackageKindNotFound(ref kind) => PackageError {
                 kind: self.as_str().to_owned(),
                 reason: format!("Kind '{}' does not exists in the database.", kind)
-            },
-            Self::MetaDirCouldNotLoad => PackageError {
-                kind: self.as_str().to_owned(),
-                reason: String::from("Meta directory of the package could not be loaded.")
             },
         }
     }

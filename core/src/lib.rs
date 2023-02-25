@@ -1,6 +1,12 @@
 const EXTRACTION_OUTPUT_PATH: &str = "/var/cache/lpm";
 
-pub mod deletion;
-pub mod extraction;
-pub mod installation;
-pub mod validation;
+mod delete;
+mod extract;
+mod install;
+mod update;
+mod validate;
+
+pub use delete::PkgDeleteTasks;
+pub use extract::PkgExtractTasks;
+pub use install::PkgInstallTasks;
+pub use update::PkgUpdateTasks;

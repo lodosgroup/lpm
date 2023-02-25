@@ -1,21 +1,16 @@
-use common::pkg::LodPkg;
-use db::{enable_foreign_keys, pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
+use common::pkg::PkgDataFromDb;
+use db::{enable_foreign_keys, pkg::DbOpsForInstalledPkg, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
 use min_sqlite3_sys::prelude::*;
 use std::{fs, path::Path};
 use term::{info, warning};
 
-pub trait DeletionTasks {
-    fn start_deletion(&self) -> Result<(), LpmError<MainError>>;
+pub trait PkgDeleteTasks {
+    fn start_delete_task(&self) -> Result<(), LpmError<MainError>>;
 }
 
-impl<'a> DeletionTasks for LodPkg<'a> {
-    fn start_deletion(&self) -> Result<(), LpmError<MainError>> {
-        let meta_dir = self
-            .meta_dir
-            .as_ref()
-            .ok_or_else(|| PackageErrorKind::MetaDirCouldNotLoad.to_lpm_err())?;
-
+impl PkgDeleteTasks for PkgDataFromDb {
+    fn start_delete_task(&self) -> Result<(), LpmError<MainError>> {
         let db = Database::open(Path::new(DB_PATH))?;
 
         // Enable constraits to remove records that are related with package
@@ -29,14 +24,16 @@ impl<'a> DeletionTasks for LodPkg<'a> {
             Err(_) => {
                 transaction_op(&db, Transaction::Rollback)?;
 
-                return Err(PackageErrorKind::DeletionFailed(meta_dir.meta.name.clone())
-                    .to_lpm_err()
-                    .into());
+                return Err(
+                    PackageErrorKind::DeletionFailed(self.meta_dir.meta.name.clone())
+                        .to_lpm_err()
+                        .into(),
+                );
             }
         };
 
         info!("Deleting package files from system..");
-        for file in &meta_dir.files.0 {
+        for file in &self.meta_dir.files.0 {
             if Path::new(&file.path).exists() {
                 fs::remove_file(file.path.clone())?;
             } else {
