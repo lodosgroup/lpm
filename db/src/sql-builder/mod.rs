@@ -1,5 +1,14 @@
 use std::fmt::Display;
 
+pub struct Column(pub(crate) String, pub(crate) usize);
+
+impl Column {
+    #[inline(always)]
+    pub fn new(name: String, prepared_id: usize) -> Self {
+        Self(name, prepared_id)
+    }
+}
+
 pub trait CommonInstructions {
     /// Returns constructed SQL statement in String form
     fn to_string(&self) -> String;
@@ -39,10 +48,13 @@ pub(crate) enum Operation {
     Delete(String),
     /// 1st arg: "INTO"
     /// 2nd arg: Column names and prepared statement ids.
-    Insert(String, Option<Vec<insert::Column>>),
+    Insert(String, Option<Vec<Column>>),
     /// 1st arg: "INTO"
     /// 2nd arg: "SELECT"
     InsertFromSelect(String, select::Select),
+    /// 1st arg: Table name to be updated.
+    /// 2nd arg: Column names and prepared statement ids.
+    Update(String, Vec<Column>),
 }
 
 impl Display for Operation {
@@ -95,6 +107,15 @@ impl Display for Operation {
             Operation::InsertFromSelect(table, select) => {
                 write!(f, "INSERT INTO {} {}", table, select.0)
             }
+            Operation::Update(table, columns) => {
+                let set_fields: Vec<String> = columns
+                    .iter()
+                    .map(|column| format!("{} = ?{}", column.0, column.1))
+                    .collect();
+                let set_fields = set_fields.join(", ");
+
+                write!(f, "UPDATE {} SET {}", table, set_fields)
+            }
         }
     }
 }
@@ -102,40 +123,40 @@ impl Display for Operation {
 pub enum Where {
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    Equal(u8, String),
+    Equal(usize, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    NotEqual(u8, String),
+    NotEqual(usize, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    LessThan(u8, String),
+    LessThan(usize, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    LessThanOrEqual(u8, String),
+    LessThanOrEqual(usize, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    GreaterThan(u8, String),
+    GreaterThan(usize, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
     GreaterThanOrEqual(u8, String),
     /// 1st and 2nd args: Prepared statement id for later value binding
     /// 3rd arg: Column name
-    Between(u8, u8, String),
+    Between(usize, usize, String),
     /// 1st and 2nd args: Prepared statement id for later value binding
     /// 3rd arg: Column name
-    NotBetween(u8, u8, String),
+    NotBetween(usize, usize, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    In(Vec<u8>, String),
+    In(Vec<usize>, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    NotIn(Vec<u8>, String),
+    NotIn(Vec<usize>, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    Like(u8, String),
+    Like(usize, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    NotLike(u8, String),
+    NotLike(usize, String),
 }
 
 impl Display for Where {
@@ -185,3 +206,4 @@ impl Display for Where {
 pub mod delete;
 pub mod insert;
 pub mod select;
+pub mod update;
