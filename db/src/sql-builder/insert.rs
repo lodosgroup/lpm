@@ -1,17 +1,8 @@
 pub use super::CommonInstructions;
-use super::{select::Select, Operation};
+use super::{select::Select, Column, Operation};
 
 /// Controller for building `INSERT` SQL statements(prepared)
 pub struct Insert(String);
-
-pub struct Column(pub(crate) String, pub(crate) u8);
-
-impl Column {
-    #[inline(always)]
-    pub fn new(name: String, prepared_id: u8) -> Self {
-        Self(name, prepared_id)
-    }
-}
 
 impl Insert {
     /// Inserts default values if first arg is None or has 0 elements
@@ -25,7 +16,7 @@ impl Insert {
         Self(format!("{}", Operation::InsertFromSelect(into, select)))
     }
 
-    pub fn insert_another_row(&self, column_pre_ids: Vec<u8>) -> Self {
+    pub fn insert_another_row(&self, column_pre_ids: Vec<usize>) -> Self {
         let prepared_ids: Vec<String> =
             column_pre_ids.iter().map(|id| format!("?{}", id)).collect();
         let prepared_ids = prepared_ids.join(", ");
