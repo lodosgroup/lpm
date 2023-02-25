@@ -1,21 +1,21 @@
 use super::ParserTasks;
-use crate::lpm_version::get_lpm_version;
 use crate::{
     meta::{Files, Meta},
     system::System,
-    version::VersionStruct,
 };
-use std::path::Path;
+use std::path::PathBuf;
 
-#[derive(Debug)]
-pub struct LodPkg<'a> {
-    pub path: Option<&'a Path>,
-    pub meta_dir: Option<MetaDir>,
-    pub system: Option<System>,
-    pub version: VersionStruct,
+pub struct PkgDataFromFs {
+    pub path: PathBuf,
+    pub meta_dir: MetaDir,
+    pub system: System,
 }
 
-#[derive(Debug)]
+pub struct PkgDataFromDb {
+    pub pkg_id: i64,
+    pub meta_dir: MetaDir,
+}
+
 pub struct MetaDir {
     pub path: String,
     pub meta: Meta,
@@ -29,18 +29,6 @@ impl MetaDir {
             path: String::from(str_path),
             meta: Meta::deserialize(&(str_path.to_owned() + "/meta.json")),
             files: Files::deserialize(&(str_path.to_owned() + "/files.json")),
-        }
-    }
-}
-
-impl<'a> LodPkg<'a> {
-    #[inline]
-    pub fn from_fs(str_path: &'a str) -> Self {
-        Self {
-            path: Some(Path::new(str_path)),
-            meta_dir: None,
-            system: None,
-            version: get_lpm_version(),
         }
     }
 }

@@ -36,17 +36,6 @@ macro_rules! de_required_field {
 }
 
 #[macro_export]
-macro_rules! from_preprocessor {
-    ($name: ident, $val: expr) => {
-        macro_rules! $name {
-            () => {
-                $val
-            };
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! try_or_error {
     ($fn: expr) => {
         match $fn {

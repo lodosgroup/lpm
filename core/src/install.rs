@@ -1,43 +1,56 @@
-use crate::{extraction::ExtractionTasks, validation::ValidationTasks};
-use common::pkg::LodPkg;
-use db::{pkg::LodPkgCoreDbOps, transaction_op, Transaction, DB_PATH};
+use common::pkg::PkgDataFromFs;
+use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, MainError};
 use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},
-    io,
-    path::Path,
+    path::{Path, PathBuf},
 };
 use term::{debug, info};
 
-pub trait InstallationTasks {
-    fn copy_programs(&self) -> Result<(), LpmError<io::Error>>;
-    fn start_installation(&mut self) -> Result<(), LpmError<MainError>>;
-    fn install_program(&self) -> Result<(), LpmError<io::Error>>;
+use crate::{
+    extract::{get_pkg_output_path, PkgExtractTasks},
+    install::install_internals::PkgInstallInternalTasks,
+    validate::PkgValidateTasks,
+};
+
+pub trait PkgInstallTasks: install_internals::PkgInstallInternalTasks {
+    fn start_install_task(path: &str) -> Result<(), LpmError<MainError>>;
 }
 
-impl<'a> InstallationTasks for LodPkg<'a> {
-    fn start_installation(&mut self) -> Result<(), LpmError<MainError>> {
+pub(crate) mod install_internals {
+    use super::*;
+
+    pub trait PkgInstallInternalTasks {
+        fn copy_programs(&self) -> Result<(), LpmError<MainError>>;
+        fn install_program(&self) -> Result<(), LpmError<MainError>>;
+    }
+}
+
+impl PkgInstallTasks for PkgDataFromFs {
+    fn start_install_task(path: &str) -> Result<(), LpmError<MainError>> {
+        let pkg_path = PathBuf::from(path);
+
         info!("Extracting..");
-        self.start_extraction()?;
+        let pkg = PkgDataFromFs::start_extract_task(&pkg_path)?;
         info!("Validating files..");
-        self.start_validations()?;
+        pkg.start_validate_task()?;
 
         let db = Database::open(Path::new(DB_PATH))?;
         info!("Syncing with package database..");
-        self.insert_to_db(&db)?;
+        pkg.insert_to_db(&db)?;
 
         info!("Installing package files into system..");
-        match self.install_program() {
+        match pkg.install_program() {
             Ok(_) => {}
             Err(err) => {
                 transaction_op(&db, Transaction::Rollback)?;
-                return Err(LpmError::from(err));
+                return Err(err);
             }
         };
 
         info!("Cleaning temporary files..");
-        match self.cleanup() {
+        match pkg.cleanup() {
             Ok(_) => {}
             Err(err) => {
                 transaction_op(&db, Transaction::Rollback)?;
@@ -58,19 +71,18 @@ impl<'a> InstallationTasks for LodPkg<'a> {
 
         Ok(())
     }
+}
 
+impl install_internals::PkgInstallInternalTasks for PkgDataFromFs {
     #[inline(always)]
-    fn install_program(&self) -> Result<(), LpmError<io::Error>> {
+    fn install_program(&self) -> Result<(), LpmError<MainError>> {
         self.copy_programs()
     }
 
-    fn copy_programs(&self) -> Result<(), LpmError<io::Error>> {
-        let source_path = super::EXTRACTION_OUTPUT_PATH.to_string()
-            + "/"
-            + self.path.unwrap().file_stem().unwrap().to_str().unwrap()
-            + "/program/";
+    fn copy_programs(&self) -> Result<(), LpmError<MainError>> {
+        let source_path = get_pkg_output_path(&self.path) + "/program/";
 
-        for file in &self.meta_dir.as_ref().unwrap().files.0 {
+        for file in &self.meta_dir.files.0 {
             let destination_path = Path::new("/").join(&file.path);
             create_dir_all(destination_path.parent().unwrap())?;
 
