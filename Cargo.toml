@@ -7,5 +7,6 @@ members = [
 	"hash",
 	"json",
 	"main",
+	"tar",
 	"term",
 ]

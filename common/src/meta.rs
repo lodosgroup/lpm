@@ -82,14 +82,12 @@ impl json::Deserialize for Files {
     fn from_json_object(json: &json::JsonValue) -> Result<Self, Self::Error> {
         let mut vec: Vec<FileStruct> = vec![];
         match json {
-            json::JsonValue::Plain(_) => todo!(),
-            json::JsonValue::Object(_) => todo!(),
             json::JsonValue::Array(array) => {
                 for item in array {
                     vec.push(FileStruct::from_json_object(item)?)
                 }
             }
-            json::JsonValue::Null => todo!(),
+            _ => return Err("Wrong input, expected an array".to_string()),
         }
 
         Ok(Self(vec))

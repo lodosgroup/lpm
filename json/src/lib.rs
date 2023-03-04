@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 mod deserializer;
 mod iterator;
 mod json;
