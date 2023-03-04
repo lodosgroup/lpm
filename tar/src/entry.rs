@@ -307,10 +307,10 @@ impl<'a> EntryFields<'a> {
             None => return Ok(false),
         };
 
-        self.ensure_dir_created(&dst, parent)
+        self.ensure_dir_created(dst, parent)
             .map_err(|e| TarError::new(format!("failed to create `{}`", parent.display()), e))?;
 
-        let target = self.validate_inside_dst(&dst, parent)?;
+        let target = self.validate_inside_dst(dst, parent)?;
 
         self.unpack(Some(&target), &file_dst)
             .map_err(|e| TarError::new(format!("failed to unpack `{}`", file_dst.display()), e))?;
@@ -409,7 +409,7 @@ impl<'a> EntryFields<'a> {
                     // Note that this logic is only needed for hard links
                     // currently. With symlinks the `validate_inside_dst` which
                     // happens before this method as part of `unpack_in` will
-                    Some(ref p) => {
+                    Some(p) => {
                         let link_src = p.join(src);
                         self.validate_inside_dst(p, &link_src)?;
                         link_src
@@ -517,8 +517,10 @@ impl<'a> EntryFields<'a> {
                         }
                     }
                     EntryIo::Pad(d) => {
-                        // TODO: checked cast to i64
-                        let to = SeekFrom::Current(d.limit() as i64);
+                        let current_position =
+                            i64::try_from(d.limit()).map_err(|e| other(&e.to_string()))?;
+
+                        let to = SeekFrom::Current(current_position);
                         let size = f.seek(to)?;
                         f.set_len(size)?;
                     }
@@ -658,8 +660,7 @@ impl<'a> EntryFields<'a> {
                     "trying to unpack outside of destination path: {}",
                     dst.display()
                 ),
-                // TODO: use ErrorKind::InvalidInput here? (minor breaking change)
-                Error::new(ErrorKind::Other, "Invalid argument"),
+                Error::new(ErrorKind::InvalidInput, "Invalid argument"),
             );
             return Err(err.into());
         }

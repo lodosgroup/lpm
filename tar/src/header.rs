@@ -760,16 +760,6 @@ impl Header {
             }
         }
 
-        // Note that if we are a GNU header we *could* set atime/ctime, except
-        // the `tar` utility doesn't do that by default and it causes problems
-        // with 7-zip [1].
-        //
-        // It's always possible to fill them out manually, so we just don't fill
-        // it out automatically here.
-        //
-        // [1]: https://github.com/alexcrichton/tar-rs/issues/70
-
-        // TODO: need to bind more file types
         self.set_entry_type(entry_type(meta.mode()));
 
         fn entry_type(mode: u32) -> EntryType {
@@ -1482,7 +1472,7 @@ fn copy_path_into(mut slot: &mut [u8], path: &Path, is_link_name: bool) -> io::R
 
     fn copy(slot: &mut &mut [u8], bytes: &[u8]) -> io::Result<()> {
         copy_into(*slot, bytes)?;
-        let tmp = mem::replace(slot, &mut []);
+        let tmp = mem::take(slot);
         *slot = &mut tmp[bytes.len()..];
         Ok(())
     }

@@ -40,4 +40,3 @@ mod header;
 fn other(msg: &str) -> Error {
     Error::new(ErrorKind::Other, msg)
 }
-

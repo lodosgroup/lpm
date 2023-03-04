@@ -23,6 +23,7 @@ impl error::Error for TarError {
         &self.desc
     }
 
+    #[allow(clippy::disallowed_types)]
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         Some(&self.io)
     }
