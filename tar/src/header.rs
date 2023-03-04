@@ -9,7 +9,8 @@ use std::os::unix::prelude::*;
 use std::path::{Component, Path, PathBuf};
 use std::str;
 
-use crate::other;
+use crate::err;
+use crate::ffi;
 use crate::EntryType;
 
 /// Representation of the header of an entry in an archive
@@ -308,7 +309,7 @@ impl Header {
     pub fn size(&self) -> io::Result<u64> {
         if self.entry_type().is_gnu_sparse() {
             self.as_gnu()
-                .ok_or_else(|| other("sparse header was not a gnu header"))
+                .ok_or_else(|| err!("sparse header was not a gnu header"))
                 .and_then(|h| h.real_size())
         } else {
             self.entry_size()
@@ -553,7 +554,7 @@ impl Header {
         if let Some(gnu) = self.as_gnu_mut() {
             gnu.set_username(name)
         } else {
-            Err(other("not a ustar or gnu archive, cannot set username"))
+            Err(err!("not a ustar or gnu archive, cannot set username"))
         }
     }
 
@@ -595,7 +596,7 @@ impl Header {
         if let Some(gnu) = self.as_gnu_mut() {
             gnu.set_groupname(name)
         } else {
-            Err(other("not a ustar or gnu archive, cannot set groupname"))
+            Err(err!("not a ustar or gnu archive, cannot set groupname"))
         }
     }
 
@@ -628,7 +629,7 @@ impl Header {
             gnu.set_device_major(major);
             Ok(())
         } else {
-            Err(other("not a ustar or gnu archive, cannot set dev_major"))
+            Err(err!("not a ustar or gnu archive, cannot set dev_major"))
         }
     }
 
@@ -661,7 +662,7 @@ impl Header {
             gnu.set_device_minor(minor);
             Ok(())
         } else {
-            Err(other("not a ustar or gnu archive, cannot set dev_minor"))
+            Err(err!("not a ustar or gnu archive, cannot set dev_minor"))
         }
     }
 
@@ -763,13 +764,13 @@ impl Header {
         self.set_entry_type(entry_type(meta.mode()));
 
         fn entry_type(mode: u32) -> EntryType {
-            match mode as libc::mode_t & libc::S_IFMT {
-                libc::S_IFREG => EntryType::file(),
-                libc::S_IFLNK => EntryType::symlink(),
-                libc::S_IFCHR => EntryType::character_special(),
-                libc::S_IFBLK => EntryType::block_special(),
-                libc::S_IFDIR => EntryType::dir(),
-                libc::S_IFIFO => EntryType::fifo(),
+            match mode as ffi::MODE_T & ffi::S_IFMT {
+                ffi::S_IFREG => EntryType::file(),
+                ffi::S_IFLNK => EntryType::symlink(),
+                ffi::S_IFCHR => EntryType::character_special(),
+                ffi::S_IFBLK => EntryType::block_special(),
+                ffi::S_IFDIR => EntryType::dir(),
+                ffi::S_IFIFO => EntryType::fifo(),
                 _ => EntryType::new(b' '),
             }
         }
@@ -929,7 +930,7 @@ impl UstarHeader {
                 match prefix.parent() {
                     Some(parent) => prefix = parent,
                     None => {
-                        return Err(other(&format!(
+                        return Err(err!(format!(
                             "path cannot be split to be inserted into archive: {}",
                             path.display()
                         )));
@@ -1328,7 +1329,7 @@ fn octal_from(slice: &[u8]) -> io::Result<u64> {
     let num = match str::from_utf8(trun) {
         Ok(n) => n,
         Err(_) => {
-            return Err(other(&format!(
+            return Err(err!(format!(
                 "numeric field did not have utf-8 text: {}",
                 String::from_utf8_lossy(trun)
             )));
@@ -1336,7 +1337,7 @@ fn octal_from(slice: &[u8]) -> io::Result<u64> {
     };
     match u64::from_str_radix(num.trim(), 8) {
         Ok(n) => Ok(n),
-        Err(_) => Err(other(&format!("numeric field was not a number: {}", num))),
+        Err(_) => Err(err!(format!("numeric field was not a number: {}", num))),
     }
 }
 
@@ -1412,9 +1413,9 @@ fn truncate(slice: &[u8]) -> &[u8] {
 /// array is too long or if it contains any nul bytes.
 fn copy_into(slot: &mut [u8], bytes: &[u8]) -> io::Result<()> {
     if bytes.len() > slot.len() {
-        Err(other("provided value is too long"))
+        Err(err!("provided value is too long"))
     } else if bytes.iter().any(|b| *b == 0) {
-        Err(other("provided value contains a nul byte"))
+        Err(err!("provided value contains a nul byte"))
     } else {
         for (slot, val) in slot.iter_mut().zip(bytes.iter().chain(Some(&0))) {
             *slot = *val;
@@ -1438,10 +1439,10 @@ fn copy_path_into(mut slot: &mut [u8], path: &Path, is_link_name: bool) -> io::R
         let bytes = path2bytes(Path::new(component.as_os_str()))?;
         match (component, is_link_name) {
             (Component::Prefix(..), false) | (Component::RootDir, false) => {
-                return Err(other("paths in archives must be relative"));
+                return Err(err!("paths in archives must be relative"));
             }
             (Component::ParentDir, false) => {
-                return Err(other("paths in archives must not have `..`"));
+                return Err(err!("paths in archives must not have `..`"));
             }
             // Allow "./" as the path
             (Component::CurDir, false) if path.components().count() == 1 => {}
@@ -1453,7 +1454,7 @@ fn copy_path_into(mut slot: &mut [u8], path: &Path, is_link_name: bool) -> io::R
         }
         if bytes.contains(&b'/') {
             if let Component::Normal(..) = component {
-                return Err(other("path component in archive cannot contain `/`"));
+                return Err(err!("path component in archive cannot contain `/`"));
             }
         }
         copy(&mut slot, &*bytes)?;
@@ -1463,7 +1464,7 @@ fn copy_path_into(mut slot: &mut [u8], path: &Path, is_link_name: bool) -> io::R
         emitted = true;
     }
     if !emitted {
-        return Err(other("paths in archives must have at least one component"));
+        return Err(err!("paths in archives must have at least one component"));
     }
     if ends_with_slash(path) {
         copy(&mut slot, &[b'/'])?;

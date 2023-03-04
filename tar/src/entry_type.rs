@@ -1,4 +1,4 @@
-// See https://en.wikipedia.org/wiki/Tar_%28computing%29#UStar_format
+// See https://en.wikipedia.org/wiki/Tar_(computing)#UStar_format
 /// Indicate for the type of file described by a header.
 ///
 /// Each `Header` has an `entry_type` method returning an instance of this type

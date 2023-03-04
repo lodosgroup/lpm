@@ -3,6 +3,13 @@ use std::error;
 use std::fmt;
 use std::io::{self, Error};
 
+#[macro_export]
+macro_rules! err {
+    ($err: expr) => {
+        std::io::Error::new(std::io::ErrorKind::Other, $err)
+    };
+}
+
 #[derive(Debug)]
 pub struct TarError {
     desc: Cow<'static, str>,
@@ -18,16 +25,7 @@ impl TarError {
     }
 }
 
-impl error::Error for TarError {
-    fn description(&self) -> &str {
-        &self.desc
-    }
-
-    #[allow(clippy::disallowed_types)]
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        Some(&self.io)
-    }
-}
+impl error::Error for TarError {}
 
 impl fmt::Display for TarError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

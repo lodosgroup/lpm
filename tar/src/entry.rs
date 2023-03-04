@@ -7,12 +7,11 @@ use std::io::{self, Error, ErrorKind, SeekFrom};
 use std::marker;
 use std::path::{Component, Path, PathBuf};
 
-use filetime::{self, FileTime};
-
 use crate::archive::ArchiveInner;
+use crate::err;
 use crate::error::TarError;
+use crate::ffi;
 use crate::header::bytes2path;
-use crate::other;
 use crate::{Archive, Header};
 
 /// A read-only view into an entry of an archive.
@@ -37,7 +36,6 @@ pub struct EntryFields<'a> {
     pub data: Vec<EntryIo<'a>>,
     pub preserve_permissions: bool,
     pub preserve_ownerships: bool,
-    pub preserve_mtime: bool,
     pub overwrite: bool,
 }
 
@@ -356,19 +354,6 @@ impl<'a> EntryFields<'a> {
             Ok(())
         }
 
-        fn get_mtime(header: &Header) -> Option<FileTime> {
-            header.mtime().ok().map(|mtime| {
-                // For some more information on this see the comments in
-                // `Header::fill_platform_from`, but the general idea is that
-                // we're trying to avoid 0-mtime files coming out of archives
-                // since some tools don't ingest them well. Perhaps one day
-                // when Cargo stops working with 0-mtime archives we can remove
-                // this.
-                let mtime = if mtime == 0 { 1 } else { mtime };
-                FileTime::from_unix_time(mtime as i64, 0)
-            })
-        }
-
         let kind = self.header.entry_type();
 
         if kind.is_dir() {
@@ -385,7 +370,7 @@ impl<'a> EntryFields<'a> {
             let src = match self.link_name()? {
                 Some(name) => name,
                 None => {
-                    return Err(other(&format!(
+                    return Err(err!(format!(
                         "hard link listed for {} but no link name found",
                         String::from_utf8_lossy(self.header.as_bytes())
                     )));
@@ -393,7 +378,7 @@ impl<'a> EntryFields<'a> {
             };
 
             if src.iter().count() == 0 {
-                return Err(other(&format!(
+                return Err(err!(format!(
                     "symlink destination for {} is empty",
                     String::from_utf8_lossy(self.header.as_bytes())
                 )));
@@ -448,13 +433,6 @@ impl<'a> EntryFields<'a> {
                             ),
                         )
                     })?;
-                if self.preserve_mtime {
-                    if let Some(mtime) = get_mtime(&self.header) {
-                        filetime::set_symlink_file_times(dst, mtime, mtime).map_err(|e| {
-                            TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
-                        })?;
-                    }
-                }
             }
             return Ok(Unpacked::__Nonexhaustive);
 
@@ -513,12 +491,12 @@ impl<'a> EntryFields<'a> {
                     EntryIo::Data(mut d) => {
                         let expected = d.limit();
                         if io::copy(&mut d, &mut f)? != expected {
-                            return Err(other("failed to write entire file"));
+                            return Err(err!("failed to write entire file"));
                         }
                     }
                     EntryIo::Pad(d) => {
                         let current_position =
-                            i64::try_from(d.limit()).map_err(|e| other(&e.to_string()))?;
+                            i64::try_from(d.limit()).map_err(|e| err!(e.to_string()))?;
 
                         let to = SeekFrom::Current(current_position);
                         let size = f.seek(to)?;
@@ -540,13 +518,6 @@ impl<'a> EntryFields<'a> {
             )
         })?;
 
-        if self.preserve_mtime {
-            if let Some(mtime) = get_mtime(&self.header) {
-                filetime::set_file_handle_times(&f, Some(mtime), Some(mtime)).map_err(|e| {
-                    TarError::new(format!("failed to set mtime for `{}`", dst.display()), e)
-                })?;
-            }
-        }
         set_perms_ownerships(
             dst,
             Some(&mut f),
@@ -585,16 +556,16 @@ impl<'a> EntryFields<'a> {
         ) -> io::Result<()> {
             use std::os::unix::prelude::*;
 
-            let uid: libc::uid_t = uid.try_into().map_err(|_| {
+            let uid: ffi::UID_T = uid.try_into().map_err(|_| {
                 io::Error::new(io::ErrorKind::Other, format!("UID {} is too large!", uid))
             })?;
-            let gid: libc::gid_t = gid.try_into().map_err(|_| {
+            let gid: ffi::GID_T = gid.try_into().map_err(|_| {
                 io::Error::new(io::ErrorKind::Other, format!("GID {} is too large!", gid))
             })?;
             match f {
                 Some(f) => unsafe {
                     let fd = f.as_raw_fd();
-                    if libc::fchown(fd, uid, gid) != 0 {
+                    if ffi::fchown(fd, uid, gid) != 0 {
                         Err(io::Error::last_os_error())
                     } else {
                         Ok(())
@@ -607,7 +578,7 @@ impl<'a> EntryFields<'a> {
                             format!("path contains null character: {:?}", e),
                         )
                     })?;
-                    if libc::lchown(path.as_ptr(), uid, gid) != 0 {
+                    if ffi::lchown(path.as_ptr(), uid, gid) != 0 {
                         Err(io::Error::last_os_error())
                     } else {
                         Ok(())

@@ -9,8 +9,7 @@ use std::path::Path;
 
 use crate::entry::{EntryFields, EntryIo};
 use crate::error::TarError;
-use crate::other;
-use crate::{Entry, GnuExtSparseHeader, GnuSparseHeader, Header};
+use crate::{err, Entry, GnuExtSparseHeader, GnuSparseHeader, Header};
 
 /// A top-level representation of an archive file.
 ///
@@ -23,7 +22,6 @@ pub struct ArchiveInner<R: ?Sized> {
     pos: Cell<u64>,
     preserve_permissions: bool,
     preserve_ownerships: bool,
-    preserve_mtime: bool,
     overwrite: bool,
     ignore_zeros: bool,
     obj: RefCell<R>,
@@ -53,7 +51,6 @@ impl<R: Read> Archive<R> {
             inner: ArchiveInner {
                 preserve_permissions: false,
                 preserve_ownerships: false,
-                preserve_mtime: true,
                 overwrite: true,
                 ignore_zeros: false,
                 obj: RefCell::new(obj),
@@ -112,10 +109,7 @@ impl Archive<dyn Read + '_> {
         seekable_archive: Option<&'a Archive<dyn SeekRead + 'a>>,
     ) -> io::Result<EntriesFields<'a>> {
         if self.inner.pos.get() != 0 {
-            return Err(other(
-                "cannot call entries unless archive is at \
-                 position 0",
-            ));
+            return Err(err!("cannot call entries unless archive is at position 0"));
         }
         Ok(EntriesFields {
             archive: self,
@@ -213,7 +207,7 @@ impl<'a> EntriesFields<'a> {
             + 8 * 32;
         let cksum = header.cksum()?;
         if sum != cksum {
-            return Err(other("archive header checksum mismatch"));
+            return Err(err!("archive header checksum mismatch"));
         }
 
         let file_pos = self.next;
@@ -228,20 +222,17 @@ impl<'a> EntriesFields<'a> {
             long_pathname: None,
             long_linkname: None,
             preserve_permissions: self.archive.inner.preserve_permissions,
-            preserve_mtime: self.archive.inner.preserve_mtime,
             overwrite: self.archive.inner.overwrite,
             preserve_ownerships: self.archive.inner.preserve_ownerships,
         };
 
         // Store where the next entry is, rounding up by 512 bytes (the size of
         // a header);
-        let size = size
-            .checked_add(511)
-            .ok_or_else(|| other("size overflow"))?;
+        let size = size.checked_add(511).ok_or_else(|| err!("size overflow"))?;
         self.next = self
             .next
             .checked_add(size & !(512 - 1))
-            .ok_or_else(|| other("size overflow"))?;
+            .ok_or_else(|| err!("size overflow"))?;
 
         Ok(Some(ret.into_entry()))
     }
@@ -259,9 +250,8 @@ impl<'a> EntriesFields<'a> {
             let entry = match self.next_entry_raw()? {
                 Some(entry) => entry,
                 None if processed > 1 => {
-                    return Err(other(
-                        "members found describing a future member \
-                         but no future member found",
+                    return Err(err!(
+                        "members found describing a future member but no future member found"
                     ));
                 }
                 None => return Ok(None),
@@ -272,10 +262,7 @@ impl<'a> EntriesFields<'a> {
 
             if is_recognized_header && entry.header().entry_type().is_gnu_longname() {
                 if gnu_longname.is_some() {
-                    return Err(other(
-                        "two long name entries describing \
-                         the same member",
-                    ));
+                    return Err(err!("two long name entries describing the same member"));
                 }
                 gnu_longname = Some(EntryFields::from(entry).read_all()?);
                 continue;
@@ -283,10 +270,7 @@ impl<'a> EntriesFields<'a> {
 
             if is_recognized_header && entry.header().entry_type().is_gnu_longlink() {
                 if gnu_longlink.is_some() {
-                    return Err(other(
-                        "two long name entries describing \
-                         the same member",
-                    ));
+                    return Err(err!("two long name entries describing the same member"));
                 }
                 gnu_longlink = Some(EntryFields::from(entry).read_all()?);
                 continue;
@@ -306,7 +290,7 @@ impl<'a> EntriesFields<'a> {
         }
         let gnu = match entry.header.as_gnu() {
             Some(gnu) => gnu,
-            None => return Err(other("sparse entry type listed but not GNU header")),
+            None => return Err(err!("sparse entry type listed but not GNU header")),
         };
 
         // Sparse files are represented internally as a list of blocks that are
@@ -343,28 +327,21 @@ impl<'a> EntriesFields<'a> {
                 let off = block.offset()?;
                 let len = block.length()?;
                 if len != 0 && (size - remaining) % 512 != 0 {
-                    return Err(other(
-                        "previous block in sparse file was not \
-                         aligned to 512-byte boundary",
+                    return Err(err!(
+                        "previous block in sparse file was not aligned to 512-byte boundary"
                     ));
                 } else if off < cur {
-                    return Err(other(
-                        "out of order or overlapping sparse \
-                         blocks",
-                    ));
+                    return Err(err!("out of order or overlapping sparse blocks"));
                 } else if cur < off {
                     let block = io::repeat(0).take(off - cur);
                     data.push(EntryIo::Pad(block));
                 }
                 cur = off
                     .checked_add(len)
-                    .ok_or_else(|| other("more bytes listed in sparse file than u64 can hold"))?;
-                remaining = remaining.checked_sub(len).ok_or_else(|| {
-                    other(
-                        "sparse file consumed more data than the header \
-                         listed",
-                    )
-                })?;
+                    .ok_or_else(|| err!("more bytes listed in sparse file than u64 can hold"))?;
+                remaining = remaining
+                    .checked_sub(len)
+                    .ok_or_else(|| err!("sparse file consumed more data than the header listed"))?;
                 data.push(EntryIo::Data(reader.take(len)));
                 Ok(())
             };
@@ -376,7 +353,7 @@ impl<'a> EntriesFields<'a> {
                 ext.isextended[0] = 1;
                 while ext.is_extended() {
                     if !try_read_all(&mut &self.archive.inner, ext.as_mut_bytes())? {
-                        return Err(other("failed to read extension"));
+                        return Err(err!("failed to read extension"));
                     }
 
                     self.next += 512;
@@ -387,16 +364,12 @@ impl<'a> EntriesFields<'a> {
             }
         }
         if cur != gnu.real_size()? {
-            return Err(other(
-                "mismatch in sparse file chunks and \
-                 size in header",
-            ));
+            return Err(err!("mismatch in sparse file chunks and size in header"));
         }
         entry.size = cur;
         if remaining > 0 {
-            return Err(other(
-                "mismatch in sparse file chunks and \
-                 entry size in header",
+            return Err(err!(
+                "mismatch in sparse file chunks and entry size in header"
             ));
         }
         Ok(())
@@ -405,7 +378,7 @@ impl<'a> EntriesFields<'a> {
     fn skip(&mut self, mut amt: u64) -> io::Result<()> {
         if let Some(seekable_archive) = self.seekable_archive {
             let pos = io::SeekFrom::Current(
-                i64::try_from(amt).map_err(|_| other("seek position out of bounds"))?,
+                i64::try_from(amt).map_err(|_| err!("seek position out of bounds"))?,
             );
             (&seekable_archive.inner).seek(pos)?;
         } else {
@@ -414,7 +387,7 @@ impl<'a> EntriesFields<'a> {
                 let n = cmp::min(amt, buf.len() as u64);
                 let n = (&self.archive.inner).read(&mut buf[..n as usize])?;
                 if n == 0 {
-                    return Err(other("unexpected EOF during skip"));
+                    return Err(err!("unexpected EOF during skip"));
                 }
                 amt -= n as u64;
             }
@@ -474,7 +447,7 @@ fn try_read_all<R: Read>(r: &mut R, buf: &mut [u8]) -> io::Result<bool> {
                     return Ok(false);
                 }
 
-                return Err(other("failed to read entire block"));
+                return Err(err!("failed to read entire block"));
             }
             n => read += n,
         }
