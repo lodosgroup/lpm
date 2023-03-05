@@ -5,10 +5,9 @@ use common::{
 };
 use ehandle::lpm::LpmError;
 use std::{
-    fs::{create_dir_all, remove_dir_all, File},
-    io::{self, copy},
+    fs::{remove_dir_all, File},
+    io,
     path::Path,
-    str::from_utf8,
 };
 use term::debug;
 use xz2::read::XzDecoder;
@@ -17,8 +16,7 @@ pub trait PkgExtractTasks {
     fn start_extract_task(pkg_path: &Path) -> Result<Self, LpmError<io::Error>>
     where
         Self: Sized;
-    fn half_extract(pkg_path: &Path) -> Result<(), LpmError<io::Error>>;
-    fn extract_meta_and_program(pkg_path: &Path) -> Result<(), LpmError<io::Error>>;
+    fn unpack_and_decompress(pkg_path: &Path) -> Result<(), LpmError<io::Error>>;
     fn read_pkg_data(pkg_path: &Path) -> PkgDataFromFs;
     fn cleanup(&self) -> Result<(), LpmError<io::Error>>;
 }
@@ -28,57 +26,19 @@ impl PkgExtractTasks for PkgDataFromFs {
     where
         Self: Sized,
     {
-        PkgDataFromFs::half_extract(pkg_path)?;
-        PkgDataFromFs::extract_meta_and_program(pkg_path)?;
+        PkgDataFromFs::unpack_and_decompress(pkg_path)?;
         let pkg_data = PkgDataFromFs::read_pkg_data(pkg_path);
 
         Ok(pkg_data)
     }
 
-    fn half_extract(pkg_path: &Path) -> Result<(), LpmError<io::Error>> {
-        let input_file = File::open(pkg_path)?;
-        let mut archive = ar::Archive::new(input_file);
+    fn unpack_and_decompress(pkg_path: &Path) -> Result<(), LpmError<io::Error>> {
+        let compressed_pkg_file = File::open(pkg_path)?;
+        let mut archive = untar::Archive::new(XzDecoder::new(compressed_pkg_file));
+        let tmp_dir = get_pkg_output_path(pkg_path);
 
-        while let Some(entry) = archive.next_entry() {
-            let mut entry = entry?;
-            let filename = from_utf8(entry.header().identifier()).map_err(|_| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Package has a file with non UTF-8 filename.",
-                )
-            })?;
-            let mut output_path = get_pkg_output_path(pkg_path);
-
-            create_dir_all(output_path.clone())?;
-
-            output_path += "/";
-            output_path += filename;
-
-            debug!("Extracting {} -> {}", filename, output_path);
-
-            let output_path = Path::new(&output_path).to_path_buf();
-            let mut output_file = File::create(&output_path)?;
-
-            copy(&mut entry, &mut output_file)?;
-        }
-
-        Ok(())
-    }
-
-    fn extract_meta_and_program(pkg_path: &Path) -> Result<(), LpmError<io::Error>> {
-        let pkg_dir = get_pkg_output_path(pkg_path);
-
-        let tar_file_path = pkg_dir.clone() + "/meta.tar.xz";
-        let tar_file = File::open(&tar_file_path)?;
-        debug!("Extracting {} -> {}", tar_file_path, pkg_dir);
-        let mut archive = untar::Archive::new(XzDecoder::new(tar_file));
-        archive.unpack(&pkg_dir)?;
-
-        let tar_file_path = pkg_dir.clone() + "/program.tar.xz";
-        let tar_file = File::open(&tar_file_path)?;
-        debug!("Extracting {} -> {}", tar_file_path, pkg_dir);
-        let mut archive = untar::Archive::new(XzDecoder::new(tar_file));
-        archive.unpack(&pkg_dir)?;
+        debug!("Extracting {} -> {}", pkg_path.display(), tmp_dir);
+        archive.unpack(&tmp_dir)?;
 
         Ok(())
     }
