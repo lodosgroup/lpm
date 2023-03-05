@@ -88,5 +88,3 @@ pub fn get_current_datetime(db: &Database) -> Result<String, LpmError<SqlError>>
 }
 
 pub mod pkg;
-#[path = "sql-builder/mod.rs"]
-pub mod sql_builder;

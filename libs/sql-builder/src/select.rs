@@ -121,9 +121,11 @@ impl Display for SelectArg {
 
             Self::GroupBy(columns) => {
                 if columns.is_empty() {
-                    common::log_and_panic!(
+                    writeln!(
+                        f,
                         "At least one column must be defined for DISTINCT queries."
-                    );
+                    )?;
+                    return Err(std::fmt::Error);
                 }
 
                 let columns = columns.join(", ");

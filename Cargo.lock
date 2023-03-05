@@ -32,8 +32,8 @@ dependencies = [
  "ehandle",
  "hash",
  "min-sqlite3-sys",
- "tar",
  "term",
+ "untar",
  "xz2",
 ]
 
@@ -44,6 +44,7 @@ dependencies = [
  "common",
  "ehandle",
  "min-sqlite3-sys",
+ "sql-builder",
  "term",
 ]
 
@@ -108,17 +109,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ac9a59f73473f1b8d852421e59e64809f025994837ef743615c6d0c5b305160"
 
 [[package]]
+name = "sql-builder"
+version = "0.1.0"
+
+[[package]]
 name = "sqlite3-builder"
 version = "3.38.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "159e409b9f7e659bcbd7a00d1190891387755cd3c0f5fcaa79cb88c48b7e1050"
 
 [[package]]
-name = "tar"
+name = "term"
 version = "0.1.0"
 
 [[package]]
-name = "term"
+name = "untar"
 version = "0.1.0"
 
 [[package]]
