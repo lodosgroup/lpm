@@ -1,12 +1,18 @@
 [workspace]
+resolver = "2"
+
 members = [
-	"common",
-	"core",
-	"db",
-	"ehandle",
-	"hash",
-	"json",
-	"main",
-	"tar",
-	"term",
+	"lpm/common",
+	"lpm/core",
+	"lpm/db",
+	"lpm/ehandle",
+	"lpm/main",
+	"libs/hash",
+	"libs/json",
+	"libs/sql-builder",
+	"libs/untar",
+	"libs/term",
 ]
+
+[profile.release]
+lto = true

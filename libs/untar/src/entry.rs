@@ -144,7 +144,7 @@ impl<'a, R: Read> Entry<'a, R> {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use tar::Archive;
+    /// use untar::Archive;
     ///
     /// let mut ar = Archive::new(File::open("foo.tar").unwrap());
     ///
@@ -172,7 +172,7 @@ impl<'a, R: Read> Entry<'a, R> {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use tar::Archive;
+    /// use untar::Archive;
     ///
     /// let mut ar = Archive::new(File::open("foo.tar").unwrap());
     ///

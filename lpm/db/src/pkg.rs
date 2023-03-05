@@ -1,8 +1,3 @@
-use crate::sql_builder::delete::*;
-use crate::sql_builder::insert::*;
-use crate::sql_builder::select::*;
-use crate::sql_builder::update::Update;
-use crate::sql_builder::Column;
 use crate::{enable_foreign_keys, transaction_op, Transaction};
 use common::pkg::PkgDataFromDb;
 use common::pkg::PkgDataFromFs;
@@ -19,6 +14,11 @@ use ehandle::{
     simple_e_fmt, try_bind_val, try_execute_prepared, ErrorCommons,
 };
 use min_sqlite3_sys::prelude::*;
+use sql_builder::delete::*;
+use sql_builder::insert::*;
+use sql_builder::select::*;
+use sql_builder::update::Update;
+use sql_builder::Column;
 use std::path::Path;
 use term::{debug, info};
 

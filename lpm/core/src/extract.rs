@@ -71,13 +71,13 @@ impl PkgExtractTasks for PkgDataFromFs {
         let tar_file_path = pkg_dir.clone() + "/meta.tar.xz";
         let tar_file = File::open(&tar_file_path)?;
         debug!("Extracting {} -> {}", tar_file_path, pkg_dir);
-        let mut archive = tar::Archive::new(XzDecoder::new(tar_file));
+        let mut archive = untar::Archive::new(XzDecoder::new(tar_file));
         archive.unpack(&pkg_dir)?;
 
         let tar_file_path = pkg_dir.clone() + "/program.tar.xz";
         let tar_file = File::open(&tar_file_path)?;
         debug!("Extracting {} -> {}", tar_file_path, pkg_dir);
-        let mut archive = tar::Archive::new(XzDecoder::new(tar_file));
+        let mut archive = untar::Archive::new(XzDecoder::new(tar_file));
         archive.unpack(&pkg_dir)?;
 
         Ok(())

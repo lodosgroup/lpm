@@ -1,4 +1,3 @@
-- ? on pkg upgrading or downgrading, apply only differences between system-target pkg
 - ? create app context
 - transactional pkg operations
 - add scripts that will be executed on installation or uninstallation process

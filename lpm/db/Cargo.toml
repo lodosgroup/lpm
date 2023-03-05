@@ -8,4 +8,5 @@ publish = false
 min-sqlite3-sys = "1.3"
 ehandle = { path = "../ehandle" }
 common = { path = "../common" }
-term = { path = "../term" }
+sql-builder = { path = "../../libs/sql-builder" }
+term = { path = "../../libs/term" }

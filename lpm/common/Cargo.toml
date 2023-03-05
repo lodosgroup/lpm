@@ -5,5 +5,5 @@ edition = "2021"
 publish = false
 
 [dependencies]
-json = { path = "../json" }
-term = { path = "../term" }
+json = { path = "../../libs/json" }
+term = { path = "../../libs/term" }
