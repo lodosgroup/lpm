@@ -90,7 +90,7 @@ mod tests {
         assert_eq!(&object.name, "Onur");
         assert_eq!(&object.surname, "Ozkan");
         assert_eq!(object.age, 25);
-        assert_eq!(object.active, true);
+        assert!(object.active);
 
         let json_content = r#"
             [
@@ -127,21 +127,21 @@ mod tests {
         assert_eq!(&object_array[0].name, "Onur");
         assert_eq!(&object_array[0].surname, "Ozkan");
         assert_eq!(object_array[0].age, 25);
-        assert_eq!(object_array[0].active, true);
+        assert!(object_array[0].active);
 
         assert_eq!(&object_array[1].name, "Onur2");
         assert_eq!(&object_array[1].surname, "Ozkan2");
         assert_eq!(object_array[1].age, 35);
-        assert_eq!(object_array[1].active, false);
+        assert!(!object_array[1].active);
 
         assert_eq!(&object_array[2].name, "Onur3");
         assert_eq!(&object_array[2].surname, "Ozkan3");
         assert_eq!(object_array[2].age, 45);
-        assert_eq!(object_array[2].active, true);
+        assert!(object_array[2].active);
 
         assert_eq!(&object_array[3].name, "Onur4");
         assert_eq!(&object_array[3].surname, "Ozkan4");
         assert_eq!(object_array[3].age, 55);
-        assert_eq!(object_array[3].active, false);
+        assert!(!object_array[3].active);
     }
 }
