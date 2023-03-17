@@ -88,7 +88,7 @@ mod tests {
         president.push(JsonValue::Plain("true".to_string()));
         president.push(JsonValue::Plain("-58333673.273878574".to_string()));
 
-        let json = Json::new(&json_content);
+        let json = Json::new(json_content);
         let json_value = json.parse().unwrap();
 
         assert_eq!(json_value["president"], JsonValue::Array(president));
@@ -207,9 +207,10 @@ mod tests {
             let mut pets = vec![];
 
             let mut pet = BTreeMap::new();
-            let mut fav_foods = vec![];
-            fav_foods.push(JsonValue::Plain("corn".to_string()));
-            fav_foods.push(JsonValue::Plain("polenta".to_string()));
+            let fav_foods = vec![
+                JsonValue::Plain("corn".to_string()),
+                JsonValue::Plain("polenta".to_string()),
+            ];
 
             pet.insert("name".to_string(), JsonValue::Plain("boncuk".to_string()));
             pet.insert("species".to_string(), JsonValue::Plain("cat".to_string()));
@@ -218,10 +219,11 @@ mod tests {
             pets.push(JsonValue::Object(pet));
 
             let mut pet = BTreeMap::new();
-            let mut fav_foods = vec![];
-            fav_foods.push(JsonValue::Plain("meat".to_string()));
-            fav_foods.push(JsonValue::Plain("chicken".to_string()));
-            fav_foods.push(JsonValue::Plain("beef".to_string()));
+            let fav_foods = vec![
+                JsonValue::Plain("meat".to_string()),
+                JsonValue::Plain("chicken".to_string()),
+                JsonValue::Plain("beef".to_string()),
+            ];
 
             pet.insert("name".to_string(), JsonValue::Plain("paskal".to_string()));
             pet.insert("species".to_string(), JsonValue::Plain("dog".to_string()));
@@ -230,11 +232,12 @@ mod tests {
             pets.push(JsonValue::Object(pet));
 
             let mut pet = BTreeMap::new();
-            let mut fav_foods = vec![];
-            fav_foods.push(JsonValue::Plain("meat".to_string()));
-            fav_foods.push(JsonValue::Plain("cheese".to_string()));
-            fav_foods.push(JsonValue::Plain("chicken".to_string()));
-            fav_foods.push(JsonValue::Plain("beef".to_string()));
+            let fav_foods = vec![
+                JsonValue::Plain("meat".to_string()),
+                JsonValue::Plain("cheese".to_string()),
+                JsonValue::Plain("chicken".to_string()),
+                JsonValue::Plain("beef".to_string()),
+            ];
 
             pet.insert("name".to_string(), JsonValue::Plain("cesur".to_string()));
             pet.insert("species".to_string(), JsonValue::Plain("dog".to_string()));
@@ -266,7 +269,7 @@ mod tests {
 
             let expected_object = JsonValue::Object(root_level);
 
-            let json = Json::new(&json_content);
+            let json = Json::new(json_content);
             let actual_object = json.parse().unwrap();
 
             assert_eq!(expected_object, actual_object);
@@ -684,7 +687,7 @@ mod tests {
 
             let expected_object = JsonValue::Array(root_level);
 
-            let json = Json::new(&json_content);
+            let json = Json::new(json_content);
             let actual_object = json.parse().unwrap();
 
             assert_eq!(expected_object, actual_object);
@@ -753,7 +756,7 @@ mod tests {
 
             let expected_object = JsonValue::Object(root_level);
 
-            let json = Json::new(&json_content);
+            let json = Json::new(json_content);
             let actual_object = json.parse().unwrap();
 
             assert_eq!(expected_object, actual_object);
