@@ -7,7 +7,7 @@ use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
 use min_sqlite3_sys::prelude::*;
 use std::env;
 use std::path::Path;
-use term::info;
+use term::{info, success};
 
 #[allow(unused_imports)]
 use ehandle::{lpm::LpmError, MainError};
@@ -25,7 +25,7 @@ fn main() {
                 let path = args.get(2).expect("Package path is missing.");
                 info!("Package installation started for {}", path);
                 try_or_error!(PkgDataFromFs::start_install_task(path));
-                info!("Operation successfully completed.");
+                success!("Operation successfully completed.");
             }
             "--update" => {
                 let name = args.get(2).expect("Package name is missing.");
@@ -38,7 +38,7 @@ fn main() {
 
                 info!("Package update started for {}", name);
                 old_pkg.start_update_task(&mut requested_pkg)?;
-                info!("Operation successfully completed.");
+                success!("Operation successfully completed.");
             }
             "--delete" => {
                 let name = args.get(2).expect("Package name is missing.");
@@ -48,7 +48,7 @@ fn main() {
 
                 info!("Package deletion started for {}", name);
                 try_or_error!(pkg.start_delete_task());
-                info!("Operation successfully completed.");
+                success!("Operation successfully completed.");
             }
             "--add-pkg-kind" => {
                 let db = try_or_error!(Database::open(Path::new(DB_PATH)));
@@ -61,7 +61,7 @@ fn main() {
                 info!("Inserting list of package kinds: {:?}", kinds);
                 try_or_error!(insert_pkg_kinds(&db, kinds.to_vec()));
                 db.close();
-                info!("Operation successfully completed.");
+                success!("Operation successfully completed.");
             }
             "--delete-pkg-kind" => {
                 let db = try_or_error!(Database::open(Path::new(DB_PATH)));
@@ -74,7 +74,7 @@ fn main() {
                 info!("Deleting list of package kinds: {:?}", kinds);
                 try_or_error!(delete_pkg_kinds(&db, kinds.to_vec()));
                 db.close();
-                info!("Operation successfully completed.");
+                success!("Operation successfully completed.");
             }
             _ => {
                 log_and_panic!("Invalid argument.");
