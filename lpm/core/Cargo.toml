@@ -5,7 +5,6 @@ edition = "2021"
 publish = false
 
 [dependencies]
-xz2 = "0.1"
 min-sqlite3-sys = "1.3"
 common = { path = "../common" }
 db = { path = "../db" }
@@ -13,3 +12,4 @@ ehandle = { path = "../ehandle" }
 hash = { path = "../../libs/hash" }
 untar = { path = "../../libs/untar" }
 term = { path = "../../libs/term" }
+tiny-lz4-decoder-sys = "1.0"

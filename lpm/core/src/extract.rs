@@ -10,7 +10,6 @@ use std::{
     path::Path,
 };
 use term::debug;
-use xz2::read::XzDecoder;
 
 pub trait PkgExtractTasks {
     fn start_extract_task(pkg_path: &Path) -> Result<Self, LpmError<io::Error>>
@@ -34,7 +33,8 @@ impl PkgExtractTasks for PkgDataFromFs {
 
     fn unpack_and_decompress(pkg_path: &Path) -> Result<(), LpmError<io::Error>> {
         let compressed_pkg_file = File::open(pkg_path)?;
-        let mut archive = untar::Archive::new(XzDecoder::new(compressed_pkg_file));
+        let mut archive =
+            untar::Archive::new(tiny_lz4_decoder_sys::Decoder::new(compressed_pkg_file)?);
         let tmp_dir = get_pkg_output_path(pkg_path);
 
         debug!("Extracting {} -> {}", pkg_path.display(), tmp_dir);
