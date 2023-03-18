@@ -3,12 +3,6 @@
 version = 3
 
 [[package]]
-name = "cc"
-version = "1.0.79"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50d30906286121d95be3d479533b458f87493b30a4b5f79a607db8f5d11aa91f"
-
-[[package]]
 name = "common"
 version = "0.1.0"
 dependencies = [
@@ -26,8 +20,8 @@ dependencies = [
  "hash",
  "min-sqlite3-sys",
  "term",
+ "tiny-lz4-decoder-sys",
  "untar",
- "xz2",
 ]
 
 [[package]]
@@ -58,12 +52,6 @@ name = "json"
 version = "0.1.0"
 
 [[package]]
-name = "libc"
-version = "0.2.139"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
-
-[[package]]
 name = "lpm"
 version = "0.1.0"
 dependencies = [
@@ -76,15 +64,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "lzma-sys"
-version = "0.1.20"
+name = "lz4-builder"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fda04ab3764e6cde78b9974eec4f779acaba7c4e84b36eca3cf77c581b85d27"
-dependencies = [
- "cc",
- "libc",
- "pkg-config",
-]
+checksum = "db72ce3d43abd8842d06aebad519b34cf804eca36bc3c2c5e723e4b3092b6ece"
 
 [[package]]
 name = "min-sqlite3-sys"
@@ -94,12 +77,6 @@ checksum = "619f98df568051e6e75651b6efd9c5cf79f7fb8765bb21b65d6f0eb6e1e059ca"
 dependencies = [
  "sqlite3-builder",
 ]
-
-[[package]]
-name = "pkg-config"
-version = "0.3.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ac9a59f73473f1b8d852421e59e64809f025994837ef743615c6d0c5b305160"
 
 [[package]]
 name = "sql-builder"
@@ -116,14 +93,14 @@ name = "term"
 version = "0.1.0"
 
 [[package]]
-name = "untar"
-version = "0.1.0"
+name = "tiny-lz4-decoder-sys"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4227f46e9c92fb1eca19a3edf29895436e1426f8c56716308c925c3e4adcdc2e"
+dependencies = [
+ "lz4-builder",
+]
 
 [[package]]
-name = "xz2"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "388c44dc09d76f1536602ead6d325eb532f5c122f17782bd57fb47baeeb767e2"
-dependencies = [
- "lzma-sys",
-]
+name = "untar"
+version = "0.1.0"
