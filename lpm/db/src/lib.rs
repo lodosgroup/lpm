@@ -8,10 +8,10 @@ use min_sqlite3_sys::prelude::*;
 mod migrations;
 
 #[cfg(not(debug_assertions))]
-pub const DB_PATH: &str = "/var/lib/lodpm/lpm.db";
+pub const DB_PATH: &str = "/var/lib/lpm/.db";
 
 #[cfg(debug_assertions)]
-pub const DB_PATH: &str = "lpm.db";
+pub const DB_PATH: &str = ".db";
 
 #[inline(always)]
 pub fn init_db() -> Result<(), LpmError<SqlError>> {
