@@ -1,13 +1,5 @@
 name: Rust pipeline
-on:
-  push:
-    branches:
-      - stable
-      - dev
-  pull_request:
-    branches:
-      - stable
-      - dev
+on: [push]
 
 jobs:
   check:
