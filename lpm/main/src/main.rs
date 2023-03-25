@@ -1,16 +1,16 @@
+use common::config::{LpmConfig, CONFIG_PATH};
 use common::pkg::{PkgDataFromDb, PkgDataFromFs};
-use common::{log_and_panic, try_or_error};
+use common::{log_and_panic, try_or_error, ParserTasks};
 use core::*;
 use db::init_db;
 use db::pkg::DbOpsForInstalledPkg;
 use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
+#[allow(unused_imports)]
+use ehandle::{lpm::LpmError, MainError};
 use min_sqlite3_sys::prelude::*;
 use std::env;
 use std::path::Path;
 use term::{info, success};
-
-#[allow(unused_imports)]
-use ehandle::{lpm::LpmError, MainError};
 
 fn main() {
     try_or_error!(init_db());
@@ -75,6 +75,21 @@ fn main() {
                 try_or_error!(delete_pkg_kinds(&db, kinds.to_vec()));
                 db.close();
                 success!("Operation successfully completed.");
+            }
+            "--plugin" => {
+                let plugin_name = args.get(2).expect("Plugin name is missing.");
+                let lpm_config = LpmConfig::deserialize(CONFIG_PATH);
+                let plugin = lpm_config
+                    .plugins
+                    .iter()
+                    .find(|p| p.name == *plugin_name)
+                    .unwrap_or_else(|| panic!("Plugin '{}' not found", plugin_name));
+
+                let plugin_controller = PluginController::load(&plugin.dylib_path)?;
+                info!("Plugin '{}' loaded.", plugin_name);
+                plugin_controller.run()?;
+                plugin_controller.unload();
+                info!("Plugin '{}' finished running and unloaded.", plugin_name);
             }
             _ => {
                 log_and_panic!("Invalid argument.");
