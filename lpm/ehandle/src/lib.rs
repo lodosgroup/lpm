@@ -24,3 +24,4 @@ pub mod db;
 mod io;
 pub mod lpm;
 pub mod pkg;
+pub mod plugin;
