@@ -8,6 +8,9 @@ pub const CONFIG_PATH: &str = "/etc/lpm/conf";
 #[cfg(debug_assertions)]
 pub const CONFIG_PATH: &str = "conf";
 
+/// Used for parts that doesn't necessarily need to be in
+/// sql database if they don't have relation with any other data.
+/// e.g: repositories, package kinds, utils, etc.
 pub struct LpmConfig {
     pub plugins: Vec<Plugin>,
 }
