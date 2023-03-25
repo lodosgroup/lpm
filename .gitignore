@@ -6,5 +6,6 @@
 **/*.rs.bk
 
 # Other
-lpm.db
-lpm.db-journal
+conf
+.db
+.db-journal
