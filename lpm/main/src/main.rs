@@ -87,7 +87,7 @@ fn main() {
 
                 let plugin_controller = PluginController::load(&plugin.dylib_path)?;
                 info!("Plugin '{}' loaded.", plugin_name);
-                plugin_controller.run()?;
+                plugin_controller.run(args.clone())?;
                 plugin_controller.unload();
                 info!("Plugin '{}' finished running and unloaded.", plugin_name);
             }

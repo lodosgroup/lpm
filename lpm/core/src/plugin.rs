@@ -25,7 +25,14 @@ extern "C" {
     fn dlclose(handle: *mut std::os::raw::c_void) -> std::os::raw::c_int;
 }
 
-type PluginEntrypointFn = extern "C" fn(*const std::os::raw::c_char, *const std::os::raw::c_char);
+// We want to only pass configuration and database path and command arguments so we don't
+// need to worry about backwards compatibility(e.g when we add new fields to the configuration struct).
+type PluginEntrypointFn = extern "C" fn(
+    *const std::os::raw::c_char,
+    *const std::os::raw::c_char,
+    std::os::raw::c_uint,
+    *const std::os::raw::c_void,
+);
 
 impl PluginController {
     pub fn load(dylib_path: &str) -> Result<Self, LpmError<PluginError>> {
@@ -43,7 +50,7 @@ impl PluginController {
         Ok(Self(lib_pointer))
     }
 
-    pub fn run(&self) -> Result<(), LpmError<PluginError>> {
+    pub fn run(&self, args: Vec<String>) -> Result<(), LpmError<PluginError>> {
         let func_name = CString::new("lpm_entrypoint")?;
 
         #[allow(unsafe_code)]
@@ -56,11 +63,22 @@ impl PluginController {
         #[allow(unsafe_code)]
         let lpm_entrypoint: PluginEntrypointFn = unsafe { std::mem::transmute(func_ptr) };
 
-        // We want to only pass configuration and database path so we don't need to worry about
-        // backwards compatibility(e.g when we add new fields to the configuration struct).
-        let arg = CString::new(CONFIG_PATH)?;
-        let arg2 = CString::new(DB_PATH)?;
-        lpm_entrypoint(arg.as_ptr(), arg2.as_ptr());
+        let cstrings: Vec<CString> = args
+            .iter()
+            .map(|s| CString::new(s.as_str()).unwrap())
+            .collect();
+        let mut args_ptrs: Vec<*const std::os::raw::c_char> =
+            cstrings.iter().map(|s| s.as_ptr()).collect();
+        args_ptrs.push(std::ptr::null());
+
+        let config_path = CString::new(CONFIG_PATH)?;
+        let db_path = CString::new(DB_PATH)?;
+        lpm_entrypoint(
+            config_path.as_ptr(),
+            db_path.as_ptr(),
+            (args_ptrs.len() - 1) as std::os::raw::c_uint,
+            args_ptrs.as_ptr() as *const std::os::raw::c_void,
+        );
 
         Ok(())
     }
