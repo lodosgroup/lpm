@@ -97,4 +97,4 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --release --manifest-path sdk/Cargo.toml
+        args: --manifest-path sdk/Cargo.toml

@@ -19,6 +19,20 @@ exclude = [
 	"sdk"
 ]
 
+[profile.dev]
+opt-level = 0
+debug = true
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = 'unwind'
+incremental = true
+codegen-units = 256
+rpath = false
+
 [profile.release]
-lto = true
 strip = true
+opt-level = 3
+lto = true
+panic = "abort"
+codegen-units = 1
