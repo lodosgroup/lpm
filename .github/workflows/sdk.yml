@@ -1,4 +1,4 @@
-name: Rust pipeline
+name: sdk pipeline
 on: [push]
 
 concurrency:
@@ -22,6 +22,7 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: check
+        args: --manifest-path sdk/Cargo.toml
 
   fmt:
     timeout-minutes: 10
@@ -40,7 +41,7 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: fmt
-        args: --all -- --check
+        args: --all --manifest-path sdk/Cargo.toml -- --check
 
   lint:
     timeout-minutes: 10
@@ -60,7 +61,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args: --all-targets -- -D warnings
+        args: --all-targets --manifest-path sdk/Cargo.toml -- -D warnings
 
   test:
     timeout-minutes: 10
@@ -78,6 +79,7 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: test
+        args: --manifest-path sdk/Cargo.toml
 
   build:
     timeout-minutes: 10
@@ -95,4 +97,4 @@ jobs:
     - uses: actions-rs/cargo@v1
       with:
         command: build
-        args: --release
+        args: --release --manifest-path sdk/Cargo.toml
