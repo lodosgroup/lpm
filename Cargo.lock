@@ -7,7 +7,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "json",
- "term",
+ "logger",
 ]
 
 [[package]]
@@ -18,8 +18,8 @@ dependencies = [
  "db",
  "ehandle",
  "hash",
+ "logger",
  "min-sqlite3-sys",
- "term",
  "tiny-lz4-decoder-sys",
  "untar",
 ]
@@ -30,9 +30,9 @@ version = "0.1.0"
 dependencies = [
  "common",
  "ehandle",
+ "logger",
  "min-sqlite3-sys",
  "sql-builder",
- "term",
 ]
 
 [[package]]
@@ -40,7 +40,6 @@ name = "ehandle"
 version = "0.1.0"
 dependencies = [
  "min-sqlite3-sys",
- "term",
 ]
 
 [[package]]
@@ -52,6 +51,10 @@ name = "json"
 version = "0.1.0"
 
 [[package]]
+name = "logger"
+version = "0.1.0"
+
+[[package]]
 name = "lpm"
 version = "0.1.0"
 dependencies = [
@@ -59,8 +62,8 @@ dependencies = [
  "core",
  "db",
  "ehandle",
+ "logger",
  "min-sqlite3-sys",
- "term",
 ]
 
 [[package]]

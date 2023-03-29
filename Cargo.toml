@@ -9,9 +9,14 @@ members = [
 	"lpm/main",
 	"libs/hash",
 	"libs/json",
+	"libs/logger",
 	"libs/sql-builder",
 	"libs/untar",
 	"libs/term",
+]
+
+exclude = [
+	"sdk"
 ]
 
 [profile.release]
