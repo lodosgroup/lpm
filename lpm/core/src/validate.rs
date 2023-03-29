@@ -9,8 +9,8 @@ use ehandle::{
     ErrorCommons, MainError,
 };
 use hash::{md5, sha256, sha512};
+use logger::debug;
 use std::{fs, io::Read};
-use term::debug;
 
 #[non_exhaustive]
 enum ChecksumKind {

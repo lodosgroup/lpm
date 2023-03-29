@@ -42,7 +42,7 @@ impl ParserTasks for System {
         let json = json::Json::new(&data_as_str)
             .parse()
             .unwrap_or_else(|_error| {
-                term::debug!("Error: {}", _error);
+                logger::debug!("Error: {}", _error);
                 super::log_and_panic!(
                     "Package is either invalid or corrupted. Failed deserializing system data."
                 );

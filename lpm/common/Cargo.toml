@@ -6,4 +6,4 @@ publish = false
 
 [dependencies]
 json = { path = "../../libs/json" }
-term = { path = "../../libs/term" }
+logger = { path = "../../libs/logger" }

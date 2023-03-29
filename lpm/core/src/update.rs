@@ -9,12 +9,12 @@ use common::{
 };
 use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, MainError};
+use logger::{debug, info, warning};
 use min_sqlite3_sys::prelude::{Connection, Database};
 use std::{
     fs::{self, create_dir_all},
     path::Path,
 };
-use term::{debug, info, warning};
 
 pub trait PkgUpdateTasks: update_internals::PkgUpdateInternalTasks {
     fn start_update_task(&mut self, to: &mut PkgDataFromFs) -> Result<(), LpmError<MainError>>;

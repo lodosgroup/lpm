@@ -10,6 +10,6 @@ common = { path = "../common" }
 db = { path = "../db" }
 ehandle = { path = "../ehandle" }
 hash = { path = "../../libs/hash" }
+logger = { path = "../../libs/logger" }
 untar = { path = "../../libs/untar" }
-term = { path = "../../libs/term" }
 tiny-lz4-decoder-sys = "1.0"

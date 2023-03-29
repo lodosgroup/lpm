@@ -226,7 +226,7 @@ impl ParserTasks for Meta {
         let json = json::Json::new(&data_as_str)
             .parse()
             .unwrap_or_else(|_error| {
-                term::debug!("Error: {}", _error);
+                logger::debug!("Error: {}", _error);
                 super::log_and_panic!(
                     "Package is either invalid or corrupted. Failed deserializing meta data."
                 );
@@ -247,14 +247,14 @@ impl ParserTasks for Files {
         let json = json::Json::new(&data_as_str)
             .parse()
             .unwrap_or_else(|_error| {
-                term::debug!("Error: {}", _error);
+                logger::debug!("Error: {}", _error);
                 super::log_and_panic!(
                     "Package is either invalid or corrupted. Failed deserializing meta data."
                 );
             });
 
         Self::from_json_object(&json).unwrap_or_else(|error| {
-            term::debug!("Error: {}", error);
+            logger::debug!("Error: {}", error);
             super::log_and_panic!("INTERNAL: {}", error);
         })
     }

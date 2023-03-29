@@ -42,7 +42,7 @@ macro_rules! try_or_error {
         match $fn {
             Result::Ok(val) => val,
             Result::Err(err) => {
-                term::error!("{:?}", err);
+                logger::error!("{:?}", err);
                 // Terminate app with panic code
                 std::process::exit(101);
             }
@@ -53,13 +53,13 @@ macro_rules! try_or_error {
 #[macro_export]
 macro_rules! log_and_panic {
     ($log: expr) => {
-        term::error!("{}", format!($log));
+        logger::error!("{}", format!($log));
 
         // Terminate app with panic code
         std::process::exit(101);
     };
     ($log: expr, $($args: tt)+) => {
-        term::error!("{}", format!($log, $($args)+));
+        logger::error!("{}", format!($log, $($args)+));
 
         // Terminate app with panic code
         std::process::exit(101);

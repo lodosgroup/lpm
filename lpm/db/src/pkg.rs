@@ -13,6 +13,7 @@ use ehandle::{
     pkg::{PackageError, PackageErrorKind},
     simple_e_fmt, try_bind_val, try_execute_prepared, ErrorCommons,
 };
+use logger::{debug, info};
 use min_sqlite3_sys::prelude::*;
 use sql_builder::delete::*;
 use sql_builder::insert::*;
@@ -20,7 +21,6 @@ use sql_builder::select::*;
 use sql_builder::update::Update;
 use sql_builder::Column;
 use std::path::Path;
-use term::{debug, info};
 
 pub trait DbOpsForInstalledPkg {
     fn load(db: &Database, name: &str) -> Result<Self, LpmError<PackageError>>

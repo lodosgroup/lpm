@@ -1,9 +1,9 @@
 use common::pkg::PkgDataFromDb;
 use db::{enable_foreign_keys, pkg::DbOpsForInstalledPkg, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
+use logger::{info, warning};
 use min_sqlite3_sys::prelude::*;
 use std::{fs, path::Path};
-use term::{info, warning};
 
 pub trait PkgDeleteTasks {
     fn start_delete_task(&self) -> Result<(), LpmError<MainError>>;

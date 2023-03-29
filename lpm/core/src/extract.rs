@@ -4,12 +4,12 @@ use common::{
     ParserTasks,
 };
 use ehandle::lpm::LpmError;
+use logger::debug;
 use std::{
     fs::{remove_dir_all, File},
     io,
     path::Path,
 };
-use term::debug;
 
 pub trait PkgExtractTasks {
     fn start_extract_task(pkg_path: &Path) -> Result<Self, LpmError<io::Error>>

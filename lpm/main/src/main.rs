@@ -7,10 +7,10 @@ use db::pkg::DbOpsForInstalledPkg;
 use db::{pkg::delete_pkg_kinds, pkg::insert_pkg_kinds, DB_PATH};
 #[allow(unused_imports)]
 use ehandle::{lpm::LpmError, MainError};
+use logger::{info, success};
 use min_sqlite3_sys::prelude::*;
 use std::env;
 use std::path::Path;
-use term::{info, success};
 
 fn main() {
     try_or_error!(init_db());

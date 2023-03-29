@@ -1,12 +1,12 @@
 use common::pkg::PkgDataFromFs;
 use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, MainError};
+use logger::{debug, info};
 use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},
     path::{Path, PathBuf},
 };
-use term::{debug, info};
 
 use crate::{
     extract::{get_pkg_output_path, PkgExtractTasks},

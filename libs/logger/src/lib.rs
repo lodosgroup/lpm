@@ -88,11 +88,11 @@ pub fn log_to_stdout(log: &[u8]) {
 #[macro_export]
 macro_rules! debug {
     ($log: expr, $($args: tt)+) => {
-        term::logger::log_to_stdout(term::logger::build_log(term::logger::OutputMode::DEBUG, format!($log, $($args)+)).as_bytes());
+        logger::log_to_stdout(logger::build_log(logger::OutputMode::DEBUG, format!($log, $($args)+)).as_bytes());
 
     };
     ($log: expr) => {
-        term::logger::log_to_stdout(term::logger::build_log(term::logger::OutputMode::DEBUG, format!($log)).as_bytes());
+        logger::log_to_stdout(logger::build_log(logger::OutputMode::DEBUG, format!($log)).as_bytes());
     }
 }
 
@@ -106,43 +106,43 @@ macro_rules! debug {
 #[macro_export]
 macro_rules! success {
     ($log: expr, $($args: tt)+) => {
-        term::logger::log_to_stdout(term::logger::build_log(term::logger::OutputMode::SUCCESS, format!($log, $($args)+)).as_bytes());
+        logger::log_to_stdout(logger::build_log(logger::OutputMode::SUCCESS, format!($log, $($args)+)).as_bytes());
 
     };
     ($log: expr) => {
-        term::logger::log_to_stdout(term::logger::build_log(term::logger::OutputMode::SUCCESS, format!($log)).as_bytes());
+        logger::log_to_stdout(logger::build_log(logger::OutputMode::SUCCESS, format!($log)).as_bytes());
     }
 }
 
 #[macro_export]
 macro_rules! info {
     ($log: expr, $($args: tt)+) => {
-        term::logger::log_to_stdout(term::logger::build_log(term::logger::OutputMode::INFO, format!($log, $($args)+)).as_bytes());
+        logger::log_to_stdout(logger::build_log(logger::OutputMode::INFO, format!($log, $($args)+)).as_bytes());
 
     };
     ($log: expr) => {
-        term::logger::log_to_stdout(term::logger::build_log(term::logger::OutputMode::INFO, format!($log)).as_bytes());
+        logger::log_to_stdout(logger::build_log(logger::OutputMode::INFO, format!($log)).as_bytes());
     }
 }
 
 #[macro_export]
 macro_rules! error {
     ($log: expr, $($args: tt)+) => {
-        term::logger::log_to_stderr(term::logger::build_log(term::logger::OutputMode::ERROR, format!($log, $($args)+)).as_bytes());
+        logger::log_to_stderr(logger::build_log(logger::OutputMode::ERROR, format!($log, $($args)+)).as_bytes());
 
     };
     ($log: expr) => {
-        term::logger::log_to_stderr(term::logger::build_log(term::logger::OutputMode::ERROR, format!($log)).as_bytes());
+        logger::log_to_stderr(logger::build_log(logger::OutputMode::ERROR, format!($log)).as_bytes());
     }
 }
 
 #[macro_export]
 macro_rules! warning {
     ($log: expr, $($args: tt)+) => {
-        term::logger::log_to_stdout(term::logger::build_log(term::logger::OutputMode::WARNING, format!($log, $($args)+)).as_bytes());
+        logger::log_to_stdout(logger::build_log(logger::OutputMode::WARNING, format!($log, $($args)+)).as_bytes());
 
     };
     ($log: expr) => {
-        term::logger::log_to_stdout(term::logger::build_log(term::logger::OutputMode::WARNING, format!($log)).as_bytes());
+        logger::log_to_stdout(logger::build_log(logger::OutputMode::WARNING, format!($log)).as_bytes());
     }
 }
