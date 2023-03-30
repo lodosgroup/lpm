@@ -6,7 +6,7 @@ use std::ffi::CStr;
 macro_rules! create_stdout_log_fn {
     ($fn_name: ident, $log_mode: expr) => {
         #[no_mangle]
-        pub fn $fn_name(msg: *const std::os::raw::c_char) {
+        extern "C" fn $fn_name(msg: *const std::os::raw::c_char) {
             let msg = unsafe { CStr::from_ptr(msg).to_bytes() };
             let log = build_log($log_mode, String::from_utf8_lossy(msg).to_string());
             log_to_stdout(log.as_bytes());
