@@ -25,4 +25,5 @@ panic = "abort"
 codegen-units = 1
 
 [dependencies]
+core = { path = "../lpm/core" }
 logger = { path = "../libs/logger" }

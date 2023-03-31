@@ -1,5 +1,3 @@
-#![allow(unsafe_code)]
-
 use logger::{build_log, log_to_stderr, log_to_stdout, OutputMode};
 use std::ffi::CStr;
 
