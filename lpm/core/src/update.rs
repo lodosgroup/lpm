@@ -1,35 +1,29 @@
-use crate::{
-    extract::get_pkg_output_path, update::update_internals::PkgUpdateInternalTasks,
-    validate::PkgValidateTasks, PkgExtractTasks,
-};
+use crate::{extract::get_pkg_output_path, validate::PkgValidateTasks, PkgExtractTasks};
 
 use common::{
     pkg::{PkgDataFromDb, PkgDataFromFs},
     Files,
 };
-use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, DB_PATH};
+use db::{
+    pkg::{DbOpsForBuildFile, DbOpsForInstalledPkg},
+    transaction_op, Transaction, DB_PATH,
+};
 use ehandle::{lpm::LpmError, MainError};
-use logger::{debug, info, warning};
+use logger::{debug, info, success, warning};
 use min_sqlite3_sys::prelude::{Connection, Database};
 use std::{
     fs::{self, create_dir_all},
     path::Path,
 };
 
-pub trait PkgUpdateTasks: update_internals::PkgUpdateInternalTasks {
+trait PkgUpdateTasks {
     fn start_update_task(&mut self, to: &mut PkgDataFromFs) -> Result<(), LpmError<MainError>>;
-}
 
-pub(crate) mod update_internals {
-    use super::*;
-
-    pub trait PkgUpdateInternalTasks {
-        fn compare_and_update_files_on_fs(
-            &mut self,
-            pkg_path: String,
-            new_files: Files,
-        ) -> Result<(), LpmError<MainError>>;
-    }
+    fn compare_and_update_files_on_fs(
+        &mut self,
+        pkg_path: String,
+        new_files: Files,
+    ) -> Result<(), LpmError<MainError>>;
 }
 
 impl PkgUpdateTasks for PkgDataFromDb {
@@ -90,9 +84,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
 
         Ok(())
     }
-}
 
-impl update_internals::PkgUpdateInternalTasks for PkgDataFromDb {
     /// Loops over target files, copies each one of them unless they are
     /// already exists in the system, ignores otherwise.
     fn compare_and_update_files_on_fs(
@@ -152,4 +144,18 @@ impl update_internals::PkgUpdateInternalTasks for PkgDataFromDb {
 
         Ok(())
     }
+}
+
+pub fn update_lod(pkg_name: &str, pkg_path: &str) -> Result<(), LpmError<MainError>> {
+    let db = Database::open(Path::new(DB_PATH))?;
+    let mut old_pkg = PkgDataFromDb::load(&db, pkg_name)?;
+    db.close();
+
+    let mut requested_pkg = PkgDataFromFs::start_extract_task(Path::new(pkg_path))?;
+
+    info!("Package update started for {}", pkg_name);
+    old_pkg.start_update_task(&mut requested_pkg)?;
+    success!("Operation successfully completed.");
+
+    Ok(())
 }

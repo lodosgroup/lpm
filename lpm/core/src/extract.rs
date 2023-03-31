@@ -11,7 +11,7 @@ use std::{
     path::Path,
 };
 
-pub trait PkgExtractTasks {
+pub(crate) trait PkgExtractTasks {
     fn start_extract_task(pkg_path: &Path) -> Result<Self, LpmError<io::Error>>
     where
         Self: Sized;
@@ -73,7 +73,7 @@ impl PkgExtractTasks for PkgDataFromFs {
 }
 
 #[inline]
-pub fn get_pkg_output_path(pkg_path: &Path) -> String {
+pub(crate) fn get_pkg_output_path(pkg_path: &Path) -> String {
     super::EXTRACTION_OUTPUT_PATH.to_string()
         + "/"
         + pkg_path.file_stem().unwrap().to_str().unwrap()

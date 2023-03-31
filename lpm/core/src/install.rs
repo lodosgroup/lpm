@@ -1,7 +1,7 @@
 use common::pkg::PkgDataFromFs;
 use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, MainError};
-use logger::{debug, info};
+use logger::{debug, info, success};
 use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},
@@ -10,21 +10,13 @@ use std::{
 
 use crate::{
     extract::{get_pkg_output_path, PkgExtractTasks},
-    install::install_internals::PkgInstallInternalTasks,
     validate::PkgValidateTasks,
 };
 
-pub trait PkgInstallTasks: install_internals::PkgInstallInternalTasks {
+trait PkgInstallTasks {
     fn start_install_task(path: &str) -> Result<(), LpmError<MainError>>;
-}
-
-pub(crate) mod install_internals {
-    use super::*;
-
-    pub trait PkgInstallInternalTasks {
-        fn copy_programs(&self) -> Result<(), LpmError<MainError>>;
-        fn install_program(&self) -> Result<(), LpmError<MainError>>;
-    }
+    fn copy_programs(&self) -> Result<(), LpmError<MainError>>;
+    fn install_program(&self) -> Result<(), LpmError<MainError>>;
 }
 
 impl PkgInstallTasks for PkgDataFromFs {
@@ -71,9 +63,7 @@ impl PkgInstallTasks for PkgDataFromFs {
 
         Ok(())
     }
-}
 
-impl install_internals::PkgInstallInternalTasks for PkgDataFromFs {
     #[inline(always)]
     fn install_program(&self) -> Result<(), LpmError<MainError>> {
         self.copy_programs()
@@ -97,4 +87,11 @@ impl install_internals::PkgInstallInternalTasks for PkgDataFromFs {
 
         Ok(())
     }
+}
+
+pub fn install_lod(pkg_path: &str) -> Result<(), LpmError<MainError>> {
+    info!("Package installation started for {}", pkg_path);
+    PkgDataFromFs::start_install_task(pkg_path)?;
+    success!("Operation successfully completed.");
+    Ok(())
 }

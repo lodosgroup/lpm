@@ -4,54 +4,54 @@ use std::ffi::NulError;
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
-pub enum PluginErrorKind {
+pub enum ModuleErrorKind {
     DynamicLibraryNotFound(String),
     EntrypointFunctionNotFound,
     Internal(String),
 }
 
 #[derive(Debug)]
-pub struct PluginError {
+pub struct ModuleError {
     kind: String,
     reason: String,
 }
 
-impl ErrorCommons<PluginError> for PluginErrorKind {
+impl ErrorCommons<ModuleError> for ModuleErrorKind {
     fn as_str(&self) -> &str {
         match self {
-            PluginErrorKind::DynamicLibraryNotFound(_) => "DynamicLibraryNotFound",
-            PluginErrorKind::EntrypointFunctionNotFound => "EntrypointFunctionNotFound",
-            PluginErrorKind::Internal(_) => "Internal",
+            ModuleErrorKind::DynamicLibraryNotFound(_) => "DynamicLibraryNotFound",
+            ModuleErrorKind::EntrypointFunctionNotFound => "EntrypointFunctionNotFound",
+            ModuleErrorKind::Internal(_) => "Internal",
         }
     }
 
-    fn to_err(&self) -> PluginError {
+    fn to_err(&self) -> ModuleError {
         match self {
-            PluginErrorKind::DynamicLibraryNotFound(dylib_path) => PluginError {
+            ModuleErrorKind::DynamicLibraryNotFound(dylib_path) => ModuleError {
                 kind: self.as_str().to_owned(),
                 reason: format!("Dynamic library is not found at '{}'.", dylib_path),
             },
-            PluginErrorKind::EntrypointFunctionNotFound => PluginError {
+            ModuleErrorKind::EntrypointFunctionNotFound => ModuleError {
                 kind: self.as_str().to_owned(),
                 reason: String::from(
                     "'lpm_entrypoint' function is not found in the dynamic library.",
                 ),
             },
-            PluginErrorKind::Internal(reason) => PluginError {
+            ModuleErrorKind::Internal(reason) => ModuleError {
                 kind: self.as_str().to_owned(),
                 reason: reason.to_owned(),
             },
         }
     }
 
-    fn to_lpm_err(&self) -> crate::lpm::LpmError<PluginError> {
+    fn to_lpm_err(&self) -> crate::lpm::LpmError<ModuleError> {
         LpmError::new(self.to_err())
     }
 }
 
-impl From<LpmError<PluginError>> for LpmError<MainError> {
+impl From<LpmError<ModuleError>> for LpmError<MainError> {
     #[track_caller]
-    fn from(error: LpmError<PluginError>) -> Self {
+    fn from(error: LpmError<ModuleError>) -> Self {
         let e = MainError {
             kind: error.error_type.kind.as_str().to_string(),
             reason: error.error_type.reason,
@@ -61,9 +61,9 @@ impl From<LpmError<PluginError>> for LpmError<MainError> {
     }
 }
 
-impl From<NulError> for LpmError<PluginError> {
+impl From<NulError> for LpmError<ModuleError> {
     #[track_caller]
     fn from(error: NulError) -> Self {
-        PluginErrorKind::Internal(error.to_string()).to_lpm_err()
+        ModuleErrorKind::Internal(error.to_string()).to_lpm_err()
     }
 }

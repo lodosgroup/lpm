@@ -1,13 +1,17 @@
-use common::config::CONFIG_PATH;
+use common::{
+    config::{LpmConfig, CONFIG_PATH},
+    ParserTasks,
+};
 use db::DB_PATH;
 use ehandle::{
     lpm::LpmError,
-    plugin::{PluginError, PluginErrorKind},
+    module::{ModuleError, ModuleErrorKind},
     ErrorCommons,
 };
+use logger::info;
 use std::ffi::CString;
 
-pub struct PluginController(*mut std::os::raw::c_void);
+struct ModuleController(*mut std::os::raw::c_void);
 
 const RTLD_NOW: std::os::raw::c_int = 0x2;
 
@@ -27,41 +31,41 @@ extern "C" {
 
 // We want to only pass configuration and database path and command arguments so we don't
 // need to worry about backwards compatibility(e.g when we add new fields to the configuration struct).
-type PluginEntrypointFn = extern "C" fn(
+type ModuleEntrypointFn = extern "C" fn(
     *const std::os::raw::c_char,
     *const std::os::raw::c_char,
     std::os::raw::c_uint,
     *const std::os::raw::c_void,
 );
 
-impl PluginController {
-    pub fn load(dylib_path: &str) -> Result<Self, LpmError<PluginError>> {
-        let plugin = CString::new(dylib_path)?;
+impl ModuleController {
+    fn load(dylib_path: &str) -> Result<Self, LpmError<ModuleError>> {
+        let module = CString::new(dylib_path)?;
 
         #[allow(unsafe_code)]
-        let lib_pointer = unsafe { dlopen(plugin.as_ptr(), RTLD_NOW) };
+        let lib_pointer = unsafe { dlopen(module.as_ptr(), RTLD_NOW) };
 
         if lib_pointer.is_null() {
             return Err(
-                PluginErrorKind::DynamicLibraryNotFound(dylib_path.to_owned()).to_lpm_err(),
+                ModuleErrorKind::DynamicLibraryNotFound(dylib_path.to_owned()).to_lpm_err(),
             );
         }
 
         Ok(Self(lib_pointer))
     }
 
-    pub fn run(&self, args: Vec<String>) -> Result<(), LpmError<PluginError>> {
+    fn run(&self, args: Vec<String>) -> Result<(), LpmError<ModuleError>> {
         let func_name = CString::new("lpm_entrypoint")?;
 
         #[allow(unsafe_code)]
         let func_ptr = unsafe { dlsym(self.0, func_name.as_ptr()) };
 
         if func_ptr.is_null() {
-            return Err(PluginErrorKind::EntrypointFunctionNotFound.to_lpm_err());
+            return Err(ModuleErrorKind::EntrypointFunctionNotFound.to_lpm_err());
         }
 
         #[allow(unsafe_code)]
-        let lpm_entrypoint: PluginEntrypointFn = unsafe { std::mem::transmute(func_ptr) };
+        let lpm_entrypoint: ModuleEntrypointFn = unsafe { std::mem::transmute(func_ptr) };
 
         let cstrings: Vec<CString> = args
             .iter()
@@ -83,10 +87,28 @@ impl PluginController {
         Ok(())
     }
 
-    pub fn unload(self) {
+    fn unload(self) {
         #[allow(unsafe_code)]
         unsafe {
             dlclose(self.0);
         }
     }
+}
+
+pub fn trigger_lpm_module(args: Vec<String>) -> Result<(), LpmError<ModuleError>> {
+    let module_name = args.get(2).expect("Module name is missing.");
+    let lpm_config = LpmConfig::deserialize(CONFIG_PATH);
+    let module = lpm_config
+        .modules
+        .iter()
+        .find(|p| p.name == *module_name)
+        .unwrap_or_else(|| panic!("Module '{}' not found", module_name));
+
+    let module_controller = ModuleController::load(&module.dylib_path)?;
+    info!("Module '{}' loaded.", module_name);
+    module_controller.run(args.clone())?;
+    module_controller.unload();
+    info!("Module '{}' finished running and unloaded.", module_name);
+
+    Ok(())
 }

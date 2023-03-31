@@ -23,5 +23,5 @@ pub struct MainError {
 pub mod db;
 mod io;
 pub mod lpm;
+pub mod module;
 pub mod pkg;
-pub mod plugin;
