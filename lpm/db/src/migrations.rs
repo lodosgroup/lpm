@@ -11,7 +11,7 @@ use std::path::Path;
 
 const INITIAL_VERSION: i64 = 0;
 
-pub(crate) fn start_db_migrations() -> Result<(), LpmError<SqlError>> {
+pub fn migrate_database_tables() -> Result<(), LpmError<SqlError>> {
     let db = Database::open(Path::new(super::DB_PATH))?;
     super::enable_foreign_keys(&db)?;
 
@@ -22,6 +22,8 @@ pub(crate) fn start_db_migrations() -> Result<(), LpmError<SqlError>> {
     insert_defaults(&db, &mut initial_version)?;
 
     db.close();
+
+    logger::success!("Db migrations are successfully completed.");
 
     Ok(())
 }
@@ -55,6 +57,7 @@ fn can_migrate(db: &Database, version: i64) -> Result<bool, LpmError<SqlError>> 
 fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
+        logger::warning!("migration 'create_table_core' already applied, skipping it.");
         return Ok(());
     }
 
@@ -171,8 +174,8 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<Sq
     );
 
     try_execute!(db, statement);
-
     set_migration_version(db, *version)?;
+    logger::info!("'create_table_core' migration is finished.");
 
     Ok(())
 }
@@ -183,6 +186,9 @@ fn create_update_triggers_for_core_tables(
 ) -> Result<(), LpmError<SqlError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
+        logger::warning!(
+            "migration 'create_update_triggers_for_core_tables' already applied, skipping it."
+        );
         return Ok(());
     }
 
@@ -224,8 +230,8 @@ fn create_update_triggers_for_core_tables(
     );
 
     try_execute!(db, statement);
-
     set_migration_version(db, *version)?;
+    logger::info!("'create_update_triggers_for_core_tables' migration is finished.");
 
     Ok(())
 }
@@ -233,6 +239,7 @@ fn create_update_triggers_for_core_tables(
 fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
+        logger::warning!("migration 'insert_defaults' already applied, skipping it.");
         return Ok(());
     }
 
@@ -267,8 +274,8 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlE
     );
 
     try_execute!(db, statement);
-
     set_migration_version(db, *version)?;
+    logger::info!("'insert_defaults' migration is finished.");
 
     Ok(())
 }

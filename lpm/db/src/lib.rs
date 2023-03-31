@@ -3,20 +3,16 @@ use ehandle::{
     lpm::LpmError,
     simple_e_fmt, try_execute_prepared, ErrorCommons,
 };
-use migrations::start_db_migrations;
 use min_sqlite3_sys::prelude::*;
 mod migrations;
+
+pub use migrations::migrate_database_tables;
 
 #[cfg(not(debug_assertions))]
 pub const DB_PATH: &str = "/var/lib/lpm/.db";
 
 #[cfg(debug_assertions)]
 pub const DB_PATH: &str = ".db";
-
-#[inline(always)]
-pub fn init_db() -> Result<(), LpmError<SqlError>> {
-    start_db_migrations()
-}
 
 pub const SQL_NO_CALLBACK_FN: Option<
     Box<dyn FnOnce(min_sqlite3_sys::bindings::SqlitePrimaryResult, String)>,

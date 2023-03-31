@@ -1,13 +1,10 @@
 use common::{log_and_panic, try_or_error};
 use core::*;
-use db::init_db;
 #[allow(unused_imports)]
 use ehandle::{lpm::LpmError, MainError};
 use std::env;
 
 fn main() {
-    try_or_error!(init_db());
-
     let args: Vec<String> = env::args().collect();
     // TODO
     // this is only for early development testing,
@@ -37,6 +34,8 @@ fn main() {
             }
 
             "--module" => trigger_lpm_module(args.clone())?,
+
+            "--migrate-db" => db::migrate_database_tables()?,
 
             _ => {
                 log_and_panic!("Invalid argument.");
