@@ -57,6 +57,8 @@ pub enum ResultCode {
     IoError_Unsupported,
     IoError_UnexpectedEof,
     IoError_OutOfMemory,
+
+    Str_Utf8Error,
 }
 
 #[cfg(feature = "sdk")]
@@ -115,6 +117,8 @@ impl ResultCode {
             "IoError_Unsupported" => Self::IoError_Unsupported,
             "IoError_UnexpectedEof" => Self::IoError_UnexpectedEof,
             "IoError_OutOfMemory" => Self::IoError_OutOfMemory,
+
+            "Str_Utf8Error" => Self::Str_Utf8Error,
 
             other => {
                 panic!("Invalid result type '{}'.", other);
