@@ -4,5 +4,9 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[features]
+sdk = []
+default = []
+
 [dependencies]
 min-sqlite3-sys = "1.3"

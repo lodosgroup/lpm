@@ -3,6 +3,10 @@ use crate::{
     pkg::{PackageError, PackageErrorKind},
     ErrorCommons, MainError,
 };
+
+#[cfg(feature = "sdk")]
+use crate::ResultCode;
+
 use min_sqlite3_sys::prelude::{MinSqliteWrapperError, SqlitePrimaryResult};
 
 #[macro_export]
@@ -79,7 +83,9 @@ pub struct SqlError {
     reason: String,
 }
 
-impl ErrorCommons<SqlError> for SqlErrorKind {
+impl ErrorCommons for SqlErrorKind {
+    type Error = SqlError;
+
     fn as_str(&self) -> &str {
         match self {
             Self::FailedExecuting(..) => "FailedExecuting",
@@ -90,21 +96,21 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
         }
     }
 
-    fn to_err(&self) -> SqlError {
+    fn to_err(&self) -> Self::Error {
         match self {
-            Self::FailedExecuting(ref statement, ref status) => SqlError {
+            Self::FailedExecuting(ref statement, ref status) => Self::Error {
                 kind: self.as_str().to_owned(),
                 reason: format!(
                     "Failed executing '{}' statement. Error status: {:?}.",
                     statement, status
                 ),
             },
-            Self::FailedPreparedExecuting(ref error) => SqlError {
+            Self::FailedPreparedExecuting(ref error) => Self::Error {
                 kind: self.as_str().to_owned(),
                 reason: error.clone(),
             },
             Self::FailedParameterBinding(ref param_index, ref param_value, ref result) => {
-                SqlError {
+                Self::Error {
                     kind: self.as_str().to_owned(),
                     reason: format!(
                         "Failed binding '{}' value on {} index. Error: {:?}",
@@ -112,14 +118,14 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
                     ),
                 }
             }
-            SqlErrorKind::WrapperLibError(ref kind, ref reason) => SqlError {
+            SqlErrorKind::WrapperLibError(ref kind, ref reason) => Self::Error {
                 kind: self.as_str().to_owned(),
                 reason: format!(
                     "'{}' occurred from the wrapper library. Reason: '{}'.",
                     kind, reason
                 ),
             },
-            SqlErrorKind::MigrationError(ref error) => SqlError {
+            SqlErrorKind::MigrationError(ref error) => Self::Error {
                 kind: self.as_str().to_owned(),
                 reason: format!(
                     "Migration process could not be completed. Error: '{:?}'",
@@ -130,26 +136,66 @@ impl ErrorCommons<SqlError> for SqlErrorKind {
     }
 
     #[inline]
-    fn to_lpm_err(&self) -> LpmError<SqlError> {
+    #[cfg(feature = "sdk")]
+    fn to_lpm_err(&self) -> LpmError<Self::Error> {
+        LpmError::new(self.to_err(), self.to_result_code())
+    }
+
+    #[inline]
+    #[cfg(not(feature = "sdk"))]
+    fn to_lpm_err(&self) -> LpmError<Self::Error> {
         LpmError::new(self.to_err())
+    }
+
+    #[cfg(feature = "sdk")]
+    fn to_result_code(&self) -> ResultCode {
+        match self {
+            SqlErrorKind::FailedExecuting(_, _) => ResultCode::SqlError_FailedExecuting,
+            SqlErrorKind::FailedPreparedExecuting(_) => {
+                ResultCode::SqlError_FailedPreparedExecuting
+            }
+            SqlErrorKind::FailedParameterBinding(_, _, _) => {
+                ResultCode::SqlError_FailedParameterBinding
+            }
+            SqlErrorKind::WrapperLibError(_, _) => ResultCode::SqlError_WrapperLibError,
+            SqlErrorKind::MigrationError(_) => ResultCode::SqlError_MigrationError,
+        }
     }
 }
 
 impl From<MinSqliteWrapperError<'_>> for LpmError<MainError> {
     #[track_caller]
     fn from(error: MinSqliteWrapperError) -> Self {
-        LpmError::new(MainError {
-            kind: error.kind.to_string(),
-            reason: error.reason,
-        })
+        LpmError::new(
+            MainError {
+                kind: error.kind.to_owned(),
+                reason: error.reason,
+            },
+            #[cfg(feature = "sdk")]
+            ResultCode::MinSqliteWrapperError,
+        )
     }
 }
 
 impl From<LpmError<SqlError>> for LpmError<MainError> {
     #[track_caller]
+    #[cfg(feature = "sdk")]
     fn from(error: LpmError<SqlError>) -> Self {
         let e = MainError {
-            kind: error.error_type.kind.as_str().to_string(),
+            kind: error.error_type.kind,
+            reason: error.error_type.reason,
+        };
+
+        let result_tag = "SqlError";
+        let result_code = ResultCode::from_str(&format!("{}_{}", result_tag, &e.kind));
+        LpmError::new_with_traces(e, result_code, error.chain)
+    }
+
+    #[track_caller]
+    #[cfg(not(feature = "sdk"))]
+    fn from(error: LpmError<SqlError>) -> Self {
+        let e = MainError {
+            kind: error.error_type.kind,
             reason: error.error_type.reason,
         };
 
@@ -159,6 +205,14 @@ impl From<LpmError<SqlError>> for LpmError<MainError> {
 
 impl From<LpmError<SqlError>> for LpmError<PackageError> {
     #[track_caller]
+    #[cfg(feature = "sdk")]
+    fn from(error: LpmError<SqlError>) -> Self {
+        let e = PackageErrorKind::DbOperationFailed(error.error_type.reason).to_err();
+        LpmError::new_with_traces(e, ResultCode::from_str(&error.error_type.kind), error.chain)
+    }
+
+    #[track_caller]
+    #[cfg(not(feature = "sdk"))]
     fn from(error: LpmError<SqlError>) -> Self {
         let e = PackageErrorKind::DbOperationFailed(error.error_type.reason).to_err();
         LpmError::new_with_traces(e, error.chain)
