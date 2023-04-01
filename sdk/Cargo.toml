@@ -26,4 +26,5 @@ codegen-units = 1
 
 [dependencies]
 core = { path = "../lpm/core" }
+ehandle = { path = "../lpm/ehandle", features = ["sdk"] }
 logger = { path = "../libs/logger" }
