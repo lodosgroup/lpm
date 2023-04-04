@@ -12,15 +12,15 @@ pub const CONFIG_PATH: &str = "conf";
 /// sql database if they don't have relation with any other data.
 /// e.g: repositories, package kinds, utils, etc.
 pub struct LpmConfig {
-    pub modules: Vec<Plugin>,
+    pub modules: Vec<Module>,
 }
 
-pub struct Plugin {
+pub struct Module {
     pub name: String,
     pub dylib_path: String,
 }
 
-impl json::Deserialize for Plugin {
+impl json::Deserialize for Module {
     type Error = String;
 
     fn from_json_object(json: &json::JsonValue) -> Result<Self, Self::Error> {
@@ -50,7 +50,7 @@ impl json::Deserialize for LpmConfig {
     type Error = String;
 
     fn from_json_object(json: &json::JsonValue) -> Result<Self, Self::Error> {
-        let modules = Plugin::from_json_array(&json["modules"])?;
+        let modules = Module::from_json_array(&json["modules"])?;
 
         Ok(Self { modules })
     }
