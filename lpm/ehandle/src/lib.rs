@@ -59,6 +59,8 @@ pub enum ResultCode {
     IoError_OutOfMemory,
 
     Str_Utf8Error,
+
+    CStr_NulError,
 }
 
 #[cfg(feature = "sdk")]
@@ -119,6 +121,8 @@ impl ResultCode {
             "IoError_OutOfMemory" => Self::IoError_OutOfMemory,
 
             "Str_Utf8Error" => Self::Str_Utf8Error,
+
+            "CStr_NulError" => Self::CStr_NulError,
 
             other => {
                 panic!("Invalid result type '{}'.", other);
