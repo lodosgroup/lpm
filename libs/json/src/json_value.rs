@@ -1,22 +1,17 @@
 use std::{collections::BTreeMap, ops::Index};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub enum JsonValue {
     Plain(String),
     Object(Object),
     Array(Vec<JsonValue>),
+    #[default]
     Null,
 }
 
 impl Default for &JsonValue {
     fn default() -> Self {
         &JsonValue::Null
-    }
-}
-
-impl Default for JsonValue {
-    fn default() -> Self {
-        JsonValue::Null
     }
 }
 

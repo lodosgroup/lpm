@@ -122,7 +122,7 @@ impl Archive<dyn Read + '_> {
 
     fn _unpack(&mut self, dst: &Path) -> io::Result<()> {
         if dst.symlink_metadata().is_err() {
-            fs::create_dir_all(&dst)
+            fs::create_dir_all(dst)
                 .map_err(|e| TarError::new(format!("failed to create `{}`", dst.display()), e))?;
         }
 

@@ -5,7 +5,8 @@ use std::fs;
 
 #[derive(Debug, Clone)]
 pub struct System {
-    pub lod_version: VersionStruct,
+    pub builder_version: VersionStruct,
+    pub min_supported_lpm_version: VersionStruct,
 }
 
 impl json::Deserialize for System {
@@ -13,7 +14,10 @@ impl json::Deserialize for System {
 
     fn from_json_object(json: &json::JsonValue) -> Result<Self, Self::Error> {
         Ok(Self {
-            lod_version: VersionStruct::from_json_object(&json["lod_version"])?,
+            builder_version: VersionStruct::from_json_object(&json["builder_version"])?,
+            min_supported_lpm_version: VersionStruct::from_json_object(
+                &json["min_supported_lpm_version"],
+            )?,
         })
     }
 

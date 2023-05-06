@@ -1,6 +1,5 @@
 #![allow(clippy::disallowed_methods)]
 
-use common::lpm_version::get_lpm_version;
 use ehandle::{
     db::{MigrationErrorKind, SqlError, SqlErrorKind},
     lpm::LpmError,
@@ -64,22 +63,6 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<Sq
     let statement = String::from(
         "
             /*
-             * Statement of `sys` table creation.
-             * This table will hold the core informations about lpm.
-            */
-            CREATE TABLE sys (
-               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               name          TEXT       NOT NULL       UNIQUE,
-               v_major       INTEGER    NOT NULL,
-               v_minor       INTEGER    NOT NULL,
-               v_patch       INTEGER    NOT NULL,
-               v_tag         TEXT,
-               v_readable    TEXT       NOT NULL,
-               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
-               updated_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
-            );
-
-            /*
              * Statement of `checksum_kinds` table creation.
              * This table will hold the supported hashing algorithms
              * for the packages.
@@ -123,7 +106,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<Sq
                description              TEXT,
                maintainer               TEXT       NOT NULL,
                homepage                 TEXT,
-               depended_package_id      INTEGER,
+               src_pkg_package_id       INTEGER,
                package_kind_id          INTEGER    NOT_NULL,
                installed_size           INTEGER    NOT_NULL,
                license                  TEXT,
@@ -135,7 +118,7 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<Sq
                created_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
                updated_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
-               FOREIGN KEY(depended_package_id) REFERENCES packages(id),
+               FOREIGN KEY(src_pkg_package_id) REFERENCES packages(id),
                FOREIGN KEY(package_kind_id) REFERENCES package_kinds(id)
             );
 
@@ -195,17 +178,6 @@ fn create_update_triggers_for_core_tables(
     let statement = String::from(
         "
             /*
-             * Statement of `sys` update trigger.
-             * This will allow automatic `updated_at` updates whenever an UPDATE
-             * operation happens on the table.
-            */
-            CREATE TRIGGER sys_update_trigger
-                AFTER UPDATE ON sys
-            BEGIN
-                UPDATE sys SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-            END;
-
-            /*
              * Statement of `repositories` update trigger.
              * This will allow automatic `updated_at` updates whenever an UPDATE
              * operation happens on the table.
@@ -243,17 +215,6 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlE
         return Ok(());
     }
 
-    let lpm_version = get_lpm_version();
-
-    let sys_defaults = format!(
-        "
-            INSERT INTO sys
-                (name, v_major, v_minor, v_patch, v_readable)
-            VALUES
-                ('lpm', {}, {}, {}, '{}');",
-        lpm_version.major, lpm_version.minor, lpm_version.patch, lpm_version.readable_format
-    );
-
     let checksum_kind_defaults = String::from(
         "
             INSERT INTO checksum_kinds
@@ -267,10 +228,8 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlE
     let statement = format!(
         "
             {}
-
-            {}
         ",
-        sys_defaults, checksum_kind_defaults
+        checksum_kind_defaults
     );
 
     try_execute!(db, statement);

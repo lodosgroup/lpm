@@ -51,7 +51,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         const DESCRIPTION_COL_PRE_ID: usize = 2;
         const MAINTAINER_COL_PRE_ID: usize = 3;
         const HOMEPAGE_COL_PRE_ID: usize = 4;
-        const DEPENDED_PACKAGE_ID_COL_PRE_ID: usize = 5;
+        const SRC_PKG_ID_COL_PRE_ID: usize = 5;
         const PACKAGE_KIND_ID_COL_PRE_ID: usize = 6;
         const INSTALLED_SIZE_COL_PRE_ID: usize = 7;
         const LICENSE_COL_PRE_ID: usize = 8;
@@ -66,10 +66,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
             Column::new(String::from("description"), DESCRIPTION_COL_PRE_ID),
             Column::new(String::from("maintainer"), MAINTAINER_COL_PRE_ID),
             Column::new(String::from("homepage"), HOMEPAGE_COL_PRE_ID),
-            Column::new(
-                String::from("depended_package_id"),
-                DEPENDED_PACKAGE_ID_COL_PRE_ID,
-            ),
+            Column::new(String::from("src_pkg_package_id"), SRC_PKG_ID_COL_PRE_ID),
             Column::new(String::from("package_kind_id"), PACKAGE_KIND_ID_COL_PRE_ID),
             Column::new(String::from("installed_size"), INSTALLED_SIZE_COL_PRE_ID),
             Column::new(String::from("license"), LICENSE_COL_PRE_ID),
@@ -100,7 +97,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         // TODO
         // will be used for sub-packages
-        try_bind_val!(sql, DEPENDED_PACKAGE_ID_COL_PRE_ID, SQLITE_NULL);
+        try_bind_val!(sql, SRC_PKG_ID_COL_PRE_ID, SQLITE_NULL);
 
         let kind_id = get_id_by_single_col_condition(
             db,
@@ -124,7 +121,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         try_bind_val!(
             sql,
             INSTALLED_SIZE_COL_PRE_ID,
-            self.meta_dir.meta.installed_size as i64
+            self.meta_dir.meta.installed_size
         );
 
         if let Some(license) = &self.meta_dir.meta.license {
@@ -198,7 +195,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         const DESCRIPTION_COL_PRE_ID: usize = 2;
         const MAINTAINER_COL_PRE_ID: usize = 3;
         const HOMEPAGE_COL_PRE_ID: usize = 4;
-        const DEPENDED_PACKAGE_ID_COL_PRE_ID: usize = 5;
+        const SRC_PKG_ID_COL_PRE_ID: usize = 5;
         const PACKAGE_KIND_ID_COL_PRE_ID: usize = 6;
         const INSTALLED_SIZE_COL_PRE_ID: usize = 7;
         const LICENSE_COL_PRE_ID: usize = 8;
@@ -212,10 +209,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
             Column::new(String::from("description"), DESCRIPTION_COL_PRE_ID),
             Column::new(String::from("maintainer"), MAINTAINER_COL_PRE_ID),
             Column::new(String::from("homepage"), HOMEPAGE_COL_PRE_ID),
-            Column::new(
-                String::from("depended_package_id"),
-                DEPENDED_PACKAGE_ID_COL_PRE_ID,
-            ),
+            Column::new(String::from("src_pkg_package_id"), SRC_PKG_ID_COL_PRE_ID),
             Column::new(String::from("package_kind_id"), PACKAGE_KIND_ID_COL_PRE_ID),
             Column::new(String::from("installed_size"), INSTALLED_SIZE_COL_PRE_ID),
             Column::new(String::from("license"), LICENSE_COL_PRE_ID),
@@ -248,7 +242,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         // TODO
         // will be used for sub-packages
-        try_bind_val!(sql, DEPENDED_PACKAGE_ID_COL_PRE_ID, SQLITE_NULL);
+        try_bind_val!(sql, SRC_PKG_ID_COL_PRE_ID, SQLITE_NULL);
 
         let kind_id = get_id_by_single_col_condition(
             db,
@@ -272,7 +266,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         try_bind_val!(
             sql,
             INSTALLED_SIZE_COL_PRE_ID,
-            self.meta_dir.meta.installed_size as i64
+            self.meta_dir.meta.installed_size
         );
 
         if let Some(license) = &self.meta_dir.meta.license {
@@ -351,6 +345,7 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
         const DESCRIPTION_COL_PRE_ID: usize = 2;
         const MAINTAINER_COL_PRE_ID: usize = 3;
         const HOMEPAGE_COL_PRE_ID: usize = 4;
+        // const SRC_PKG_ID_COL_PRE_ID: usize = 5;
         const PACKAGE_KIND_ID_COL_PRE_ID: usize = 6;
         const INSTALLED_SIZE_COL_PRE_ID: usize = 7;
         const LICENSE_COL_PRE_ID: usize = 8;
@@ -388,7 +383,7 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
             name: sql.get_data(NAME_COL_PRE_ID)?,
             description: sql.get_data(DESCRIPTION_COL_PRE_ID)?,
             maintainer: sql.get_data(MAINTAINER_COL_PRE_ID)?,
-            source_pkg: None,
+            source_pkg: None, // TODO
             repository: None,
             homepage: sql.get_data(HOMEPAGE_COL_PRE_ID)?,
             arch: String::new(),

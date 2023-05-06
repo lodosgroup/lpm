@@ -43,7 +43,7 @@ impl json::Deserialize for Meta {
             name: de_required_field!(json["name"].to_string(), "name"),
             description: de_required_field!(json["description"].to_string(), "description"),
             maintainer: de_required_field!(json["maintainer"].to_string(), "maintainer"),
-            source_pkg: json["source_pkg"].to_string(),
+            source_pkg: None,
             repository: json["repository"].to_string(),
             homepage: json["homepage"].to_string(),
             arch: de_required_field!(json["arch"].to_string(), "arch"),
