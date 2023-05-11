@@ -35,7 +35,7 @@ fn main() {
 
             "--module" => trigger_lpm_module(args.clone())?,
 
-            "--migrate-db" => db::migrate_database_tables()?,
+            "--configure" => configure()?,
 
             _ => {
                 log_and_panic!("Invalid argument.");

@@ -1,12 +1,22 @@
 use crate::{de_required_field, ParserTasks};
 use json::{Deserialize, JsonValue};
-use std::fs;
+use logger::{debug, info, warning};
+use std::{
+    fs::{self, File},
+    io::{self, Write},
+    path::Path,
+};
 
 #[cfg(not(debug_assertions))]
 pub const CONFIG_PATH: &str = "/etc/lpm/conf";
 
 #[cfg(debug_assertions)]
 pub const CONFIG_PATH: &str = "conf";
+
+const DEFAULT: &str = r#"{
+    "modules": []
+}
+"#;
 
 /// Used for parts that doesn't necessarily need to be in
 /// sql database if they don't have relation with any other data.
@@ -18,6 +28,20 @@ pub struct LpmConfig {
 pub struct Module {
     pub name: String,
     pub dylib_path: String,
+}
+
+pub fn create_default_config_file() -> Result<(), io::Error> {
+    if Path::new(CONFIG_PATH).exists() {
+        warning!("'{CONFIG_PATH}' already exists, the creation process has been skipped.");
+        return Ok(());
+    };
+
+    let mut file = File::create(CONFIG_PATH)?;
+    info!("creating '{CONFIG_PATH}' file.");
+    debug!("default values for '{CONFIG_PATH}' -> {DEFAULT}");
+    file.write_all(DEFAULT.as_bytes())?;
+
+    Ok(())
 }
 
 impl json::Deserialize for Module {
