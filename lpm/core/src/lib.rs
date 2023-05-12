@@ -1,4 +1,4 @@
-const EXTRACTION_OUTPUT_PATH: &str = "/var/cache/lpm";
+const EXTRACTION_OUTPUT_PATH: &str = "/tmp/lpm";
 
 mod delete;
 mod extract;

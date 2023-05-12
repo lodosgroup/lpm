@@ -1,4 +1,4 @@
-use crate::extract::get_pkg_output_path;
+use crate::extract::get_pkg_tmp_output_dir;
 
 use common::meta::Files;
 use common::pkg::PkgDataFromFs;
@@ -53,7 +53,7 @@ impl PkgValidateTasks for PkgDataFromFs {
             .into());
         }
 
-        let pkg_output_path = get_pkg_output_path(&self.path);
+        let pkg_output_path = get_pkg_tmp_output_dir(&self.path);
         check_program_checksums(pkg_output_path, &self.meta_dir.files)
     }
 }

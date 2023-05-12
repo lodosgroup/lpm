@@ -1,5 +1,5 @@
 use common::{
-    pkg::{MetaDir, PkgDataFromFs},
+    pkg::{MetaDir, PkgDataFromFs, ScriptsDir},
     system::System,
     ParserTasks,
 };
@@ -35,7 +35,7 @@ impl PkgExtractTasks for PkgDataFromFs {
         let compressed_pkg_file = File::open(pkg_path)?;
         let mut archive =
             untar::Archive::new(tiny_lz4_decoder_sys::Decoder::new(compressed_pkg_file)?);
-        let tmp_dir = get_pkg_output_path(pkg_path);
+        let tmp_dir = get_pkg_tmp_output_dir(pkg_path);
 
         debug!("Extracting {} -> {}", pkg_path.display(), tmp_dir);
         archive.unpack(&tmp_dir)?;
@@ -44,27 +44,32 @@ impl PkgExtractTasks for PkgDataFromFs {
     }
 
     fn read_pkg_data(pkg_path: &Path) -> PkgDataFromFs {
-        let pkg_dir = get_pkg_output_path(pkg_path);
+        let pkg_tmp_output_dir = get_pkg_tmp_output_dir(pkg_path);
 
-        let meta_dir = pkg_dir.clone() + "/meta";
-        let system_json = pkg_dir + "/system.json";
+        let meta_dir = pkg_tmp_output_dir.clone() + "/meta";
+        let system_json = pkg_tmp_output_dir.clone() + "/system.json";
 
         debug!(
             "Reading meta data from {}/meta.json and {}/files.json",
             &meta_dir, &meta_dir
         );
         let meta_dir = MetaDir::new(&meta_dir);
+
+        debug!("Checking stage1 scripts");
+        let scripts_dir = ScriptsDir::new(Path::new(&pkg_tmp_output_dir));
+
         debug!("Reading system data from {}", &system_json);
         let system = System::deserialize(&system_json);
         PkgDataFromFs {
             path: pkg_path.to_path_buf(),
             meta_dir,
+            scripts_dir,
             system,
         }
     }
 
     fn cleanup(&self) -> Result<(), LpmError<io::Error>> {
-        let path = get_pkg_output_path(&self.path);
+        let path = get_pkg_tmp_output_dir(&self.path);
         debug!("Cleaning {}", &path);
         remove_dir_all(path)?;
 
@@ -73,7 +78,7 @@ impl PkgExtractTasks for PkgDataFromFs {
 }
 
 #[inline]
-pub(crate) fn get_pkg_output_path(pkg_path: &Path) -> String {
+pub(crate) fn get_pkg_tmp_output_dir(pkg_path: &Path) -> String {
     super::EXTRACTION_OUTPUT_PATH.to_string()
         + "/"
         + pkg_path.file_stem().unwrap().to_str().unwrap()

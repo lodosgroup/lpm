@@ -1,6 +1,5 @@
 use common::{log_and_panic, try_or_error};
 use core::*;
-#[allow(unused_imports)]
 use ehandle::{lpm::LpmError, MainError};
 use std::env;
 

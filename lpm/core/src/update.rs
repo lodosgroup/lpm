@@ -1,4 +1,4 @@
-use crate::{extract::get_pkg_output_path, validate::PkgValidateTasks, PkgExtractTasks};
+use crate::{extract::get_pkg_tmp_output_dir, validate::PkgValidateTasks, PkgExtractTasks};
 
 use common::{
     pkg::{PkgDataFromDb, PkgDataFromFs},
@@ -53,7 +53,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
         };
 
         to_pkg.start_validate_task()?;
-        let source_path = get_pkg_output_path(&to_pkg.path) + "/program/";
+        let source_path = get_pkg_tmp_output_dir(&to_pkg.path) + "/program/";
 
         info!("Applying package differences to the system..");
         self.compare_and_update_files_on_fs(source_path, to_pkg.meta_dir.files.clone())?;

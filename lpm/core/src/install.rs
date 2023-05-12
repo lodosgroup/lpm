@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::{
-    extract::{get_pkg_output_path, PkgExtractTasks},
+    extract::{get_pkg_tmp_output_dir, PkgExtractTasks},
     validate::PkgValidateTasks,
 };
 
@@ -70,7 +70,7 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 
     fn copy_programs(&self) -> Result<(), LpmError<MainError>> {
-        let source_path = get_pkg_output_path(&self.path) + "/program/";
+        let source_path = get_pkg_tmp_output_dir(&self.path) + "/program/";
 
         for file in &self.meta_dir.files.0 {
             let destination_path = Path::new("/").join(&file.path);
