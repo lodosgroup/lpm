@@ -1,4 +1,4 @@
-name: lpm pipelines
+name: lpm
 on: [push]
 
 concurrency:
@@ -6,92 +6,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  code-check:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable-2023-04-20]
+        os: [ubuntu-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: check
-
-  fmt:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable-2023-04-20]
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-        components: rustfmt
-    - uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all -- --check
-
-  lint:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable-2023-04-20]
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-        components: clippy
-    - name: Run cargo clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --all-targets -- -D warnings
+      - uses: actions/checkout@v2
+      - name: check code format and lint
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features -- --D warnings
 
   test:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable-2023-04-20]
+        os: [ubuntu-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: test
+      - uses: actions/checkout@v2
+      - name: test
+        run: |
+          cargo test --all-features
 
   build:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable-2023-04-20]
+        os: [ubuntu-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
+      - uses: actions/checkout@v2
+      - name: build
+        run: |
+          cargo build --all-features

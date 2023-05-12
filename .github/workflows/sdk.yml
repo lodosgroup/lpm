@@ -1,4 +1,4 @@
-name: sdk pipeline
+name: sdk
 on: [push]
 
 concurrency:
@@ -6,95 +6,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  code-check:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable-2023-04-20]
+        os: [ubuntu-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: check
-        args: --manifest-path sdk/Cargo.toml
-
-  fmt:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable-2023-04-20]
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-        components: rustfmt
-    - uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all --manifest-path sdk/Cargo.toml -- --check
-
-  lint:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable-2023-04-20]
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-        components: clippy
-    - name: Run cargo clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --all-targets --manifest-path sdk/Cargo.toml -- -D warnings
+      - uses: actions/checkout@v2
+      - name: check code format and lint
+        run: |
+          cargo fmt --manifest-path sdk/Cargo.toml --all -- --check
+          cargo clippy --manifest-path sdk/Cargo.toml --all-targets --all-features -- --D warnings
 
   test:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable-2023-04-20]
+        os: [ubuntu-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --manifest-path sdk/Cargo.toml
+      - uses: actions/checkout@v2
+      - name: test
+        run: |
+          cargo test --manifest-path sdk/Cargo.toml --all-features
 
   build:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable-2023-04-20]
+        os: [ubuntu-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ matrix.rust }}
-        override: true
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: --manifest-path sdk/Cargo.toml
+      - uses: actions/checkout@v2
+      - name: build
+        run: |
+          cargo build --manifest-path sdk/Cargo.toml --all-features
