@@ -1,4 +1,4 @@
-use common::pkg::PkgDataFromFs;
+use common::pkg::{PkgDataFromFs, ScriptPhase};
 use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, MainError};
 use logger::{debug, info, success};
@@ -10,6 +10,7 @@ use std::{
 
 use crate::{
     extract::{get_pkg_tmp_output_path, PkgExtractTasks},
+    stage1::Stage1Tasks,
     validate::PkgValidateTasks,
 };
 
@@ -33,31 +34,32 @@ impl PkgInstallTasks for PkgDataFromFs {
         info!("Syncing with package database..");
         pkg.insert_to_db(&db)?;
 
+        if let Err(err) = pkg.scripts.execute_script(ScriptPhase::PreInstall) {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err);
+        }
+
         info!("Installing package files into system..");
-        match pkg.install() {
-            Ok(_) => {}
-            Err(err) => {
-                transaction_op(&db, Transaction::Rollback)?;
-                return Err(err);
-            }
+        if let Err(err) = pkg.install() {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err);
         };
 
         info!("Cleaning temporary files..");
-        match pkg.cleanup() {
-            Ok(_) => {}
-            Err(err) => {
-                transaction_op(&db, Transaction::Rollback)?;
-                return Err(err.into());
-            }
+        if let Err(err) = pkg.cleanup() {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err.into());
         };
 
-        match transaction_op(&db, Transaction::Commit) {
-            Ok(_) => {}
-            Err(err) => {
-                transaction_op(&db, Transaction::Rollback)?;
-                return Err(err.into());
-            }
+        if let Err(err) = transaction_op(&db, Transaction::Commit) {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err.into());
         };
+
+        if let Err(err) = pkg.scripts.execute_script(ScriptPhase::PostInstall) {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err);
+        }
 
         db.close();
         info!("Installation transaction completed.");
@@ -96,16 +98,15 @@ impl PkgInstallTasks for PkgDataFromFs {
         std::fs::create_dir_all(&pkg_scripts_path)?;
 
         for script in &self.scripts {
-            let script_src = script.get_inner();
-            let destination = &pkg_scripts_path.join(script_src.file_name().unwrap());
+            let destination = &pkg_scripts_path.join(script.path.file_name().unwrap());
 
             debug!(
                 "Copying {} -> {}",
-                script_src.display(),
+                script.path.display(),
                 destination.display()
             );
 
-            fs::copy(script_src, destination)?;
+            fs::copy(&script.path, destination)?;
         }
 
         Ok(())

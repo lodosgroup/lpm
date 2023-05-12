@@ -1,2 +1,6 @@
 - load scripts for PkgDataFromDb struct
 - execute scripts on pkg operations -> This has a lot of questions
+- - [x] stage1 install scripts
+- - [ ] stage1 delete scripts
+- - [ ] stage1 upgrade scripts
+- - [ ] stage1 downgrade scripts

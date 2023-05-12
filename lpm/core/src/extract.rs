@@ -18,7 +18,7 @@ pub(crate) trait PkgExtractTasks {
     where
         Self: Sized;
     fn unpack_and_decompress(pkg_path: &Path) -> Result<(), LpmError<io::Error>>;
-    fn read_pkg_data(pkg_path: &Path) -> PkgDataFromFs;
+    fn read_pkg_data(pkg_path: &Path) -> Result<PkgDataFromFs, LpmError<io::Error>>;
     fn cleanup(&self) -> Result<(), LpmError<io::Error>>;
 }
 
@@ -28,7 +28,7 @@ impl PkgExtractTasks for PkgDataFromFs {
         Self: Sized,
     {
         PkgDataFromFs::unpack_and_decompress(pkg_path)?;
-        let pkg_data = PkgDataFromFs::read_pkg_data(pkg_path);
+        let pkg_data = PkgDataFromFs::read_pkg_data(pkg_path)?;
 
         Ok(pkg_data)
     }
@@ -45,7 +45,7 @@ impl PkgExtractTasks for PkgDataFromFs {
         Ok(())
     }
 
-    fn read_pkg_data(pkg_path: &Path) -> PkgDataFromFs {
+    fn read_pkg_data(pkg_path: &Path) -> Result<PkgDataFromFs, LpmError<io::Error>> {
         let pkg_tmp_output_dir = get_pkg_tmp_output_path(pkg_path);
 
         let meta_dir = pkg_tmp_output_dir.join("meta");
@@ -59,16 +59,17 @@ impl PkgExtractTasks for PkgDataFromFs {
         let meta_dir = MetaDir::new(&meta_dir);
 
         debug!("Getting stage1 scripts");
-        let scripts = get_scripts(&pkg_tmp_output_dir.join("scripts"));
+        let scripts = get_scripts(&pkg_tmp_output_dir.join("scripts"))?;
 
         debug!("Reading system data from {}", system_json.display());
         let system = System::deserialize(&system_json.to_string_lossy());
-        PkgDataFromFs {
+
+        Ok(PkgDataFromFs {
             path: pkg_path.to_path_buf(),
             meta_dir,
             scripts,
             system,
-        }
+        })
     }
 
     fn cleanup(&self) -> Result<(), LpmError<io::Error>> {

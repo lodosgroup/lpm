@@ -1,5 +1,3 @@
-const EXTRACTION_OUTPUT_PATH: &str = "/tmp/lpm";
-
 mod delete;
 mod extract;
 mod install;
@@ -20,6 +18,8 @@ use ehandle::{lpm::LpmError, MainError};
 use logger::{info, success};
 use min_sqlite3_sys::prelude::*;
 use std::path::Path;
+
+const EXTRACTION_OUTPUT_PATH: &str = "/tmp/lpm";
 
 pub fn configure() -> Result<(), LpmError<MainError>> {
     // create lpm directories under `/var/lib` and `/etc`

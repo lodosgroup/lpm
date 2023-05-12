@@ -23,30 +23,22 @@ pub struct MetaDir {
     pub files: Files,
 }
 
-pub enum Stage1Script {
-    PreInstall(PathBuf),
-    PostInstall(PathBuf),
-    PreDelete(PathBuf),
-    PostDelete(PathBuf),
-    PreDowngrade(PathBuf),
-    PostDowngrade(PathBuf),
-    PreUpgrade(PathBuf),
-    PostUpgrade(PathBuf),
+#[derive(PartialEq)]
+pub enum ScriptPhase {
+    PreInstall,
+    PostInstall,
+    PreDelete,
+    PostDelete,
+    PreDowngrade,
+    PostDowngrade,
+    PreUpgrade,
+    PostUpgrade,
 }
 
-impl Stage1Script {
-    pub fn get_inner(&self) -> &Path {
-        match self {
-            Stage1Script::PreInstall(path)
-            | Stage1Script::PostInstall(path)
-            | Stage1Script::PreDelete(path)
-            | Stage1Script::PostDelete(path)
-            | Stage1Script::PreDowngrade(path)
-            | Stage1Script::PostDowngrade(path)
-            | Stage1Script::PreUpgrade(path)
-            | Stage1Script::PostUpgrade(path) => path,
-        }
-    }
+pub struct Stage1Script {
+    pub contents: String,
+    pub path: PathBuf,
+    pub phase: ScriptPhase,
 }
 
 impl MetaDir {

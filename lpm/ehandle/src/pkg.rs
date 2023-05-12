@@ -18,6 +18,7 @@ pub enum PackageErrorKind {
     UnrecognizedRepository(String),
     DbOperationFailed(String),
     PackageKindNotFound(String),
+    FailedExecutingStage1Script { script_name: String, output: String },
 }
 
 impl ErrorCommons for PackageErrorKind {
@@ -36,6 +37,7 @@ impl ErrorCommons for PackageErrorKind {
             Self::UnrecognizedRepository(_) => "UnrecognizedRepository",
             Self::DbOperationFailed(_) => "DbOperationFailed",
             Self::PackageKindNotFound(_) => "PackageKindNotFound",
+            Self::FailedExecutingStage1Script { .. } => "FailedExecutingStage1Script",
         }
     }
 
@@ -96,6 +98,10 @@ impl ErrorCommons for PackageErrorKind {
                 kind: self.as_str().to_owned(),
                 reason: format!("Kind '{}' does not exists in the database.", kind)
             },
+            Self::FailedExecutingStage1Script{ script_name, output } => Self::Error {
+                kind: self.as_str().to_owned(),
+                reason: format!("Stage1 script '{}' failed. Output: {}", script_name, output)
+            },
         }
     }
 
@@ -134,6 +140,9 @@ impl ErrorCommons for PackageErrorKind {
             PackageErrorKind::DbOperationFailed(_) => ResultCode::PackageError_DbOperationFailed,
             PackageErrorKind::PackageKindNotFound(_) => {
                 ResultCode::PackageError_PackageKindNotFound
+            }
+            PackageErrorKind::FailedExecutingStage1Script { .. } => {
+                ResultCode::PackageError_FailedExecutingStage1Script
             }
         }
     }

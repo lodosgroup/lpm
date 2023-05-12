@@ -34,6 +34,7 @@ pub enum ResultCode {
     PackageError_UnrecognizedRepository,
     PackageError_DbOperationFailed,
     PackageError_PackageKindNotFound,
+    PackageError_FailedExecutingStage1Script,
 
     MinSqliteWrapperError,
 
@@ -96,6 +97,9 @@ impl ResultCode {
             "PackageError_UnrecognizedRepository" => Self::PackageError_UnrecognizedRepository,
             "PackageError_DbOperationFailed" => Self::PackageError_DbOperationFailed,
             "PackageError_PackageKindNotFound" => Self::PackageError_PackageKindNotFound,
+            "PackageError_FailedExecutingStage1Script" => {
+                Self::PackageError_FailedExecutingStage1Script
+            }
 
             "MinSqliteWrapperError" => Self::MinSqliteWrapperError,
 
