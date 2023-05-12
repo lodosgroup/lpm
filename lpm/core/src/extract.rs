@@ -57,7 +57,7 @@ impl PkgExtractTasks for PkgDataFromFs {
         let meta_dir = MetaDir::new(&meta_dir);
 
         debug!("Checking stage1 scripts");
-        let scripts_dir = ScriptsDir::new(Path::new(&pkg_tmp_output_dir));
+        let scripts_dir = ScriptsDir::new(&pkg_tmp_output_dir);
 
         debug!("Reading system data from {}", system_json.display());
         let system = System::deserialize(&system_json.to_string_lossy());
