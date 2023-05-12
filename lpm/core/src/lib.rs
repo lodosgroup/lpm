@@ -25,11 +25,11 @@ pub fn configure() -> Result<(), LpmError<MainError>> {
     // create lpm directories under `/var/lib` and `/etc`
     #[cfg(not(debug_assertions))]
     {
-        // creating `pkg` dir is already enough, but it's nice to have this
-        // in the codebase explicitly.
-        std::fs::create_dir_all("/var/lib/lpm")?;
+        // creating `pkg` dir with `create_dir_all` is already enough,
+        // but it's nice to have this in the codebase explicitly.
+        std::fs::create_dir_all("/var/lib/lpm/default")?;
         std::fs::create_dir_all("/var/lib/lpm/default/pkg")?;
-        std::fs::create_dir_all("/etc/lpm")?;
+        std::fs::create_dir_all("/etc/lpm/default")?;
     }
 
     create_default_config_file()?;
