@@ -18,7 +18,7 @@ pub struct PkgDataFromDb {
 }
 
 pub struct MetaDir {
-    pub path: String,
+    pub path: PathBuf,
     pub meta: Meta,
     pub files: Files,
 }
@@ -94,12 +94,11 @@ impl ScriptsDir {
 }
 
 impl MetaDir {
-    #[inline]
-    pub fn new(dir: &str) -> Self {
+    pub fn new(dir: &Path) -> Self {
         Self {
             path: dir.to_owned(),
-            meta: Meta::deserialize(&(dir.to_owned() + "/meta.json")),
-            files: Files::deserialize(&(dir.to_owned() + "/files.json")),
+            meta: Meta::deserialize(&dir.join("meta.json").to_string_lossy()),
+            files: Files::deserialize(&dir.join("files.json").to_string_lossy()),
         }
     }
 }

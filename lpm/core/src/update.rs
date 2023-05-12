@@ -1,4 +1,4 @@
-use crate::{extract::get_pkg_tmp_output_dir, validate::PkgValidateTasks, PkgExtractTasks};
+use crate::{extract::get_pkg_tmp_output_path, validate::PkgValidateTasks, PkgExtractTasks};
 
 use common::{
     pkg::{PkgDataFromDb, PkgDataFromFs},
@@ -21,7 +21,7 @@ trait PkgUpdateTasks {
 
     fn compare_and_update_files_on_fs(
         &mut self,
-        pkg_path: String,
+        pkg_path: &Path,
         new_files: Files,
     ) -> Result<(), LpmError<MainError>>;
 }
@@ -53,10 +53,10 @@ impl PkgUpdateTasks for PkgDataFromDb {
         };
 
         to_pkg.start_validate_task()?;
-        let source_path = get_pkg_tmp_output_dir(&to_pkg.path) + "/program/";
+        let source_path = get_pkg_tmp_output_path(&to_pkg.path).join("program");
 
         info!("Applying package differences to the system..");
-        self.compare_and_update_files_on_fs(source_path, to_pkg.meta_dir.files.clone())?;
+        self.compare_and_update_files_on_fs(&source_path, to_pkg.meta_dir.files.clone())?;
 
         let db = Database::open(Path::new(DB_PATH))?;
         info!("Syncing with package database..");
@@ -89,7 +89,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
     /// already exists in the system, ignores otherwise.
     fn compare_and_update_files_on_fs(
         &mut self,
-        pkg_path: String,
+        pkg_path: &Path,
         new_files: Files,
     ) -> Result<(), LpmError<MainError>> {
         for file in new_files.0.iter() {
@@ -121,7 +121,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
                     self.meta_dir.files.0.remove(file_index);
 
                     let destination_path = Path::new("/").join(&file.path);
-                    fs::copy(pkg_path.clone() + &file.path, destination_path)?;
+                    fs::copy(pkg_path.join(&file.path), destination_path)?;
                 }
             }
             // File is not included in the old pkg version
@@ -130,7 +130,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
                 let destination_path = Path::new("/").join(&file.path);
                 // Ensure the target dir path
                 create_dir_all(destination_path.parent().unwrap())?;
-                fs::copy(pkg_path.clone() + &file.path, destination_path)?;
+                fs::copy(pkg_path.join(&file.path), destination_path)?;
             }
         }
 

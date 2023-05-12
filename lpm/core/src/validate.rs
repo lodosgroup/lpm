@@ -1,4 +1,4 @@
-use crate::extract::get_pkg_tmp_output_dir;
+use crate::extract::get_pkg_tmp_output_path;
 
 use common::meta::Files;
 use common::pkg::PkgDataFromFs;
@@ -10,6 +10,7 @@ use ehandle::{
 };
 use hash::{md5, sha256, sha512};
 use logger::debug;
+use std::path::Path;
 use std::{fs, io::Read};
 
 #[non_exhaustive]
@@ -53,16 +54,16 @@ impl PkgValidateTasks for PkgDataFromFs {
             .into());
         }
 
-        let pkg_output_path = get_pkg_tmp_output_dir(&self.path);
-        check_program_checksums(pkg_output_path, &self.meta_dir.files)
+        let pkg_output_path = get_pkg_tmp_output_path(&self.path);
+        check_program_checksums(&pkg_output_path, &self.meta_dir.files)
     }
 }
 
-fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmError<MainError>> {
+fn check_program_checksums(dir: &Path, files: &Files) -> Result<(), LpmError<MainError>> {
     for file in &files.0 {
         // Read file as byte-array
-        let f_path = dir_path.clone() + "/program/" + &file.path;
-        debug!("Reading {} in byte format", &f_path);
+        let f_path = dir.join("program").join(&file.path);
+        debug!("Reading {} in byte format", &f_path.display());
         let mut f_reader = fs::File::open(&f_path)?;
         let mut buffer = Vec::new();
         f_reader.read_to_end(&mut buffer)?;
@@ -72,7 +73,7 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmErr
         {
             debug!(
                 "Checksum algorithm of {} is specified as {}",
-                &f_path,
+                &f_path.display(),
                 checksum_algorithm.as_str()
             );
             // Generate hash with using same algorithm of pkg checksum
@@ -84,7 +85,7 @@ fn check_program_checksums(dir_path: String, files: &Files) -> Result<(), LpmErr
 
             debug!(
                 "Checking checksum value of {} if it's corrupted or not",
-                &f_path
+                &f_path.display()
             );
             if file_hash.ne(&file.checksum) {
                 return Err(PackageErrorKind::InvalidPackageFiles.to_lpm_err().into());

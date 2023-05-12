@@ -27,7 +27,7 @@ pub fn configure() -> Result<(), LpmError<MainError>> {
         // creating `pkg` dir is already enough, but it's nice to have this
         // in the codebase explicitly.
         std::fs::create_dir_all("/var/lib/lpm")?;
-        std::fs::create_dir_all("/var/lib/lpm/pkg")?;
+        std::fs::create_dir_all("/var/lib/lpm/default/pkg")?;
         std::fs::create_dir_all("/etc/lpm")?;
     }
 

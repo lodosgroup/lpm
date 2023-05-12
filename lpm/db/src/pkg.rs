@@ -21,6 +21,7 @@ use sql_builder::select::*;
 use sql_builder::update::Update;
 use sql_builder::Column;
 use std::path::Path;
+use std::path::PathBuf;
 
 pub trait DbOpsForInstalledPkg {
     fn load(db: &Database, name: &str) -> Result<Self, LpmError<PackageError>>
@@ -469,7 +470,7 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
         let files = Files(files);
 
         let meta_dir = MetaDir {
-            path: String::new(),
+            path: PathBuf::default(),
             meta,
             files,
         };
