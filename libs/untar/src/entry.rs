@@ -1,3 +1,10 @@
+use crate::archive::ArchiveInner;
+use crate::err;
+use crate::error::TarError;
+use crate::ffi;
+use crate::header::bytes2path;
+use crate::{Archive, Header};
+
 use std::borrow::Cow;
 use std::cmp;
 use std::fs;
@@ -6,13 +13,6 @@ use std::io::prelude::*;
 use std::io::{self, Error, ErrorKind, SeekFrom};
 use std::marker;
 use std::path::{Component, Path, PathBuf};
-
-use crate::archive::ArchiveInner;
-use crate::err;
-use crate::error::TarError;
-use crate::ffi;
-use crate::header::bytes2path;
-use crate::{Archive, Header};
 
 /// A read-only view into an entry of an archive.
 ///

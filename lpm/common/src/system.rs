@@ -1,5 +1,6 @@
 use super::ParserTasks;
 use crate::{log_and_panic, version::VersionStruct};
+
 use json::{Deserialize, JsonValue};
 use std::fs;
 

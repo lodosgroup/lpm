@@ -1,5 +1,6 @@
 use crate::version::VersionStruct;
 use crate::{de_required_field, ParserTasks};
+
 use json::{Deserialize, JsonValue};
 use std::fs;
 

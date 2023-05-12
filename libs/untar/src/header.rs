@@ -1,3 +1,7 @@
+use crate::err;
+use crate::ffi;
+use crate::EntryType;
+
 use std::borrow::Cow;
 use std::fmt;
 use std::fs;
@@ -8,10 +12,6 @@ use std::mem;
 use std::os::unix::prelude::*;
 use std::path::{Component, Path, PathBuf};
 use std::str;
-
-use crate::err;
-use crate::ffi;
-use crate::EntryType;
 
 /// Representation of the header of an entry in an archive
 #[repr(C)]

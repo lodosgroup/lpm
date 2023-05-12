@@ -1,4 +1,6 @@
-use common::pkg::PkgDataFromDb;
+use crate::stage1::{get_scripts, Stage1Tasks};
+
+use common::pkg::{PkgDataFromDb, ScriptPhase};
 use db::{enable_foreign_keys, pkg::DbOpsForInstalledPkg, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
 use logger::{info, success, warning};
@@ -18,18 +20,23 @@ impl PkgDeleteTasks for PkgDataFromDb {
 
         transaction_op(&db, Transaction::Begin)?;
 
-        info!("Syncing with package database..");
-        match self.delete_from_db(&db) {
-            Ok(_) => {}
-            Err(_) => {
-                transaction_op(&db, Transaction::Rollback)?;
+        let pkg_lib_dir = Path::new("/var/lib/lpm/pkg").join(&self.meta_dir.meta.name);
+        let scripts = get_scripts(&pkg_lib_dir.join("scripts"))?;
 
-                return Err(
-                    PackageErrorKind::DeletionFailed(self.meta_dir.meta.name.clone())
-                        .to_lpm_err()
-                        .into(),
-                );
-            }
+        if let Err(err) = scripts.execute_script(ScriptPhase::PreDelete) {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err);
+        }
+
+        info!("Syncing with package database..");
+        if self.delete_from_db(&db).is_err() {
+            transaction_op(&db, Transaction::Rollback)?;
+
+            return Err(
+                PackageErrorKind::DeletionFailed(self.meta_dir.meta.name.clone())
+                    .to_lpm_err()
+                    .into(),
+            );
         };
 
         info!("Deleting package files from system..");
@@ -41,9 +48,13 @@ impl PkgDeleteTasks for PkgDataFromDb {
             }
         }
 
-        let pkg_lib_dir = Path::new("/var/lib/lpm/pkg").join(&self.meta_dir.meta.name);
         if Path::new(&pkg_lib_dir).exists() {
             fs::remove_dir_all(pkg_lib_dir)?;
+        }
+
+        if let Err(err) = scripts.execute_script(ScriptPhase::PostDelete) {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err);
         }
 
         transaction_op(&db, Transaction::Commit)?;

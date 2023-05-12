@@ -1,4 +1,5 @@
 use crate::controller::TermController;
+
 use std::io::{self, Stdout, Write};
 
 pub struct ProgressBar<'a> {

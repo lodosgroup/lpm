@@ -1,3 +1,9 @@
+use crate::{
+    extract::{get_pkg_tmp_output_path, PkgExtractTasks},
+    stage1::Stage1Tasks,
+    validate::PkgValidateTasks,
+};
+
 use common::pkg::{PkgDataFromFs, ScriptPhase};
 use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, DB_PATH};
 use ehandle::{lpm::LpmError, MainError};
@@ -6,12 +12,6 @@ use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},
     path::{Path, PathBuf},
-};
-
-use crate::{
-    extract::{get_pkg_tmp_output_path, PkgExtractTasks},
-    stage1::Stage1Tasks,
-    validate::PkgValidateTasks,
 };
 
 trait PkgInstallTasks {

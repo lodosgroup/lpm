@@ -1,3 +1,7 @@
+use crate::entry::{EntryFields, EntryIo};
+use crate::error::TarError;
+use crate::{err, Entry, GnuExtSparseHeader, GnuSparseHeader, Header};
+
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::convert::TryFrom;
@@ -6,10 +10,6 @@ use std::io::prelude::*;
 use std::io::{self, SeekFrom};
 use std::marker;
 use std::path::Path;
-
-use crate::entry::{EntryFields, EntryIo};
-use crate::error::TarError;
-use crate::{err, Entry, GnuExtSparseHeader, GnuSparseHeader, Header};
 
 /// A top-level representation of an archive file.
 ///

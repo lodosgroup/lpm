@@ -1,7 +1,12 @@
-use crate::{extract::get_pkg_tmp_output_path, validate::PkgValidateTasks, PkgExtractTasks};
+use crate::{
+    extract::get_pkg_tmp_output_path,
+    stage1::{get_scripts, Stage1Tasks},
+    validate::PkgValidateTasks,
+    PkgExtractTasks,
+};
 
 use common::{
-    pkg::{PkgDataFromDb, PkgDataFromFs},
+    pkg::{PkgDataFromDb, PkgDataFromFs, ScriptPhase},
     Files,
 };
 use db::{
@@ -29,7 +34,8 @@ trait PkgUpdateTasks {
 impl PkgUpdateTasks for PkgDataFromDb {
     fn start_update_task(&mut self, to_pkg: &mut PkgDataFromFs) -> Result<(), LpmError<MainError>> {
         debug!("Comparing versions..");
-        let operation = match self
+
+        let (pre_script, post_script) = match self
             .meta_dir
             .meta
             .version
@@ -37,11 +43,11 @@ impl PkgUpdateTasks for PkgDataFromDb {
         {
             std::cmp::Ordering::Less => {
                 // TODO Ask for upgrading
-                "Package upgrade"
+                (ScriptPhase::PreUpgrade, ScriptPhase::PostUpgrade)
             }
             std::cmp::Ordering::Greater => {
                 // TODO Ask for downgrading
-                "Package downgrade"
+                (ScriptPhase::PreDowngrade, ScriptPhase::PostDowngrade)
             }
             std::cmp::Ordering::Equal => {
                 warning!(
@@ -52,33 +58,40 @@ impl PkgUpdateTasks for PkgDataFromDb {
             }
         };
 
+        let pkg_lib_dir = Path::new("/var/lib/lpm/pkg").join(&self.meta_dir.meta.name);
+        let scripts = get_scripts(&pkg_lib_dir.join("scripts"))?;
+
         to_pkg.start_validate_task()?;
         let source_path = get_pkg_tmp_output_path(&to_pkg.path).join("program");
+
+        let db = Database::open(Path::new(DB_PATH))?;
+        if let Err(err) = scripts.execute_script(pre_script) {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err);
+        }
 
         info!("Applying package differences to the system..");
         self.compare_and_update_files_on_fs(&source_path, to_pkg.meta_dir.files.clone())?;
 
-        let db = Database::open(Path::new(DB_PATH))?;
         info!("Syncing with package database..");
         to_pkg.update_existing_pkg(&db, self.pkg_id)?;
 
         info!("Cleaning temporary files..");
-        match to_pkg.cleanup() {
-            Ok(_) => {}
-            Err(err) => {
-                transaction_op(&db, Transaction::Rollback)?;
-                return Err(err.into());
-            }
+        if let Err(err) = to_pkg.cleanup() {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err.into());
         };
 
-        match transaction_op(&db, Transaction::Commit) {
-            Ok(_) => {}
-            Err(err) => {
-                transaction_op(&db, Transaction::Rollback)?;
-                return Err(err.into());
-            }
+        if let Err(err) = scripts.execute_script(post_script) {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err);
+        }
+
+        if let Err(err) = transaction_op(&db, Transaction::Commit) {
+            transaction_op(&db, Transaction::Rollback)?;
+            return Err(err.into());
         };
-        info!("{} transaction completed.", operation);
+        info!("Update transaction completed.");
 
         db.close();
 

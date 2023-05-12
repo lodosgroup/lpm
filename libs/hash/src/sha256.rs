@@ -331,10 +331,10 @@ pub const fn digest(input: &[u8]) -> [u8; RESULT_SIZE] {
 
 #[cfg(test)]
 mod tests {
-    use alloc::string::String;
-
     use super::digest;
     use crate::digest_to_hex_string;
+
+    use alloc::string::String;
 
     #[test]
     fn test_digest_and_hex() {
