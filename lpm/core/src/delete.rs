@@ -41,7 +41,7 @@ impl PkgDeleteTasks for PkgDataFromDb {
             }
         }
 
-        let pkg_lib_dir = Path::new("/var/lib/lpm/default/pkg").join(&self.meta_dir.meta.name);
+        let pkg_lib_dir = Path::new("/var/lib/lpm/pkg").join(&self.meta_dir.meta.name);
         fs::remove_dir_all(pkg_lib_dir)?;
 
         transaction_op(&db, Transaction::Commit)?;

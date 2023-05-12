@@ -9,7 +9,7 @@ mod migrations;
 pub use migrations::migrate_database_tables;
 
 #[cfg(not(debug_assertions))]
-pub const DB_PATH: &str = "/var/lib/lpm/default/.db";
+pub const DB_PATH: &str = "/var/lib/lpm/.db";
 
 #[cfg(debug_assertions)]
 pub const DB_PATH: &str = ".db";

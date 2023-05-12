@@ -8,7 +8,7 @@ use std::{
 };
 
 #[cfg(not(debug_assertions))]
-pub const CONFIG_PATH: &str = "/etc/lpm/default/conf";
+pub const CONFIG_PATH: &str = "/etc/lpm/conf";
 
 #[cfg(debug_assertions)]
 pub const CONFIG_PATH: &str = "conf";

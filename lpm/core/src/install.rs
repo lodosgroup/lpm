@@ -89,7 +89,7 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 
     fn copy_scripts(&self) -> Result<(), LpmError<MainError>> {
-        let pkg_scripts_path = Path::new("/var/lib/lpm/default/pkg/")
+        let pkg_scripts_path = Path::new("/var/lib/lpm/pkg/")
             .join(&self.meta_dir.meta.name)
             .join("scripts");
 
