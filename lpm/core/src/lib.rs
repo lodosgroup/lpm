@@ -4,6 +4,7 @@ mod delete;
 mod extract;
 mod install;
 mod module;
+mod stage1;
 mod update;
 mod validate;
 

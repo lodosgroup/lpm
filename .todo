@@ -1,3 +1,2 @@
-- add scripts to /var/lib/lpm/pkg/default/${pkg_name}
 - load scripts for PkgDataFromDb struct
 - execute scripts on pkg operations -> This has a lot of questions

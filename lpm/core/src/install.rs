@@ -16,7 +16,8 @@ use crate::{
 trait PkgInstallTasks {
     fn start_install_task(path: &str) -> Result<(), LpmError<MainError>>;
     fn copy_programs(&self) -> Result<(), LpmError<MainError>>;
-    fn install_program(&self) -> Result<(), LpmError<MainError>>;
+    fn copy_scripts(&self) -> Result<(), LpmError<MainError>>;
+    fn install(&self) -> Result<(), LpmError<MainError>>;
 }
 
 impl PkgInstallTasks for PkgDataFromFs {
@@ -33,7 +34,7 @@ impl PkgInstallTasks for PkgDataFromFs {
         pkg.insert_to_db(&db)?;
 
         info!("Installing package files into system..");
-        match pkg.install_program() {
+        match pkg.install() {
             Ok(_) => {}
             Err(err) => {
                 transaction_op(&db, Transaction::Rollback)?;
@@ -65,7 +66,8 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 
     #[inline(always)]
-    fn install_program(&self) -> Result<(), LpmError<MainError>> {
+    fn install(&self) -> Result<(), LpmError<MainError>> {
+        self.copy_scripts()?;
         self.copy_programs()
     }
 
@@ -81,6 +83,29 @@ impl PkgInstallTasks for PkgDataFromFs {
             debug!("Copying {} -> {}", from.display(), destination.display());
 
             fs::copy(from, destination)?;
+        }
+
+        Ok(())
+    }
+
+    fn copy_scripts(&self) -> Result<(), LpmError<MainError>> {
+        let pkg_scripts_path = Path::new("/var/lib/lpm/default/pkg/")
+            .join(&self.meta_dir.meta.name)
+            .join("scripts");
+
+        std::fs::create_dir_all(&pkg_scripts_path)?;
+
+        for script in &self.scripts {
+            let script_src = script.get_inner();
+            let destination = &pkg_scripts_path.join(script_src.file_name().unwrap());
+
+            debug!(
+                "Copying {} -> {}",
+                script_src.display(),
+                destination.display()
+            );
+
+            fs::copy(script_src, destination)?;
         }
 
         Ok(())

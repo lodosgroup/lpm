@@ -1,5 +1,7 @@
+use crate::stage1::get_scripts;
+
 use common::{
-    pkg::{MetaDir, PkgDataFromFs, ScriptsDir},
+    pkg::{MetaDir, PkgDataFromFs},
     system::System,
     ParserTasks,
 };
@@ -56,15 +58,15 @@ impl PkgExtractTasks for PkgDataFromFs {
         );
         let meta_dir = MetaDir::new(&meta_dir);
 
-        debug!("Checking stage1 scripts");
-        let scripts_dir = ScriptsDir::new(&pkg_tmp_output_dir);
+        debug!("Getting stage1 scripts");
+        let scripts = get_scripts(&pkg_tmp_output_dir.join("scripts"));
 
         debug!("Reading system data from {}", system_json.display());
         let system = System::deserialize(&system_json.to_string_lossy());
         PkgDataFromFs {
             path: pkg_path.to_path_buf(),
             meta_dir,
-            scripts_dir,
+            scripts,
             system,
         }
     }
