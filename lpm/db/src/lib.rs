@@ -4,9 +4,11 @@ use ehandle::{
     simple_e_fmt, try_execute_prepared, ErrorCommons,
 };
 use min_sqlite3_sys::prelude::*;
-mod migrations;
 
 pub use migrations::migrate_database_tables;
+pub use module::{
+    delete_modules, get_dylib_path_by_name, get_modules, insert_module, is_module_exists,
+};
 
 #[cfg(not(debug_assertions))]
 pub const DB_PATH: &str = "/var/lib/lpm/.db";
@@ -83,4 +85,6 @@ pub fn get_current_datetime(db: &Database) -> Result<String, LpmError<SqlError>>
     Ok(data)
 }
 
+mod migrations;
+mod module;
 pub mod pkg;

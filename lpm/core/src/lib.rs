@@ -9,10 +9,10 @@ mod validate;
 pub use delete::delete_lod;
 pub(crate) use extract::PkgExtractTasks;
 pub use install::install_lod;
-pub use module::trigger_lpm_module;
+pub use module::{add_module, delete_modules, print_modules, trigger_lpm_module};
 pub use update::update_lod;
 
-use common::{config::create_default_config_file, log_and_panic};
+use common::log_and_panic;
 use db::{pkg::insert_pkg_kinds, DB_PATH};
 use ehandle::{lpm::LpmError, MainError};
 use logger::{info, success};
@@ -32,7 +32,6 @@ pub fn configure() -> Result<(), LpmError<MainError>> {
         std::fs::create_dir_all("/etc/lpm")?;
     }
 
-    create_default_config_file()?;
     db::migrate_database_tables()?;
 
     Ok(())

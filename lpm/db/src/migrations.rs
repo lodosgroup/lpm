@@ -16,7 +16,7 @@ pub fn migrate_database_tables() -> Result<(), LpmError<SqlError>> {
 
     let mut initial_version: i64 = INITIAL_VERSION;
 
-    create_table_core(&db, &mut initial_version)?;
+    create_core_tables(&db, &mut initial_version)?;
     create_update_triggers_for_core_tables(&db, &mut initial_version)?;
     insert_defaults(&db, &mut initial_version)?;
 
@@ -53,10 +53,10 @@ fn can_migrate(db: &Database, version: i64) -> Result<bool, LpmError<SqlError>> 
     Ok(result)
 }
 
-fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlError>> {
+fn create_core_tables(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlError>> {
     *version += 1;
     if !can_migrate(db, *version)? {
-        logger::warning!("migration 'create_table_core' already applied, skipping it.");
+        logger::warning!("migration 'create_core_tables' already applied, skipping it.");
         return Ok(());
     }
 
@@ -153,12 +153,22 @@ fn create_table_core(db: &Database, version: &mut i64) -> Result<(), LpmError<Sq
 
                FOREIGN KEY(package_id) REFERENCES packages(id) ON DELETE CASCADE
             );
+
+            /*
+             * Statement of `modules` table creation.
+             * This table will hold module informations.
+            */
+            CREATE TABLE modules (
+               id                       INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               name                     TEXT       NOT NULL       UNIQUE,
+               dylib_path               TEXT       NOT NULL
+            );
         ",
     );
 
     try_execute!(db, statement);
     set_migration_version(db, *version)?;
-    logger::info!("'create_table_core' migration is finished.");
+    logger::info!("'create_core_tables' migration is finished.");
 
     Ok(())
 }
@@ -215,7 +225,7 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlE
         return Ok(());
     }
 
-    let checksum_kind_defaults = String::from(
+    let statement = String::from(
         "
             INSERT INTO checksum_kinds
                 (kind)
@@ -223,13 +233,6 @@ fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlE
                 ('md5'),
                 ('sha256'),
                 ('sha512');",
-    );
-
-    let statement = format!(
-        "
-            {}
-        ",
-        checksum_kind_defaults
     );
 
     try_execute!(db, statement);

@@ -79,8 +79,8 @@ pub enum SqlErrorKind {
 
 #[derive(Debug)]
 pub struct SqlError {
-    kind: String,
-    reason: String,
+    pub(crate) kind: String,
+    pub(crate) reason: String,
 }
 
 impl ErrorCommons for SqlErrorKind {

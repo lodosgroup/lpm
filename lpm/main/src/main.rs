@@ -31,6 +31,19 @@ fn main() {
                 let kinds: &[String] = &args[2..];
                 delete_pkg_kinds(kinds)?;
             }
+            "--add-module" => {
+                let module_name = args.get(2).expect("Module name is missing.");
+                let dylib_path = args.get(3).expect("Dynamic library path is missing.");
+
+                add_module(module_name, dylib_path)?;
+            }
+            "--delete-modules" => {
+                let module_names: &[String] = &args[2..];
+                delete_modules(module_names)?;
+            }
+            "--modules" => {
+                print_modules()?;
+            }
 
             "--module" => trigger_lpm_module(args.clone())?,
 

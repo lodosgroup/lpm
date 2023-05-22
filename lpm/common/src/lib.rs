@@ -1,4 +1,3 @@
-pub mod config;
 pub mod lpm_version;
 pub mod meta;
 pub mod pkg;
