@@ -17,6 +17,7 @@ enum Subcommand<'a> {
     Repository(&'a str),
     Add(Vec<&'a str>),
     Delete(Vec<&'a str>),
+    List,
     Help,
 }
 
@@ -62,7 +63,7 @@ fn parse_args(args: &[String]) -> Command<'_> {
 fn parse_subcommand<'a>(iter: &mut dyn Iterator<Item = &'a String>) -> Subcommand<'a> {
     if let Some(arg) = iter.next() {
         match arg.as_str() {
-            "--local" | "-l" => Subcommand::Local,
+            "--local" | "-L" => Subcommand::Local,
             "--repository" | "-r" => {
                 if let Some(value) = iter.next() {
                     return Subcommand::Repository(value);
@@ -74,15 +75,16 @@ fn parse_subcommand<'a>(iter: &mut dyn Iterator<Item = &'a String>) -> Subcomman
                     .take_while(|&arg| !arg.starts_with('-'))
                     .map(|arg| arg.as_str())
                     .collect();
-                return Subcommand::Add(arguments);
+                Subcommand::Add(arguments)
             }
             "--delete" | "-d" => {
                 let arguments: Vec<&str> = iter
                     .take_while(|&arg| !arg.starts_with('-'))
                     .map(|arg| arg.as_str())
                     .collect();
-                return Subcommand::Delete(arguments);
+                Subcommand::Delete(arguments)
             }
+            "--list" | "-l" => Subcommand::List,
             _ => Subcommand::Help,
         }
     } else {
@@ -100,7 +102,7 @@ mod tests {
             let args = vec![
                 String::from("--install"),
                 String::from("package_name"),
-                String::from("--local"),
+                String::from("-L"),
             ];
             let command = parse_args(&args);
             assert_eq!(command, Command::Install("package_name", Subcommand::Local));
@@ -108,9 +110,9 @@ mod tests {
 
         {
             let args = vec![
-                String::from("--install"),
+                String::from("-i"),
                 String::from("package_name"),
-                String::from("--repository"),
+                String::from("-r"),
                 String::from("https://repo.test.com"),
             ];
             let command = parse_args(&args);
@@ -164,6 +166,13 @@ mod tests {
             let command = parse_args(&args);
             let expected_command =
                 Command::Module(Subcommand::Delete(vec!["arg1", "arg2", "arg3"]));
+            assert_eq!(command, expected_command);
+        }
+
+        {
+            let args = vec![String::from("--module"), String::from("--list")];
+            let command = parse_args(&args);
+            let expected_command = Command::Module(Subcommand::List);
             assert_eq!(command, expected_command);
         }
     }
