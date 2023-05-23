@@ -1,4 +1,5 @@
-#![allow(dead_code)]
+// TODO
+// create seperate crate for cli parser under `lpm` directory
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum Command<'a> {
@@ -11,6 +12,8 @@ pub(crate) enum Command<'a> {
     None,
 }
 
+// TODO
+// create seperate subcommands for each root commands
 #[derive(Debug, PartialEq)]
 pub(crate) enum Subcommand<'a> {
     Local,
