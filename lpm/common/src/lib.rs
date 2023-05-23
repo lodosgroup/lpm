@@ -36,17 +36,28 @@ macro_rules! de_required_field {
 }
 
 #[macro_export]
-macro_rules! try_or_error {
-    ($fn: expr) => {
+macro_rules! some_or_error {
+    ($fn: expr, $log: expr, $($args: tt)+) => {
         match $fn {
-            Result::Ok(val) => val,
-            Result::Err(err) => {
-                logger::error!("{:?}", err);
+            Some(val) => val,
+            None => {
+                logger::error!("{}", format!($log, $($args)+));
                 // Terminate app with panic code
                 std::process::exit(101);
             }
         }
     };
+    ($fn: expr, $log: expr) => {
+        match $fn {
+            Some(val) => val,
+            None => {
+                logger::error!("{}", format!($log));
+                // Terminate app with panic code
+                std::process::exit(101);
+            }
+        }
+
+    }
 }
 
 #[macro_export]

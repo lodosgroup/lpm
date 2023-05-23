@@ -1,68 +1,77 @@
-use common::{log_and_panic, try_or_error};
+use common::{log_and_panic, some_or_error};
 use core::*;
-use ehandle::{lpm::LpmError, MainError};
 use std::env;
 
 mod cli;
 
+macro_rules! try_or_error {
+    ($fn: expr) => {
+        match $fn {
+            Result::Ok(val) => val,
+            Result::Err(err) => {
+                logger::error!("{:?}", err);
+                // Terminate app with panic code
+                std::process::exit(101);
+            }
+        }
+    };
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
-    // TODO
-    // this is only for early development testing,
-    // will have proper cli parser later
-    let cli = |arg: &str| -> Result<(), LpmError<MainError>> {
-        match arg {
-            "--install" => {
-                let pkg_path = args.get(2).expect("Package path is missing.");
-                install_lod(pkg_path)?;
-            }
-            "--update" => {
-                let pkg_name = args.get(2).expect("Package name is missing.");
-                let pkg_path = args.get(3).expect("Package path is missing.");
-                update_lod(pkg_name, pkg_path)?;
-            }
-            "--delete" => {
-                let pkg_name = args.get(2).expect("Package name is missing.");
-                delete_lod(pkg_name)?;
-            }
-            "--add-pkg-kinds" => {
-                let kinds: &[String] = &args[2..];
-                add_pkg_kinds(kinds)?;
-            }
-            "--delete-pkg-kinds" => {
-                let kinds: &[String] = &args[2..];
-                delete_pkg_kinds(kinds)?;
-            }
-            "--add-module" => {
-                let module_name = args.get(2).expect("Module name is missing.");
-                let dylib_path = args.get(3).expect("Dynamic library path is missing.");
+    match cli::parse_args(&args) {
+        cli::Command::Install(pkg_name_or_filepath, subcommand) => match subcommand {
+            cli::Subcommand::Local => try_or_error!(install_lod(pkg_name_or_filepath)),
+            cli::Subcommand::Add(_) => todo!(),
+            cli::Subcommand::Delete(_) => todo!(),
+            cli::Subcommand::List => todo!(),
+            cli::Subcommand::None => todo!(),
+        },
 
-                add_module(module_name, dylib_path)?;
+        cli::Command::Update(pkg_name, lod_path) => match lod_path {
+            Some(lod_path) => try_or_error!(update_lod(pkg_name, lod_path)),
+            None => todo!(),
+        },
+
+        cli::Command::Delete(pkg_name) => try_or_error!(delete_lod(pkg_name)),
+
+        cli::Command::Kind(subcommand) => match subcommand {
+            cli::Subcommand::Add(kinds) => {
+                let kinds: Vec<String> = kinds.iter().map(|t| t.to_string()).collect();
+                try_or_error!(add_pkg_kinds(&kinds))
             }
-            "--delete-modules" => {
-                let module_names: &[String] = &args[2..];
-                delete_modules(module_names)?;
+            cli::Subcommand::Delete(kinds) => {
+                let kinds: Vec<String> = kinds.iter().map(|t| t.to_string()).collect();
+                try_or_error!(delete_pkg_kinds(&kinds))
             }
-            "--modules" => {
-                print_modules()?;
+            cli::Subcommand::List | cli::Subcommand::Local | cli::Subcommand::None => {
+                log_and_panic!("Invalid argument on 'lpm --kind'.");
             }
+        },
 
-            "--module" => trigger_lpm_module(args.clone())?,
-
-            "--configure" => configure()?,
-
-            _ => {
-                log_and_panic!("Invalid argument.");
+        cli::Command::Module(subcommand) => match subcommand {
+            cli::Subcommand::None | cli::Subcommand::Local => {
+                try_or_error!(trigger_lpm_module(args.clone()))
             }
-        };
+            cli::Subcommand::Add(list) => {
+                let (module_name, dylib_path) = (
+                    some_or_error!(list.first(), "Module name is missing"),
+                    some_or_error!(list.get(1), "Dynamic library path is missing"),
+                );
+                try_or_error!(add_module(module_name, dylib_path))
+            }
+            cli::Subcommand::Delete(module_names) => {
+                let module_names: Vec<String> =
+                    module_names.iter().map(|t| t.to_string()).collect();
+                try_or_error!(delete_modules(&module_names))
+            }
+            cli::Subcommand::List => try_or_error!(print_modules()),
+        },
 
-        Ok(())
-    };
+        cli::Command::Configure => try_or_error!(configure()),
 
-    match args.get(1) {
-        Some(arg) => try_or_error!(cli(arg)),
-        None => {
-            log_and_panic!("Missing argument.");
+        cli::Command::None => {
+            log_and_panic!("Invalid argument on 'lpm'.");
         }
     }
 }

@@ -1,4 +1,4 @@
-use common::log_and_panic;
+use common::{log_and_panic, some_or_error};
 use db::{get_dylib_path_by_name, insert_module, is_module_exists, DB_PATH};
 use ehandle::{
     lpm::LpmError,
@@ -103,7 +103,10 @@ impl ModuleController {
 }
 
 pub fn trigger_lpm_module(args: Vec<String>) -> Result<(), LpmError<ModuleError>> {
-    let module_name = args.get(2).expect("Module name is missing.");
+    let module_name = some_or_error!(
+        args.get(2),
+        "Provide the name of the module you wish to run."
+    );
 
     let db = Database::open(Path::new(DB_PATH))?;
 
