@@ -2,6 +2,7 @@
 resolver = "2"
 
 members = [
+	"lpm/cli_parser",
 	"lpm/common",
 	"lpm/core",
 	"lpm/db",

@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+cli_parser = { path = "../cli_parser" }
 common = { path = "../common" }
 core = { path = "../core" }
 db = { path = "../db" }

@@ -3,6 +3,10 @@
 version = 3
 
 [[package]]
+name = "cli_parser"
+version = "0.1.0"
+
+[[package]]
 name = "common"
 version = "0.1.0"
 dependencies = [
@@ -58,6 +62,7 @@ version = "0.1.0"
 name = "lpm"
 version = "0.1.0"
 dependencies = [
+ "cli_parser",
  "common",
  "core",
  "db",
