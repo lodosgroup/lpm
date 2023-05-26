@@ -107,15 +107,25 @@ impl DbOpsForBuildFile for PkgDataFromFs {
             String::from("kind"),
             &self.meta_dir.meta.kind,
         )?
-        .ok_or_else(|| {
-            PackageErrorKind::PackageKindNotFound(self.meta_dir.meta.kind.clone()).to_lpm_err()
+        .or_else(|| {
+            info!(
+                "Kind '{}' doesn't exist in the database, inserting it..",
+                &self.meta_dir.meta.kind
+            );
+
+            insert_pkg_kinds(db, vec![self.meta_dir.meta.kind.clone()]).ok()?;
+            super::get_last_insert_row_id(db).ok()
         });
+
         let kind_id = match kind_id {
-            Ok(id) => id,
-            Err(e) => {
+            Some(id) => id,
+            None => {
                 sql.kill();
                 transaction_op(db, Transaction::Rollback)?;
-                return Err(e);
+                return Err(
+                    PackageErrorKind::InstallationFailed(self.meta_dir.meta.name.clone())
+                        .to_lpm_err(),
+                );
             }
         };
         try_bind_val!(sql, PACKAGE_KIND_ID_COL_PRE_ID, kind_id);
@@ -252,17 +262,28 @@ impl DbOpsForBuildFile for PkgDataFromFs {
             String::from("kind"),
             &self.meta_dir.meta.kind,
         )?
-        .ok_or_else(|| {
-            PackageErrorKind::PackageKindNotFound(self.meta_dir.meta.kind.clone()).to_lpm_err()
+        .or_else(|| {
+            info!(
+                "Kind '{}' doesn't exist in the database, inserting it..",
+                &self.meta_dir.meta.kind
+            );
+
+            insert_pkg_kinds(db, vec![self.meta_dir.meta.kind.clone()]).ok()?;
+            super::get_last_insert_row_id(db).ok()
         });
+
         let kind_id = match kind_id {
-            Ok(id) => id,
-            Err(e) => {
+            Some(id) => id,
+            None => {
                 sql.kill();
                 transaction_op(db, Transaction::Rollback)?;
-                return Err(e);
+                return Err(
+                    PackageErrorKind::InstallationFailed(self.meta_dir.meta.name.clone())
+                        .to_lpm_err(),
+                );
             }
         };
+
         try_bind_val!(sql, PACKAGE_KIND_ID_COL_PRE_ID, kind_id);
 
         try_bind_val!(

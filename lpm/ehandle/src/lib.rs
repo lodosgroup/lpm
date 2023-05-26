@@ -24,8 +24,7 @@ pub enum ResultCode {
     PackageError_DoesNotExists = 107,
     PackageError_UnrecognizedRepository = 108,
     PackageError_DbOperationFailed = 109,
-    PackageError_PackageKindNotFound = 110,
-    PackageError_FailedExecutingStage1Script = 111,
+    PackageError_FailedExecutingStage1Script = 110,
 
     // 200-299 Module related errors
     ModuleError_DynamicLibraryNotFound = 200,
@@ -101,7 +100,6 @@ impl ResultCode {
             "PackageError_DoesNotExists" => Self::PackageError_DoesNotExists,
             "PackageError_UnrecognizedRepository" => Self::PackageError_UnrecognizedRepository,
             "PackageError_DbOperationFailed" => Self::PackageError_DbOperationFailed,
-            "PackageError_PackageKindNotFound" => Self::PackageError_PackageKindNotFound,
             "PackageError_FailedExecutingStage1Script" => {
                 Self::PackageError_FailedExecutingStage1Script
             }
