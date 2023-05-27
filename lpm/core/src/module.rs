@@ -27,8 +27,8 @@ extern "C" {
     fn dlclose(handle: *mut std::os::raw::c_void) -> std::os::raw::c_int;
 }
 
-// We want to only pass configuration and database path and command arguments so we don't
-// need to worry about backwards compatibility(e.g when we add new fields to the configuration struct).
+// We want to only pass the database path and command arguments so we don't need to
+// worry about backwards compatibility(e.g when we add new fields to the configuration struct).
 type ModuleEntrypointFn =
     extern "C" fn(*const std::os::raw::c_char, std::os::raw::c_uint, *const std::os::raw::c_void);
 
