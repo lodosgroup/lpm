@@ -40,38 +40,14 @@ macro_rules! some_or_error {
     ($fn: expr, $log: expr, $($args: tt)+) => {
         match $fn {
             Some(val) => val,
-            None => {
-                logger::error!("{}", format!($log, $($args)+));
-                // Terminate app with panic code
-                std::process::exit(101);
-            }
+            None => panic!("{}", format!($log, $($args)+)),
         }
     };
     ($fn: expr, $log: expr) => {
         match $fn {
             Some(val) => val,
-            None => {
-                logger::error!("{}", format!($log));
-                // Terminate app with panic code
-                std::process::exit(101);
-            }
+            None => panic!("{}", format!($log)),
         }
 
     }
-}
-
-#[macro_export]
-macro_rules! log_and_panic {
-    ($log: expr) => {
-        logger::error!("{}", format!($log));
-
-        // Terminate app with panic code
-        std::process::exit(101);
-    };
-    ($log: expr, $($args: tt)+) => {
-        logger::error!("{}", format!($log, $($args)+));
-
-        // Terminate app with panic code
-        std::process::exit(101);
-    };
 }

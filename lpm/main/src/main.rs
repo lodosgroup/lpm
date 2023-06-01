@@ -1,22 +1,37 @@
 use cli_parser::{Command, InstallSubcommand, KindSubcommand, ModuleSubcommand};
-use common::{log_and_panic, some_or_error};
+use common::some_or_error;
 use core::*;
-use std::env;
+use std::{env, panic};
 
 macro_rules! try_or_error {
     ($fn: expr) => {
         match $fn {
             Result::Ok(val) => val,
-            Result::Err(err) => {
-                logger::error!("{:?}", err);
-                // Terminate app with panic code
-                std::process::exit(101);
-            }
+            Result::Err(err) => panic!("{:?}", err),
         }
     };
 }
 
+fn panic_handler(info: &panic::PanicInfo) {
+    let location = info.location();
+    let msg = info.payload().downcast_ref::<&str>();
+
+    if let (Some(location), Some(msg)) = (location, msg) {
+        let trace = format!(
+            "{}:{}:{}",
+            location.file(),
+            location.line(),
+            location.column()
+        );
+        logger::error!(r#"Panic {{ kind: "Panic", reason: "{msg}" }} From: ["{trace}"]"#);
+    } else {
+        logger::error!("{:?}", info);
+    }
+}
+
 fn main() {
+    panic::set_hook(Box::new(panic_handler));
+
     let args: Vec<String> = env::args().collect();
     match Command::parse_args(&args) {
         Command::Install(pkg_name_or_filepath, subcommand) => match subcommand {
@@ -43,7 +58,7 @@ fn main() {
                 try_or_error!(delete_pkg_kinds(&kinds))
             }
             KindSubcommand::None => {
-                log_and_panic!("Invalid argument on 'lpm --kind'.");
+                panic!("Invalid argument on 'lpm --kind'.");
             }
         },
 
@@ -69,7 +84,7 @@ fn main() {
         Command::Configure => try_or_error!(configure()),
 
         Command::None => {
-            log_and_panic!("Invalid argument on 'lpm'.");
+            panic!("Invalid argument on 'lpm'.");
         }
     }
 }

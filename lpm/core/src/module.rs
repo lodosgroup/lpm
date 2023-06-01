@@ -1,4 +1,4 @@
-use common::{log_and_panic, some_or_error};
+use common::some_or_error;
 use db::{get_dylib_path_by_name, insert_module, is_module_exists, DB_PATH};
 use ehandle::{
     lpm::LpmError,
@@ -149,7 +149,7 @@ pub fn add_module(name: &str, dylib_path: &str) -> Result<(), LpmError<ModuleErr
 
 pub fn delete_modules(module_names: &[String]) -> Result<(), LpmError<ModuleError>> {
     if module_names.is_empty() {
-        log_and_panic!("At least 1 module must be provided.");
+        panic!("At least 1 module must be provided.");
     }
 
     let db = Database::open(Path::new(DB_PATH))?;

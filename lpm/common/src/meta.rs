@@ -221,20 +221,18 @@ impl json::Deserialize for FileStruct {
 impl ParserTasks for Meta {
     fn deserialize(path: &str) -> Self {
         let data_as_str = fs::read_to_string(path).unwrap_or_else(|_| {
-            super::log_and_panic!("{} could not found.", path);
+            panic!("{} could not found.", path);
         });
 
         let json = json::Json::new(&data_as_str)
             .parse()
             .unwrap_or_else(|_error| {
                 logger::debug!("Error: {}", _error);
-                super::log_and_panic!(
-                    "Package is either invalid or corrupted. Failed deserializing meta data."
-                );
+                panic!("Package is either invalid or corrupted. Failed deserializing meta data.");
             });
 
         Self::from_json_object(&json).unwrap_or_else(|error| {
-            super::log_and_panic!("INTERNAL: {}", error);
+            panic!("INTERNAL: {}", error);
         })
     }
 }
@@ -242,21 +240,19 @@ impl ParserTasks for Meta {
 impl ParserTasks for Files {
     fn deserialize(path: &str) -> Self {
         let data_as_str = fs::read_to_string(path).unwrap_or_else(|_| {
-            super::log_and_panic!("{} could not found.", path);
+            panic!("{} could not found.", path);
         });
 
         let json = json::Json::new(&data_as_str)
             .parse()
             .unwrap_or_else(|_error| {
                 logger::debug!("Error: {}", _error);
-                super::log_and_panic!(
-                    "Package is either invalid or corrupted. Failed deserializing meta data."
-                );
+                panic!("Package is either invalid or corrupted. Failed deserializing meta data.");
             });
 
         Self::from_json_object(&json).unwrap_or_else(|error| {
             logger::debug!("Error: {}", error);
-            super::log_and_panic!("INTERNAL: {}", error);
+            panic!("INTERNAL: {}", error);
         })
     }
 }

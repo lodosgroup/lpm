@@ -68,19 +68,13 @@ pub fn build_log(mode: OutputMode, log: String) -> String {
 
 pub fn log_to_stderr(log: &[u8]) {
     if io::stderr().write_all(log).is_err() {
-        log_to_stderr(
-            build_log(OutputMode::ERROR, String::from("writing to stderr failed")).as_bytes(),
-        );
-        std::process::exit(101);
+        panic!("writing to stderr failed");
     }
 }
 
 pub fn log_to_stdout(log: &[u8]) {
     if io::stdout().write_all(log).is_err() {
-        log_to_stderr(
-            build_log(OutputMode::ERROR, String::from("writing to stdout failed")).as_bytes(),
-        );
-        std::process::exit(101);
+        panic!("writing to stderr failed");
     }
 }
 

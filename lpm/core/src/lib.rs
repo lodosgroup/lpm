@@ -12,7 +12,6 @@ pub use install::install_lod;
 pub use module::{add_module, delete_modules, print_modules, trigger_lpm_module};
 pub use update::update_lod;
 
-use common::log_and_panic;
 use db::{pkg::insert_pkg_kinds, DB_PATH};
 use ehandle::{lpm::LpmError, MainError};
 use logger::{info, success};
@@ -39,7 +38,7 @@ pub fn configure() -> Result<(), LpmError<MainError>> {
 
 pub fn add_pkg_kinds(kinds: &[String]) -> Result<(), LpmError<MainError>> {
     if kinds.is_empty() {
-        log_and_panic!("At least 1 kind must be provided.");
+        panic!("At least 1 kind must be provided.");
     }
 
     let db = Database::open(Path::new(DB_PATH))?;
@@ -53,7 +52,7 @@ pub fn add_pkg_kinds(kinds: &[String]) -> Result<(), LpmError<MainError>> {
 
 pub fn delete_pkg_kinds(kinds: &[String]) -> Result<(), LpmError<MainError>> {
     if kinds.is_empty() {
-        log_and_panic!("At least 1 kind must be provided.");
+        panic!("At least 1 kind must be provided.");
     }
 
     let db = Database::open(Path::new(DB_PATH))?;
