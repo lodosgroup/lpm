@@ -134,6 +134,9 @@ fn read_until_nrt<R: BufRead>(reader: &mut R, buf: &mut Vec<u8>) -> io::Result<(
     loop {
         reader.read_until(b'\r', buf)?;
         if buf.ends_with(&[b'\n', b'\r']) {
+            buf.pop();
+            buf.pop();
+            buf.pop();
             break;
         }
     }
@@ -225,7 +228,7 @@ mod tests {
 
         read_until_nrt(&mut reader, &mut buf).unwrap();
 
-        let expected_output = b"Header1: Value1\r\nHeader2: Value2\r\n\r";
+        let expected_output = b"Header1: Value1\r\nHeader2: Value2";
         assert_eq!(buf, expected_output);
     }
 }
