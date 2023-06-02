@@ -11,6 +11,7 @@ members = [
 	"libs/hash",
 	"libs/json",
 	"libs/logger",
+	"libs/rekuest",
 	"libs/sql-builder",
 	"libs/untar",
 	"libs/term",
