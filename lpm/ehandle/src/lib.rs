@@ -63,6 +63,12 @@ pub enum ResultCode {
     SqlError_MigrationError = 404,
     MinSqliteWrapperError = 405,
 
+    // 500-599 Repository related errors
+    RepositoryError_RepositoryNotFound = 500,
+    RepositoryError_InvalidAddress = 501,
+    RepositoryError_RepositoryAlreadyExists = 502,
+    RepositoryError_Internal = 503,
+
     // 900-999 ABI related errors
     Str_Utf8Error = 900,
     CStr_NulError = 901,
@@ -161,3 +167,4 @@ mod io;
 pub mod lpm;
 pub mod module;
 pub mod pkg;
+pub mod repository;

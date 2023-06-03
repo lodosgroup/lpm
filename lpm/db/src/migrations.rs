@@ -11,7 +11,7 @@ use std::path::Path;
 const INITIAL_VERSION: i64 = 0;
 
 pub fn migrate_database_tables() -> Result<(), LpmError<SqlError>> {
-    let db = Database::open(Path::new(super::DB_PATH))?;
+    let db = Database::open(Path::new(super::CORE_DB_PATH))?;
     super::enable_foreign_keys(&db)?;
 
     let mut initial_version: i64 = INITIAL_VERSION;
@@ -89,11 +89,13 @@ fn create_core_tables(db: &Database, version: &mut i64) -> Result<(), LpmError<S
              * This table will hold the repository informations.
             */
             CREATE TABLE repositories (
-               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               repository    TEXT       NOT NULL       UNIQUE,
-               is_active     BOOLEAN    NOT NULL       CHECK(is_active IN (0, 1)),
-               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
-               updated_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
+               id               INTEGER    PRIMARY KEY    AUTOINCREMENT,
+               name             TEXT       NOT NULL       UNIQUE,
+               address          TEXT       NOT NULL,
+               index_db_path    TEXT       NOT NULL,
+               is_active        BOOLEAN    NOT NULL       CHECK(is_active IN (0, 1)),
+               created_at       TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
+               updated_at       TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*

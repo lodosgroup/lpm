@@ -1,6 +1,6 @@
 use crate::{
     extract::get_pkg_tmp_output_path,
-    stage1::{get_scripts, Stage1Tasks},
+    stage1::{get_scripts, Stage1Tasks, PKG_SCRIPTS_DIR},
     validate::PkgValidateTasks,
     PkgExtractTasks,
 };
@@ -11,7 +11,7 @@ use common::{
 };
 use db::{
     pkg::{DbOpsForBuildFile, DbOpsForInstalledPkg},
-    transaction_op, Transaction, DB_PATH,
+    transaction_op, Transaction, CORE_DB_PATH,
 };
 use ehandle::{lpm::LpmError, MainError};
 use logger::{debug, info, success, warning};
@@ -58,13 +58,13 @@ impl PkgUpdateTasks for PkgDataFromDb {
             }
         };
 
-        let pkg_lib_dir = Path::new("/var/lib/lpm/pkg").join(&self.meta_dir.meta.name);
+        let pkg_lib_dir = Path::new(PKG_SCRIPTS_DIR).join(&self.meta_dir.meta.name);
         let scripts = get_scripts(&pkg_lib_dir.join("scripts"))?;
 
         to_pkg.start_validate_task()?;
         let source_path = get_pkg_tmp_output_path(&to_pkg.path).join("program");
 
-        let db = Database::open(Path::new(DB_PATH))?;
+        let db = Database::open(Path::new(CORE_DB_PATH))?;
         if let Err(err) = scripts.execute_script(pre_script) {
             transaction_op(&db, Transaction::Rollback)?;
             return Err(err);
@@ -160,7 +160,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
 }
 
 pub fn update_lod(pkg_name: &str, pkg_path: &str) -> Result<(), LpmError<MainError>> {
-    let db = Database::open(Path::new(DB_PATH))?;
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
     let mut old_pkg = PkgDataFromDb::load(&db, pkg_name)?;
     db.close();
 

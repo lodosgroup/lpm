@@ -1,5 +1,5 @@
 use common::some_or_error;
-use db::{get_dylib_path_by_name, insert_module, is_module_exists, DB_PATH};
+use db::{get_dylib_path_by_name, insert_module, is_module_exists, CORE_DB_PATH};
 use ehandle::{
     lpm::LpmError,
     module::{ModuleError, ModuleErrorKind},
@@ -84,7 +84,7 @@ impl ModuleController {
             cstrings.iter().map(|s| s.as_ptr()).collect();
         args_ptrs.push(std::ptr::null());
 
-        let db_path = CString::new(DB_PATH)?;
+        let db_path = CString::new(CORE_DB_PATH)?;
         lpm_entrypoint(
             db_path.as_ptr(),
             (args_ptrs.len() - 1) as std::os::raw::c_uint,
@@ -108,7 +108,7 @@ pub fn trigger_lpm_module(args: Vec<String>) -> Result<(), LpmError<ModuleError>
         "Provide the name of the module you wish to run."
     );
 
-    let db = Database::open(Path::new(DB_PATH))?;
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
 
     let dylib_path = get_dylib_path_by_name(&db, module_name)?
         .ok_or_else(|| ModuleErrorKind::ModuleNotFound(module_name.to_owned()).to_lpm_err())?;
@@ -129,7 +129,7 @@ pub fn add_module(name: &str, dylib_path: &str) -> Result<(), LpmError<ModuleErr
     let dylib_path = std::fs::canonicalize(dylib_path)?;
     let dylib_path = dylib_path.to_string_lossy();
 
-    let db = Database::open(Path::new(DB_PATH))?;
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
 
     if is_module_exists(&db, name)? {
         return Err(ModuleErrorKind::ModuleAlreadyExists(name.to_owned()).to_lpm_err());
@@ -152,7 +152,7 @@ pub fn delete_modules(module_names: &[String]) -> Result<(), LpmError<ModuleErro
         panic!("At least 1 module must be provided.");
     }
 
-    let db = Database::open(Path::new(DB_PATH))?;
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
 
     for name in module_names {
         if !is_module_exists(&db, name)? {
@@ -169,7 +169,7 @@ pub fn delete_modules(module_names: &[String]) -> Result<(), LpmError<ModuleErro
 }
 
 pub fn print_modules() -> Result<(), LpmError<ModuleError>> {
-    let db = Database::open(Path::new(DB_PATH))?;
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
 
     info!("Getting module list from the database..");
     let list = db::get_modules(&db)?;

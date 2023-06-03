@@ -1,11 +1,11 @@
 use crate::{
     extract::{get_pkg_tmp_output_path, PkgExtractTasks},
-    stage1::Stage1Tasks,
+    stage1::{Stage1Tasks, PKG_SCRIPTS_DIR},
     validate::PkgValidateTasks,
 };
 
 use common::pkg::{PkgDataFromFs, ScriptPhase};
-use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, DB_PATH};
+use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, CORE_DB_PATH};
 use ehandle::{lpm::LpmError, MainError};
 use logger::{debug, info, success};
 use min_sqlite3_sys::prelude::*;
@@ -30,7 +30,7 @@ impl PkgInstallTasks for PkgDataFromFs {
         info!("Validating files..");
         pkg.start_validate_task()?;
 
-        let db = Database::open(Path::new(DB_PATH))?;
+        let db = Database::open(Path::new(CORE_DB_PATH))?;
         info!("Syncing with package database..");
         pkg.insert_to_db(&db)?;
 
@@ -91,7 +91,7 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 
     fn copy_scripts(&self) -> Result<(), LpmError<MainError>> {
-        let pkg_scripts_path = Path::new("/var/lib/lpm/pkg/")
+        let pkg_scripts_path = Path::new(PKG_SCRIPTS_DIR)
             .join(&self.meta_dir.meta.name)
             .join("scripts");
 

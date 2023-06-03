@@ -7,30 +7,16 @@ macro_rules! try_or_error {
     ($fn: expr) => {
         match $fn {
             Result::Ok(val) => val,
-            Result::Err(err) => panic!("{:?}", err),
+            Result::Err(err) => {
+                logger::error!("{:?}", err);
+                std::process::exit(101);
+            }
         }
     };
 }
 
-fn panic_handler(info: &panic::PanicInfo) {
-    let location = info.location();
-    let msg = info.payload().downcast_ref::<&str>();
-
-    if let (Some(location), Some(msg)) = (location, msg) {
-        let trace = format!(
-            "{}:{}:{}",
-            location.file(),
-            location.line(),
-            location.column()
-        );
-        logger::error!(r#"Panic {{ kind: "Panic", reason: "{msg}" }} From: ["{trace}"]"#);
-    } else {
-        logger::error!("{:?}", info);
-    }
-}
-
 fn main() {
-    panic::set_hook(Box::new(panic_handler));
+    panic::set_hook(Box::new(|info| logger::error!("{info}")));
 
     let args: Vec<String> = env::args().collect();
     match Command::parse_args(&args) {
@@ -58,7 +44,7 @@ fn main() {
                 try_or_error!(delete_pkg_kinds(&kinds))
             }
             KindSubcommand::None => {
-                panic!("Invalid argument on 'lpm --kind'.");
+                panic!("Invalid command on 'lpm --kind'.");
             }
         },
 
@@ -81,10 +67,28 @@ fn main() {
             ModuleSubcommand::List => try_or_error!(print_modules()),
         },
 
+        Command::Repository(subcommand) => match subcommand {
+            cli_parser::RepositorySubcommand::Add(args) => {
+                let (name, address) = (
+                    some_or_error!(args.first(), "Repository name is missing"),
+                    some_or_error!(args.get(1), "Repository address is missing"),
+                );
+                try_or_error!(add_repository(name, address));
+            }
+            cli_parser::RepositorySubcommand::Delete(repository_names) => {
+                let _repository_names: Vec<String> =
+                    repository_names.iter().map(|t| t.to_string()).collect();
+            }
+            cli_parser::RepositorySubcommand::List => todo!(),
+            cli_parser::RepositorySubcommand::None => {
+                panic!("Invalid command on 'lpm --repository'.");
+            }
+        },
+
         Command::Configure => try_or_error!(configure()),
 
         Command::None => {
-            panic!("Invalid argument on 'lpm'.");
+            panic!("Invalid command on 'lpm'.");
         }
     }
 }

@@ -3,10 +3,12 @@
 pub use install::InstallSubcommand;
 pub use kind::KindSubcommand;
 pub use module::ModuleSubcommand;
+pub use repository::RepositorySubcommand;
 
 mod install;
 mod kind;
 mod module;
+mod repository;
 
 #[derive(Debug, PartialEq)]
 pub enum Command<'a> {
@@ -15,6 +17,7 @@ pub enum Command<'a> {
     Delete(&'a str),
     Kind(KindSubcommand<'a>),
     Module(ModuleSubcommand<'a>),
+    Repository(RepositorySubcommand<'a>),
     Configure,
     None,
 }
@@ -46,6 +49,9 @@ impl Command<'_> {
                 }
                 "--module" | "-m" => {
                     return Command::Module(ModuleSubcommand::parse(&mut iter));
+                }
+                "--repository" | "-r" => {
+                    return Command::Repository(RepositorySubcommand::parse(&mut iter));
                 }
                 "--configure" | "-c" => {
                     return Command::Configure;
@@ -154,6 +160,48 @@ mod tests {
             let args = vec![String::from("--module"), String::from("--list")];
             let command = Command::parse_args(&args);
             let expected_command = Command::Module(ModuleSubcommand::List);
+            assert_eq!(command, expected_command);
+        }
+    }
+    #[test]
+
+    fn test_parse_repository_with_subcommands() {
+        {
+            let args = vec![
+                String::from("--repository"),
+                String::from("--add"),
+                String::from("repository-name"),
+                String::from("http://example.address"),
+            ];
+            let command = Command::parse_args(&args);
+            let expected_command = Command::Repository(RepositorySubcommand::Add(vec![
+                "repository-name",
+                "http://example.address",
+            ]));
+            assert_eq!(command, expected_command);
+        }
+
+        {
+            let args = vec![
+                String::from("--repository"),
+                String::from("--delete"),
+                String::from("repository-name1"),
+                String::from("repository-name2"),
+                String::from("repository-name3"),
+            ];
+            let command = Command::parse_args(&args);
+            let expected_command = Command::Repository(RepositorySubcommand::Delete(vec![
+                "repository-name1",
+                "repository-name2",
+                "repository-name3",
+            ]));
+            assert_eq!(command, expected_command);
+        }
+
+        {
+            let args = vec![String::from("--repository"), String::from("--list")];
+            let command = Command::parse_args(&args);
+            let expected_command = Command::Repository(RepositorySubcommand::List);
             assert_eq!(command, expected_command);
         }
     }

@@ -7,6 +7,8 @@ use std::{
     process::Command,
 };
 
+pub const PKG_SCRIPTS_DIR: &str = "/var/lib/lpm/pkg";
+
 pub(crate) trait Stage1Tasks {
     fn execute_script(&self, caller_phase: ScriptPhase) -> Result<(), LpmError<MainError>>;
 }

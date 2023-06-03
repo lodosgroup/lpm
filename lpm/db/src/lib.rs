@@ -9,12 +9,10 @@ pub use migrations::migrate_database_tables;
 pub use module::{
     delete_modules, get_dylib_path_by_name, get_modules, insert_module, is_module_exists,
 };
+pub use repository::{insert_repository, is_repository_exists};
 
-#[cfg(not(debug_assertions))]
-pub const DB_PATH: &str = "/var/lib/lpm/.db";
-
-#[cfg(debug_assertions)]
-pub const DB_PATH: &str = ".db";
+pub const REPOSITORY_DB_DIR: &str = "/var/lib/lpm/db/repositories";
+pub const CORE_DB_PATH: &str = "/var/lib/lpm/db/core-db";
 
 pub const SQL_NO_CALLBACK_FN: Option<
     Box<dyn FnOnce(min_sqlite3_sys::bindings::SqlitePrimaryResult, String)>,
@@ -88,3 +86,4 @@ pub fn get_current_datetime(db: &Database) -> Result<String, LpmError<SqlError>>
 mod migrations;
 mod module;
 pub mod pkg;
+mod repository;
