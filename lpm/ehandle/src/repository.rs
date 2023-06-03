@@ -11,7 +11,6 @@ use std::io;
 #[derive(Debug, Clone)]
 pub enum RepositoryErrorKind {
     RepositoryNotFound(String),
-    InvalidAddress(String),
     RepositoryAlreadyExists(String),
     Internal(String),
 }
@@ -28,7 +27,6 @@ impl ErrorCommons for RepositoryErrorKind {
     fn as_str(&self) -> &str {
         match self {
             Self::RepositoryNotFound(_) => "RepositoryNotFound",
-            Self::InvalidAddress(_) => "InvalidAddress",
             Self::RepositoryAlreadyExists(_) => "RepositoryAlreadyExists",
             Self::Internal(_) => "Internal",
         }
@@ -39,10 +37,6 @@ impl ErrorCommons for RepositoryErrorKind {
             Self::RepositoryNotFound(name) => Self::Error {
                 kind: self.as_str().to_owned(),
                 reason: format!("Repository '{}' is not found at.", name),
-            },
-            Self::InvalidAddress(address) => Self::Error {
-                kind: self.as_str().to_owned(),
-                reason: format!("Address '{}' is not valid.", address),
             },
             Self::RepositoryAlreadyExists(name) => Self::Error {
                 kind: self.as_str().to_owned(),
@@ -69,7 +63,6 @@ impl ErrorCommons for RepositoryErrorKind {
     fn to_result_code(&self) -> ResultCode {
         match self {
             Self::RepositoryNotFound(_) => ResultCode::RepositoryError_RepositoryNotFound,
-            Self::InvalidAddress(_) => ResultCode::RepositoryError_InvalidAddress,
             Self::RepositoryAlreadyExists(_) => ResultCode::RepositoryError_RepositoryAlreadyExists,
             Self::Internal(_) => ResultCode::RepositoryError_Internal,
         }

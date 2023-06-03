@@ -76,8 +76,9 @@ fn main() {
                 try_or_error!(add_repository(name, address));
             }
             cli_parser::RepositorySubcommand::Delete(repository_names) => {
-                let _repository_names: Vec<String> =
+                let repository_names: Vec<String> =
                     repository_names.iter().map(|t| t.to_string()).collect();
+                try_or_error!(delete_repositories(&repository_names))
             }
             cli_parser::RepositorySubcommand::List => try_or_error!(print_repositories()),
             cli_parser::RepositorySubcommand::None => {

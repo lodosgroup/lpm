@@ -45,6 +45,37 @@ pub fn insert_repository(
     Ok(status)
 }
 
+pub fn delete_repositories(
+    db: &Database,
+    repository_names: Vec<String>,
+) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
+    let mut pre_ids = vec![];
+    for (index, _) in repository_names.iter().enumerate() {
+        pre_ids.push(index + 1);
+    }
+
+    let statement = Delete::new(String::from("repositories"))
+        .where_condition(Where::In(pre_ids, String::from("name")))
+        .to_string();
+
+    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+
+    for (index, name) in repository_names.iter().enumerate() {
+        try_bind_val!(sql, index + 1, &**name);
+    }
+
+    let repository_names = repository_names.join(", ");
+
+    let status = try_execute_prepared!(
+        sql,
+        simple_e_fmt!("Error on deleting repositories '{repository_names}'")
+    );
+
+    sql.kill();
+
+    Ok(status)
+}
+
 pub fn is_repository_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
     const NAME_COL_PRE_ID: usize = 1;
     let exists_statement = Select::new(None, String::from("repositories"))

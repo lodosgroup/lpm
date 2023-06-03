@@ -38,6 +38,27 @@ pub fn add_repository(name: &str, address: &str) -> Result<(), LpmError<Reposito
     Ok(())
 }
 
+pub fn delete_repositories(repository_names: &[String]) -> Result<(), LpmError<RepositoryError>> {
+    if repository_names.is_empty() {
+        panic!("At least 1 repository must be provided.");
+    }
+
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
+
+    for name in repository_names {
+        if !is_repository_exists(&db, name)? {
+            return Err(RepositoryErrorKind::RepositoryNotFound(name.to_owned()).to_lpm_err());
+        }
+    }
+
+    info!("Deleting list of repositories: {:?}", repository_names);
+    db::delete_repositories(&db, repository_names.to_vec())?;
+    db.close();
+    success!("Operation successfully completed.");
+
+    Ok(())
+}
+
 pub fn print_repositories() -> Result<(), LpmError<RepositoryError>> {
     let db = Database::open(Path::new(CORE_DB_PATH))?;
 
