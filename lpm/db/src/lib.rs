@@ -9,7 +9,7 @@ pub use migrations::migrate_database_tables;
 pub use module::{
     delete_modules, get_dylib_path_by_name, get_modules, insert_module, is_module_exists,
 };
-pub use repository::{insert_repository, is_repository_exists};
+pub use repository::{get_repositories, insert_repository, is_repository_exists};
 
 pub const REPOSITORY_DB_DIR: &str = "/var/lib/lpm/db/repositories";
 pub const CORE_DB_PATH: &str = "/var/lib/lpm/db/core-db";

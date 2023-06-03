@@ -66,3 +66,18 @@ pub fn is_repository_exists(db: &Database, name: &str) -> Result<bool, LpmError<
 
     Ok(result == 1)
 }
+
+pub fn get_repositories(db: &Database) -> Result<Vec<(String, String)>, LpmError<SqlError>> {
+    let select_statement = Select::new(None, String::from("repositories")).to_string();
+
+    let mut sql = db.prepare(select_statement, super::SQL_NO_CALLBACK_FN)?;
+
+    let mut result = vec![];
+    while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
+        result.push((sql.get_data(1)?, sql.get_data(2)?));
+    }
+
+    sql.kill();
+
+    Ok(result)
+}

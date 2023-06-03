@@ -1,4 +1,6 @@
-use db::{insert_repository, is_repository_exists, CORE_DB_PATH, REPOSITORY_DB_DIR};
+use db::{
+    get_repositories, insert_repository, is_repository_exists, CORE_DB_PATH, REPOSITORY_DB_DIR,
+};
 use ehandle::{
     lpm::LpmError,
     repository::{RepositoryError, RepositoryErrorKind},
@@ -32,6 +34,28 @@ pub fn add_repository(name: &str, address: &str) -> Result<(), LpmError<Reposito
     db.close();
 
     success!("Operation successfully completed.");
+
+    Ok(())
+}
+
+pub fn print_repositories() -> Result<(), LpmError<RepositoryError>> {
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
+
+    info!("Getting repository list from the database..");
+    let list = get_repositories(&db)?;
+    db.close();
+
+    println!();
+
+    if list.is_empty() {
+        println!("No repository has been found within the database.");
+        return Ok(());
+    }
+
+    println!("Registered repository list:");
+    for item in list {
+        println!("  {}: {}", item.0, item.1);
+    }
 
     Ok(())
 }

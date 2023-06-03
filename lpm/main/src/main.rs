@@ -79,7 +79,7 @@ fn main() {
                 let _repository_names: Vec<String> =
                     repository_names.iter().map(|t| t.to_string()).collect();
             }
-            cli_parser::RepositorySubcommand::List => todo!(),
+            cli_parser::RepositorySubcommand::List => try_or_error!(print_repositories()),
             cli_parser::RepositorySubcommand::None => {
                 panic!("Invalid command on 'lpm --repository'.");
             }

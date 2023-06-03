@@ -11,7 +11,7 @@ pub use delete::delete_lod;
 pub(crate) use extract::PkgExtractTasks;
 pub use install::install_lod;
 pub use module::{add_module, delete_modules, print_modules, trigger_lpm_module};
-pub use repository::add_repository;
+pub use repository::{add_repository, print_repositories};
 pub use update::update_lod;
 
 use db::{pkg::insert_pkg_kinds, CORE_DB_PATH};
