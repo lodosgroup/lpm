@@ -1,4 +1,4 @@
-use cli_parser::{Command, InstallSubcommand, ModuleSubcommand};
+use cli_parser::{Command, InstallSubcommand, ModuleSubcommand, UpdateSubcommand};
 use common::some_or_error;
 use core::*;
 use std::{env, panic};
@@ -18,6 +18,9 @@ macro_rules! try_or_error {
 fn main() {
     panic::set_hook(Box::new(|info| logger::error!("{info}")));
 
+    // TODO
+    // get executed command and print it on `cmd::None`
+
     let args: Vec<String> = env::args().collect();
     match Command::parse_args(&args) {
         Command::Install(pkg_name_or_filepath, subcommand) => match subcommand {
@@ -27,10 +30,26 @@ fn main() {
             InstallSubcommand::None => todo!(),
         },
 
-        Command::Update(pkg_name, lod_path) => match lod_path {
-            Some(lod_path) => try_or_error!(update_lod(pkg_name, lod_path)),
-            None => todo!(),
-        },
+        Command::Update(pkg_name, subcommands) => {
+            for subcommand in subcommands {
+                match subcommand {
+                    UpdateSubcommand::Local(lod_path) => {
+                        try_or_error!(update_lod(
+                            pkg_name.expect("Package name is missing."),
+                            lod_path
+                        ))
+                    }
+                    UpdateSubcommand::Index => try_or_error!(get_and_apply_repository_patches()),
+                    UpdateSubcommand::Db => try_or_error!(update_database_migrations()),
+                    UpdateSubcommand::Packages => todo!(),
+                    UpdateSubcommand::All => {
+                        try_or_error!(update_database_migrations());
+                        try_or_error!(get_and_apply_repository_patches())
+                    }
+                    UpdateSubcommand::None => todo!(),
+                }
+            }
+        }
 
         Command::Delete(pkg_name) => try_or_error!(delete_lod(pkg_name)),
 
@@ -71,8 +90,6 @@ fn main() {
                 panic!("Invalid command on 'lpm --repository'.");
             }
         },
-
-        Command::Configure => try_or_error!(configure()),
 
         Command::None => {
             panic!("Invalid command on 'lpm'.");

@@ -3,19 +3,20 @@
 pub use install::InstallSubcommand;
 pub use module::ModuleSubcommand;
 pub use repository::RepositorySubcommand;
+pub use update::UpdateSubcommand;
 
 mod install;
 mod module;
 mod repository;
+mod update;
 
 #[derive(Debug, PartialEq)]
 pub enum Command<'a> {
     Install(&'a str, InstallSubcommand),
-    Update(&'a str, Option<&'a str>),
+    Update(Option<&'a str>, Vec<UpdateSubcommand<'a>>),
     Delete(&'a str),
     Module(ModuleSubcommand<'a>),
     Repository(RepositorySubcommand<'a>),
-    Configure,
     None,
 }
 
@@ -31,10 +32,19 @@ impl Command<'_> {
                     }
                 }
                 "--update" | "-u" => {
-                    if let Some(value) = iter.next() {
-                        let value2 = iter.next();
-                        return Command::Update(value, value2.map(|t| t.as_str()));
+                    let mut pkg_name: Option<&String> = None;
+                    let mut subcommands = vec![];
+
+                    if let Some(value) = iter.peek() {
+                        if !value.starts_with('-') {
+                            pkg_name = iter.next();
+                        };
                     }
+                    while iter.peek().is_some() {
+                        subcommands.push(UpdateSubcommand::parse(&mut iter));
+                    }
+
+                    return Command::Update(pkg_name.map(|t| t.as_str()), subcommands);
                 }
                 "--delete" | "-d" => {
                     if let Some(value) = iter.next() {
@@ -46,9 +56,6 @@ impl Command<'_> {
                 }
                 "--repository" | "-r" => {
                     return Command::Repository(RepositorySubcommand::parse(&mut iter));
-                }
-                "--configure" | "-c" => {
-                    return Command::Configure;
                 }
                 _ => {}
             }
@@ -96,19 +103,23 @@ mod tests {
         {
             let args = vec![String::from("--update"), String::from("package_name")];
             let command = Command::parse_args(&args);
-            assert_eq!(command, Command::Update("package_name", None));
+            assert_eq!(command, Command::Update(Some("package_name"), vec![]));
         }
 
         {
             let args = vec![
                 String::from("--update"),
                 String::from("package_name"),
+                String::from("--local"),
                 String::from("./path/to/package_name.lod"),
             ];
             let command = Command::parse_args(&args);
             assert_eq!(
                 command,
-                Command::Update("package_name", Some("./path/to/package_name.lod"))
+                Command::Update(
+                    Some("package_name"),
+                    vec![UpdateSubcommand::Local("./path/to/package_name.lod")]
+                )
             );
         }
     }

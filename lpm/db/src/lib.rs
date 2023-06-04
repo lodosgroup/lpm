@@ -5,6 +5,7 @@ use ehandle::{
 };
 use min_sqlite3_sys::prelude::*;
 
+pub use index::get_last_index_timestamp;
 pub use migrations::migrate_database_tables;
 pub use module::{
     delete_modules, get_dylib_path_by_name, get_modules, insert_module, is_module_exists,
@@ -85,6 +86,7 @@ pub fn get_current_datetime(db: &Database) -> Result<String, LpmError<SqlError>>
     Ok(data)
 }
 
+mod index;
 mod migrations;
 mod module;
 pub mod pkg;

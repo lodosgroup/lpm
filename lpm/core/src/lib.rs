@@ -11,6 +11,7 @@ pub use delete::delete_lod;
 pub(crate) use extract::PkgExtractTasks;
 pub use install::install_lod;
 pub use module::{add_module, delete_modules, print_modules, trigger_lpm_module};
+pub use repository::get_and_apply_repository_patches;
 pub use repository::{add_repository, delete_repositories, print_repositories};
 pub use update::update_lod;
 
@@ -18,7 +19,7 @@ use ehandle::{lpm::LpmError, MainError};
 
 const EXTRACTION_OUTPUT_PATH: &str = "/tmp/lpm";
 
-pub fn configure() -> Result<(), LpmError<MainError>> {
+pub fn update_database_migrations() -> Result<(), LpmError<MainError>> {
     // create lpm directories under `/var/lib` and `/etc`
     #[cfg(not(debug_assertions))]
     {

@@ -24,6 +24,7 @@ dependencies = [
  "hash",
  "logger",
  "min-sqlite3-sys",
+ "rekuest",
  "tiny-lz4-decoder-sys",
  "untar",
 ]
