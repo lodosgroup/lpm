@@ -10,6 +10,7 @@ use ehandle::{
 };
 use hash::{md5, sha256, sha512};
 use logger::debug;
+use std::fmt;
 use std::path::Path;
 use std::{fs, io::Read};
 
@@ -20,15 +21,17 @@ enum ChecksumKind {
     Sha512,
 }
 
-impl ChecksumKind {
-    pub fn as_str(&self) -> &str {
+impl fmt::Display for ChecksumKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ChecksumKind::Md5 => "md5",
-            ChecksumKind::Sha256 => "sha256",
-            ChecksumKind::Sha512 => "sha512",
+            ChecksumKind::Md5 => write!(f, "md5"),
+            ChecksumKind::Sha256 => write!(f, "sha256"),
+            ChecksumKind::Sha512 => write!(f, "sha512"),
         }
     }
+}
 
+impl ChecksumKind {
     pub fn from_str(kind: &str) -> Result<ChecksumKind, PackageError> {
         match kind {
             "md5" => Ok(ChecksumKind::Md5),
@@ -73,7 +76,7 @@ fn check_program_checksums(dir: &Path, files: &Files) -> Result<(), LpmError<Mai
             debug!(
                 "Checksum algorithm of {} is specified as {}",
                 &f_path.display(),
-                checksum_algorithm.as_str()
+                checksum_algorithm
             );
             // Generate hash with using same algorithm of pkg checksum
             let file_hash = match checksum_algorithm {
