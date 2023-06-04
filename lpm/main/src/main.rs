@@ -1,4 +1,4 @@
-use cli_parser::{Command, InstallSubcommand, KindSubcommand, ModuleSubcommand};
+use cli_parser::{Command, InstallSubcommand, ModuleSubcommand};
 use common::some_or_error;
 use core::*;
 use std::{env, panic};
@@ -33,20 +33,6 @@ fn main() {
         },
 
         Command::Delete(pkg_name) => try_or_error!(delete_lod(pkg_name)),
-
-        Command::Kind(subcommand) => match subcommand {
-            KindSubcommand::Add(kinds) => {
-                let kinds: Vec<String> = kinds.iter().map(|t| t.to_string()).collect();
-                try_or_error!(add_pkg_kinds(&kinds))
-            }
-            KindSubcommand::Delete(kinds) => {
-                let kinds: Vec<String> = kinds.iter().map(|t| t.to_string()).collect();
-                try_or_error!(delete_pkg_kinds(&kinds))
-            }
-            KindSubcommand::None => {
-                panic!("Invalid command on 'lpm --kind'.");
-            }
-        },
 
         Command::Module(subcommand) => match subcommand {
             ModuleSubcommand::None => {

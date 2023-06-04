@@ -36,7 +36,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
         debug!("Comparing versions..");
 
         let (pre_script, post_script) = match self
-            .meta_dir
+            .meta_fields
             .meta
             .version
             .compare(&to_pkg.meta_dir.meta.version)
@@ -58,7 +58,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
             }
         };
 
-        let pkg_lib_dir = Path::new(PKG_SCRIPTS_DIR).join(&self.meta_dir.meta.name);
+        let pkg_lib_dir = Path::new(PKG_SCRIPTS_DIR).join(&self.meta_fields.meta.name);
         let scripts = get_scripts(&pkg_lib_dir.join("scripts"))?;
 
         to_pkg.start_validate_task()?;
@@ -107,13 +107,13 @@ impl PkgUpdateTasks for PkgDataFromDb {
     ) -> Result<(), LpmError<MainError>> {
         for file in new_files.0.iter() {
             let file_index = self
-                .meta_dir
+                .meta_fields
                 .files
                 .0
                 .iter()
                 .position(|f| f.path == "/".to_owned() + &file.path);
             if let Some(file_index) = file_index {
-                let found_file = &self.meta_dir.files.0[file_index];
+                let found_file = &self.meta_fields.files.0[file_index];
 
                 // if both files are exactly the same
                 if found_file.checksum_algorithm == file.checksum_algorithm
@@ -123,7 +123,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
                         "File /{} has same checksum in target package, ignoring it.",
                         file.path
                     );
-                    self.meta_dir.files.0.remove(file_index);
+                    self.meta_fields.files.0.remove(file_index);
                     continue;
                 } else {
                     debug!(
@@ -131,7 +131,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
                         file.path
                     );
                     fs::remove_file(&found_file.path)?;
-                    self.meta_dir.files.0.remove(file_index);
+                    self.meta_fields.files.0.remove(file_index);
 
                     let destination_path = Path::new("/").join(&file.path);
                     fs::copy(pkg_path.join(&file.path), destination_path)?;
@@ -147,7 +147,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
             }
         }
 
-        for file in self.meta_dir.files.0.iter() {
+        for file in self.meta_fields.files.0.iter() {
             debug!(
                 "Removing {} since it's not needed in target package",
                 file.path

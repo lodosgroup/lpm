@@ -20,7 +20,6 @@ enum ChecksumKind {
     Sha512,
 }
 
-#[allow(dead_code)]
 impl ChecksumKind {
     pub fn as_str(&self) -> &str {
         match self {

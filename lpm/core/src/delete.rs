@@ -22,7 +22,7 @@ impl PkgDeleteTasks for PkgDataFromDb {
 
         transaction_op(&db, Transaction::Begin)?;
 
-        let pkg_lib_dir = Path::new(PKG_SCRIPTS_DIR).join(&self.meta_dir.meta.name);
+        let pkg_lib_dir = Path::new(PKG_SCRIPTS_DIR).join(&self.meta_fields.meta.name);
         let scripts = get_scripts(&pkg_lib_dir.join("scripts"))?;
 
         if let Err(err) = scripts.execute_script(ScriptPhase::PreDelete) {
@@ -35,14 +35,14 @@ impl PkgDeleteTasks for PkgDataFromDb {
             transaction_op(&db, Transaction::Rollback)?;
 
             return Err(
-                PackageErrorKind::DeletionFailed(self.meta_dir.meta.name.clone())
+                PackageErrorKind::DeletionFailed(self.meta_fields.meta.name.clone())
                     .to_lpm_err()
                     .into(),
             );
         };
 
         info!("Deleting package files from system..");
-        for file in &self.meta_dir.files.0 {
+        for file in &self.meta_fields.files.0 {
             if Path::new(&file.path).exists() {
                 fs::remove_file(&file.path)?;
             } else {

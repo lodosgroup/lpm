@@ -1,12 +1,10 @@
 #![allow(dead_code)]
 
 pub use install::InstallSubcommand;
-pub use kind::KindSubcommand;
 pub use module::ModuleSubcommand;
 pub use repository::RepositorySubcommand;
 
 mod install;
-mod kind;
 mod module;
 mod repository;
 
@@ -15,7 +13,6 @@ pub enum Command<'a> {
     Install(&'a str, InstallSubcommand),
     Update(&'a str, Option<&'a str>),
     Delete(&'a str),
-    Kind(KindSubcommand<'a>),
     Module(ModuleSubcommand<'a>),
     Repository(RepositorySubcommand<'a>),
     Configure,
@@ -43,9 +40,6 @@ impl Command<'_> {
                     if let Some(value) = iter.next() {
                         return Command::Delete(value);
                     }
-                }
-                "--kind" | "-k" => {
-                    return Command::Kind(KindSubcommand::parse(&mut iter));
                 }
                 "--module" | "-m" => {
                     return Command::Module(ModuleSubcommand::parse(&mut iter));
@@ -207,36 +201,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_kind_with_subcommands() {
-        {
-            let args = vec![
-                String::from("--kind"),
-                String::from("--add"),
-                String::from("arg1"),
-                String::from("arg2"),
-                String::from("arg3"),
-            ];
-            let command = Command::parse_args(&args);
-            let expected_command = Command::Kind(KindSubcommand::Add(vec!["arg1", "arg2", "arg3"]));
-            assert_eq!(command, expected_command);
-        }
-
-        {
-            let args = vec![
-                String::from("--kind"),
-                String::from("--delete"),
-                String::from("arg1"),
-                String::from("arg2"),
-                String::from("arg3"),
-            ];
-            let command = Command::parse_args(&args);
-            let expected_command =
-                Command::Kind(KindSubcommand::Delete(vec!["arg1", "arg2", "arg3"]));
-            assert_eq!(command, expected_command);
-        }
-    }
-
-    #[test]
     fn test_parse_invalid_commands() {
         {
             let args = vec![String::from("--bla-bla")];
@@ -255,13 +219,6 @@ mod tests {
                 command,
                 Command::Install("package_name", InstallSubcommand::None)
             );
-        }
-
-        {
-            let args = vec![String::from("--kind"), String::from("--bla-bla")];
-            let command = Command::parse_args(&args);
-            let expected_command = Command::Kind(KindSubcommand::None);
-            assert_eq!(command, expected_command);
         }
     }
 }

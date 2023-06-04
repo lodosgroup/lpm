@@ -7,17 +7,10 @@ use std::fs;
 #[derive(Debug, Clone)]
 pub struct Meta {
     pub name: String,
-    pub description: String,
-    pub maintainer: String,
     pub source_pkg: Option<String>,
-    pub repository: Option<String>,
-    pub homepage: Option<String>,
     pub arch: String, // maybe use enums
-    pub kind: String,
     pub installed_size: i64,
-    pub tags: Vec<String>,
     pub version: VersionStruct,
-    pub license: Option<String>,
     pub dependencies: Vec<DependencyStruct>,
     pub suggestions: Vec<SuggestionStruct>,
 }
@@ -26,33 +19,16 @@ impl json::Deserialize for Meta {
     type Error = String;
 
     fn from_json_object(json: &json::JsonValue) -> Result<Self, Self::Error> {
-        let mut tags = vec![];
-        match &json["tags"] {
-            json::JsonValue::Array(array) => {
-                for item in array {
-                    tags.push(item.to_string().ok_or("An invalid data in 'tags'.")?);
-                }
-            }
-            _ => return Err("".to_string()),
-        };
-
         let version = VersionStruct::from_json_object(&json["version"])?;
         let dependencies = DependencyStruct::from_json_array(&json["dependencies"])?;
         let suggestions = SuggestionStruct::from_json_array(&json["suggestions"])?;
 
         Ok(Self {
             name: de_required_field!(json["name"].to_string(), "name"),
-            description: de_required_field!(json["description"].to_string(), "description"),
-            maintainer: de_required_field!(json["maintainer"].to_string(), "maintainer"),
             source_pkg: None,
-            repository: json["repository"].to_string(),
-            homepage: json["homepage"].to_string(),
             arch: de_required_field!(json["arch"].to_string(), "arch"),
-            kind: de_required_field!(json["kind"].to_string(), "kind"),
             installed_size: de_required_field!(json["installed_size"].as_i64(), "installed_size"),
-            tags,
             version,
-            license: json["license"].to_string(),
             dependencies,
             suggestions,
         })

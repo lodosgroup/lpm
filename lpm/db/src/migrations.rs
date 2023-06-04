@@ -18,7 +18,6 @@ pub fn migrate_database_tables() -> Result<(), LpmError<SqlError>> {
 
     create_core_tables(&db, &mut initial_version)?;
     create_update_triggers_for_core_tables(&db, &mut initial_version)?;
-    insert_defaults(&db, &mut initial_version)?;
 
     db.close();
 
@@ -63,28 +62,6 @@ fn create_core_tables(db: &Database, version: &mut i64) -> Result<(), LpmError<S
     let statement = String::from(
         "
             /*
-             * Statement of `checksum_kinds` table creation.
-             * This table will hold the supported hashing algorithms
-             * for the packages.
-            */
-            CREATE TABLE checksum_kinds (
-               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               kind          TEXT       NOT NULL       UNIQUE,
-               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
-            );
-
-            /*
-             * Statement of `package_kinds` table creation.
-             * This table will hold the kind of packages to help
-             * classify the packages installed in the system.
-            */
-            CREATE TABLE package_kinds (
-               id            INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               kind          TEXT       NOT NULL       UNIQUE,
-               created_at    TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
-            );
-
-            /*
              * Statement of `repositories` table creation.
              * This table will hold the repository informations.
             */
@@ -105,13 +82,8 @@ fn create_core_tables(db: &Database, version: &mut i64) -> Result<(), LpmError<S
             CREATE TABLE packages (
                id                       INTEGER    PRIMARY KEY    AUTOINCREMENT,
                name                     TEXT       NOT NULL       UNIQUE,
-               description              TEXT,
-               maintainer               TEXT       NOT NULL,
-               homepage                 TEXT,
                src_pkg_package_id       INTEGER,
-               package_kind_id          INTEGER    NOT_NULL,
                installed_size           INTEGER    NOT_NULL,
-               license                  TEXT,
                v_major                  INTEGER    NOT NULL,
                v_minor                  INTEGER    NOT NULL,
                v_patch                  INTEGER    NOT NULL,
@@ -120,8 +92,7 @@ fn create_core_tables(db: &Database, version: &mut i64) -> Result<(), LpmError<S
                created_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
                updated_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
-               FOREIGN KEY(src_pkg_package_id) REFERENCES packages(id),
-               FOREIGN KEY(package_kind_id) REFERENCES package_kinds(id)
+               FOREIGN KEY(src_pkg_package_id) REFERENCES packages(id)
             );
 
             /*
@@ -134,22 +105,7 @@ fn create_core_tables(db: &Database, version: &mut i64) -> Result<(), LpmError<S
                name                TEXT       NOT NULL,
                absolute_path       TEXT       NOT NULL       UNIQUE,
                checksum            TEXT       NOT NULL,
-               checksum_kind_id    INTEGER    NOT NULL,
-               package_id          INTEGER    NOT NULL,
-               created_at          TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
-
-               FOREIGN KEY(package_id) REFERENCES packages(id) ON DELETE CASCADE,
-               FOREIGN KEY(checksum_kind_id) REFERENCES checksum_kinds(id)
-            );
-
-            /*
-             * Statement of `package_tags` table creation.
-             * This table will hold the tag data which belongs to
-             * packages.
-            */
-            CREATE TABLE package_tags (
-               id                  INTEGER    PRIMARY KEY    AUTOINCREMENT,
-               tag                 TEXT       NOT NULL,
+               checksum_algorithm  TEXT       NOT NULL,
                package_id          INTEGER    NOT NULL,
                created_at          TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
@@ -216,30 +172,6 @@ fn create_update_triggers_for_core_tables(
     try_execute!(db, statement);
     set_migration_version(db, *version)?;
     logger::info!("'create_update_triggers_for_core_tables' migration is finished.");
-
-    Ok(())
-}
-
-fn insert_defaults(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlError>> {
-    *version += 1;
-    if !can_migrate(db, *version)? {
-        logger::warning!("migration 'insert_defaults' already applied, skipping it.");
-        return Ok(());
-    }
-
-    let statement = String::from(
-        "
-            INSERT INTO checksum_kinds
-                (kind)
-            VALUES
-                ('md5'),
-                ('sha256'),
-                ('sha512');",
-    );
-
-    try_execute!(db, statement);
-    set_migration_version(db, *version)?;
-    logger::info!("'insert_defaults' migration is finished.");
 
     Ok(())
 }
