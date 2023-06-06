@@ -9,11 +9,11 @@ mod validate;
 
 pub use delete::delete_lod;
 pub(crate) use extract::PkgExtractTasks;
-pub use install::install_lod;
+pub use install::{install_from_lod_file, install_from_repository};
 pub use module::{add_module, delete_modules, print_modules, trigger_lpm_module};
 pub use repository::get_and_apply_repository_patches;
 pub use repository::{add_repository, delete_repositories, print_repositories};
-pub use update::update_lod;
+pub use update::{update_from_lod_file, update_from_repository};
 
 use ehandle::{lpm::LpmError, MainError};
 

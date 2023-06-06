@@ -1,6 +1,6 @@
 use db::{
-    get_last_index_timestamp, get_repositories, insert_repository, is_repository_exists,
-    CORE_DB_PATH, REPOSITORY_DB_DIR, SQL_NO_CALLBACK_FN,
+    get_repositories, insert_repository, is_repository_exists, PkgIndex, CORE_DB_PATH,
+    REPOSITORY_DB_DIR, SQL_NO_CALLBACK_FN,
 };
 use ehandle::{
     lpm::LpmError,
@@ -103,7 +103,7 @@ pub fn get_and_apply_repository_patches() -> Result<(), LpmError<RepositoryError
         let index_timestamp = if db_file.len() == 0 {
             0
         } else {
-            get_last_index_timestamp(&db)?
+            PkgIndex::latest_timestamp(&db)?
         };
 
         let req_url = format!("{address}/index-tracker/{index_timestamp}");
@@ -124,4 +124,39 @@ pub fn get_and_apply_repository_patches() -> Result<(), LpmError<RepositoryError
     }
 
     Ok(())
+}
+
+pub(crate) fn find_most_recent_pkg_index(
+    pkg_name: &str,
+) -> Result<PkgIndex, LpmError<RepositoryError>> {
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
+
+    let list = get_repositories(&db)?;
+    db.close();
+
+    if list.is_empty() {
+        info!("No repository has been found within the database.");
+        return Err(RepositoryErrorKind::PackageNotFound(pkg_name.to_owned()).to_lpm_err());
+    }
+
+    let mut most_recent_index = PkgIndex::default();
+
+    for (name, address) in &list {
+        let repository_db_path = Path::new(REPOSITORY_DB_DIR).join(name);
+        let db = Database::open(Path::new(&repository_db_path))?;
+
+        if let Some(index) =
+            PkgIndex::get_by_pkg_name(&db, pkg_name.to_owned(), address.to_owned())?
+        {
+            if index.version.compare(&most_recent_index.version) == std::cmp::Ordering::Greater {
+                most_recent_index = index
+            };
+        }
+    }
+
+    if most_recent_index.version.readable_format.is_empty() {
+        return Err(RepositoryErrorKind::PackageNotFound(pkg_name.to_owned()).to_lpm_err());
+    }
+
+    Ok(most_recent_index)
 }

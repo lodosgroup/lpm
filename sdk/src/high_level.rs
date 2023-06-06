@@ -2,7 +2,7 @@ use ehandle::ResultCode;
 use std::ffi::CStr;
 
 #[no_mangle]
-extern "C" fn install_lod(pkg_path: *const std::os::raw::c_char) -> ResultCode {
+extern "C" fn install_lod_file(pkg_path: *const std::os::raw::c_char) -> ResultCode {
     let pkg_path = unsafe {
         match CStr::from_ptr(pkg_path).to_str() {
             Ok(val) => val,
@@ -13,7 +13,7 @@ extern "C" fn install_lod(pkg_path: *const std::os::raw::c_char) -> ResultCode {
         }
     };
 
-    if let Err(err) = core::install_lod(pkg_path) {
+    if let Err(err) = core::install_from_lod_file(pkg_path) {
         logger::error!("{:?}", err);
         return err.result_code;
     }
@@ -22,7 +22,7 @@ extern "C" fn install_lod(pkg_path: *const std::os::raw::c_char) -> ResultCode {
 }
 
 #[no_mangle]
-extern "C" fn update_lod(
+extern "C" fn update_from_lod_file(
     pkg_name: *const std::os::raw::c_char,
     pkg_path: *const std::os::raw::c_char,
 ) -> ResultCode {
@@ -46,7 +46,7 @@ extern "C" fn update_lod(
         }
     };
 
-    if let Err(err) = core::update_lod(pkg_name, pkg_path) {
+    if let Err(err) = core::update_from_lod_file(pkg_name, pkg_path) {
         logger::error!("{:?}", err);
         return err.result_code;
     }

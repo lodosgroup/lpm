@@ -67,6 +67,7 @@ pub enum ResultCode {
     RepositoryError_RepositoryNotFound = 500,
     RepositoryError_RepositoryAlreadyExists = 501,
     RepositoryError_Internal = 502,
+    RepositoryError_PackageNotFound = 503,
 
     // 900-999 ABI related errors
     Str_Utf8Error = 900,

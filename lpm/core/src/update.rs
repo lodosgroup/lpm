@@ -1,11 +1,13 @@
 use crate::{
     extract::get_pkg_tmp_output_path,
+    repository::find_most_recent_pkg_index,
     stage1::{get_scripts, Stage1Tasks, PKG_SCRIPTS_DIR},
     validate::PkgValidateTasks,
     PkgExtractTasks,
 };
 
 use common::{
+    download_file,
     pkg::{PkgDataFromDb, PkgDataFromFs, ScriptPhase},
     Files,
 };
@@ -17,7 +19,7 @@ use ehandle::{lpm::LpmError, MainError};
 use logger::{debug, info, success, warning};
 use min_sqlite3_sys::prelude::{Connection, Database};
 use std::{
-    fs::{self, create_dir_all},
+    fs::{self, create_dir_all, remove_file},
     path::Path,
 };
 
@@ -159,7 +161,35 @@ impl PkgUpdateTasks for PkgDataFromDb {
     }
 }
 
-pub fn update_lod(pkg_name: &str, pkg_path: &str) -> Result<(), LpmError<MainError>> {
+pub fn update_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>> {
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
+    // ensure the pkg exists
+    let mut old_pkg = PkgDataFromDb::load(&db, pkg_name)?;
+    db.close();
+
+    let index = find_most_recent_pkg_index(pkg_name)?;
+
+    if old_pkg.meta_fields.meta.version.compare(&index.version) == std::cmp::Ordering::Equal {
+        info!("{pkg_name} is up to date");
+        return Ok(());
+    }
+
+    let pkg_path = index.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
+
+    download_file(&index.pkg_url(), &pkg_path)?;
+
+    let mut requested_pkg = PkgDataFromFs::start_extract_task(&pkg_path)?;
+
+    info!("Package update started for {}", pkg_name);
+    old_pkg.start_update_task(&mut requested_pkg)?;
+    success!("Operation successfully completed.");
+
+    remove_file(pkg_path)?;
+
+    Ok(())
+}
+
+pub fn update_from_lod_file(pkg_name: &str, pkg_path: &str) -> Result<(), LpmError<MainError>> {
     let db = Database::open(Path::new(CORE_DB_PATH))?;
     let mut old_pkg = PkgDataFromDb::load(&db, pkg_name)?;
     db.close();

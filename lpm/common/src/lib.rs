@@ -7,6 +7,9 @@ pub mod version;
 // re-exports
 pub use meta::Files;
 
+use rekuest::Rekuest;
+use std::{fs, io, path::Path};
+
 pub trait ParserTasks {
     fn deserialize(path: &str) -> Self;
 }
@@ -50,4 +53,20 @@ macro_rules! some_or_error {
         }
 
     }
+}
+
+pub fn download_file(url: &str, output_dir: &Path) -> std::io::Result<()> {
+    let response = Rekuest::new(url)?.get()?;
+
+    fs::create_dir_all(some_or_error!(
+        output_dir.parent(),
+        "Failed creating parent directories of {}",
+        output_dir.display()
+    ))?;
+
+    let mut file = fs::File::create(output_dir)?;
+    io::Write::write_all(&mut file, &response.body)?;
+    io::Write::flush(&mut file)?;
+
+    Ok(())
 }

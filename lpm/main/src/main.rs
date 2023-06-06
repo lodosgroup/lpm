@@ -24,17 +24,22 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     match Command::parse_args(&args) {
         Command::Install(pkg_name_or_filepath, subcommand) => match subcommand {
-            InstallSubcommand::Local => {
-                try_or_error!(install_lod(pkg_name_or_filepath))
-            }
-            InstallSubcommand::None => todo!(),
+            InstallSubcommand::Local => try_or_error!(install_from_lod_file(pkg_name_or_filepath)),
+
+            InstallSubcommand::None => try_or_error!(install_from_repository(pkg_name_or_filepath)),
         },
 
         Command::Update(pkg_name, subcommands) => {
+            if subcommands.is_empty() {
+                try_or_error!(update_from_repository(
+                    pkg_name.expect("Package name is missing."),
+                ));
+            }
+
             for subcommand in subcommands {
                 match subcommand {
                     UpdateSubcommand::Local(lod_path) => {
-                        try_or_error!(update_lod(
+                        try_or_error!(update_from_lod_file(
                             pkg_name.expect("Package name is missing."),
                             lod_path
                         ))
@@ -46,7 +51,9 @@ fn main() {
                         try_or_error!(update_database_migrations());
                         try_or_error!(get_and_apply_repository_patches())
                     }
-                    UpdateSubcommand::None => todo!(),
+                    UpdateSubcommand::None => {
+                        panic!("Invalid command on 'lpm --update'.");
+                    }
                 }
             }
         }

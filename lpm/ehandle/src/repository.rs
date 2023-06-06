@@ -12,6 +12,7 @@ use std::io;
 pub enum RepositoryErrorKind {
     RepositoryNotFound(String),
     RepositoryAlreadyExists(String),
+    PackageNotFound(String),
     Internal(String),
 }
 
@@ -28,6 +29,7 @@ impl ErrorCommons for RepositoryErrorKind {
         match self {
             Self::RepositoryNotFound(_) => "RepositoryNotFound",
             Self::RepositoryAlreadyExists(_) => "RepositoryAlreadyExists",
+            Self::PackageNotFound(_) => "PackageNotFound",
             Self::Internal(_) => "Internal",
         }
     }
@@ -41,6 +43,10 @@ impl ErrorCommons for RepositoryErrorKind {
             Self::RepositoryAlreadyExists(name) => Self::Error {
                 kind: self.as_str().to_owned(),
                 reason: format!("Repository '{}' already exists in your system.", name),
+            },
+            Self::PackageNotFound(pkg_name) => Self::Error {
+                kind: self.as_str().to_owned(),
+                reason: format!("Package '{pkg_name}' not found in the repository."),
             },
             Self::Internal(reason) => Self::Error {
                 kind: self.as_str().to_owned(),
@@ -64,6 +70,7 @@ impl ErrorCommons for RepositoryErrorKind {
         match self {
             Self::RepositoryNotFound(_) => ResultCode::RepositoryError_RepositoryNotFound,
             Self::RepositoryAlreadyExists(_) => ResultCode::RepositoryError_RepositoryAlreadyExists,
+            Self::PackageNotFound(_) => ResultCode::RepositoryError_PackageNotFound,
             Self::Internal(_) => ResultCode::RepositoryError_Internal,
         }
     }

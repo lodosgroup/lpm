@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 pub use install::InstallSubcommand;
 pub use module::ModuleSubcommand;
 pub use repository::RepositorySubcommand;

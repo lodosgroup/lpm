@@ -401,7 +401,7 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmErro
     Ok(())
 }
 
-fn is_package_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
+pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
     const NAME_COL_PRE_ID: usize = 1;
     let exists_statement = Select::new(None, String::from("packages"))
         .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))

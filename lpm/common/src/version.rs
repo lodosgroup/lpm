@@ -3,7 +3,7 @@ use crate::de_required_field;
 use json::JsonValue;
 use std::cmp::Ordering;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Default)]
 pub struct VersionStruct {
     pub readable_format: String,
     pub major: u8,
@@ -24,7 +24,9 @@ impl VersionStruct {
                     std::cmp::Ordering::Less => Ordering::Less,
                     std::cmp::Ordering::Greater => Ordering::Greater,
                     std::cmp::Ordering::Equal => {
-                        if to.tag == self.tag {
+                        if to.tag.clone().unwrap_or_default()
+                            == self.tag.clone().unwrap_or_default()
+                        {
                             Ordering::Equal
                         } else {
                             // If major.minor.patch version is same but

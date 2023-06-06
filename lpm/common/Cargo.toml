@@ -7,3 +7,4 @@ publish = false
 [dependencies]
 json = { path = "../../libs/json" }
 logger = { path = "../../libs/logger" }
+rekuest = { path = "../../libs/rekuest" }

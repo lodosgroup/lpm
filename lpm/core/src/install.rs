@@ -1,16 +1,23 @@
 use crate::{
     extract::{get_pkg_tmp_output_path, PkgExtractTasks},
+    repository::find_most_recent_pkg_index,
     stage1::{Stage1Tasks, PKG_SCRIPTS_DIR},
     validate::PkgValidateTasks,
 };
 
-use common::pkg::{PkgDataFromFs, ScriptPhase};
-use db::{pkg::DbOpsForBuildFile, transaction_op, Transaction, CORE_DB_PATH};
-use ehandle::{lpm::LpmError, MainError};
+use common::{
+    download_file,
+    pkg::{PkgDataFromFs, ScriptPhase},
+};
+use db::{
+    pkg::{is_package_exists, DbOpsForBuildFile},
+    transaction_op, Transaction, CORE_DB_PATH,
+};
+use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
 use logger::{debug, info, success};
 use min_sqlite3_sys::prelude::*;
 use std::{
-    fs::{self, create_dir_all},
+    fs::{self, create_dir_all, remove_file},
     path::{Path, PathBuf},
 };
 
@@ -113,7 +120,26 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 }
 
-pub fn install_lod(pkg_path: &str) -> Result<(), LpmError<MainError>> {
+pub fn install_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>> {
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
+    if is_package_exists(&db, pkg_name)? {
+        return Err(PackageErrorKind::AlreadyInstalled(pkg_name.to_owned()).to_lpm_err())?;
+    }
+    db.close();
+
+    let index = find_most_recent_pkg_index(pkg_name)?;
+    let pkg_path = index.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
+
+    download_file(&index.pkg_url(), &pkg_path)?;
+
+    let pkg_path_as_string = pkg_path.display().to_string();
+    install_from_lod_file(&pkg_path_as_string)?;
+    remove_file(pkg_path)?;
+
+    Ok(())
+}
+
+pub fn install_from_lod_file(pkg_path: &str) -> Result<(), LpmError<MainError>> {
     info!("Package installation started for {}", pkg_path);
     PkgDataFromFs::start_install_task(pkg_path)?;
     success!("Operation successfully completed.");
