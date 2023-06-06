@@ -84,10 +84,8 @@ pub enum SelectArg {
     Limit(usize),
     /// 1st arg: Value for "OFFSET"
     Offset(usize),
-    /// 1st arg: Column name
-    OrderByAsc(String),
-    /// 1st arg: Column name
-    OrderByDesc(String),
+    /// 1st arg: List of columns with order type
+    OrderBy(Vec<OrderType>),
     /// 1st arg: Vector of column names
     GroupBy(Vec<String>),
     /// 1st arg: Where condition
@@ -106,18 +104,36 @@ pub enum SelectArg {
     Except(Select),
 }
 
+pub enum OrderType {
+    /// 1st arg: Column name
+    Asc(String),
+    /// 1st arg: Column name
+    Desc(String),
+}
+
+impl Display for OrderType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OrderType::Asc(column) => write!(f, "{} ASC", column),
+            OrderType::Desc(column) => write!(f, "{} DESC", column),
+        }
+    }
+}
+
 impl Display for SelectArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Except(sql) => write!(f, "EXCEPT {}", sql.0),
 
-            Self::Limit(limit) => write!(f, "LIMIT {}", limit),
+            Self::Limit(limit) => write!(f, "LIMIT {limit}"),
 
-            Self::OrderByAsc(name) => write!(f, "ORDER BY {} ASC", name),
+            Self::OrderBy(order_types) => {
+                let order_types: Vec<String> = order_types.iter().map(|t| t.to_string()).collect();
+                let order_types = order_types.join(", ");
+                write!(f, "ORDER BY {order_types}")
+            }
 
-            Self::OrderByDesc(name) => write!(f, "ORDER BY {} DESC", name),
-
-            Self::Offset(offset) => write!(f, "OFFSET {}", offset),
+            Self::Offset(offset) => write!(f, "OFFSET {offset}"),
 
             Self::GroupBy(columns) => {
                 if columns.is_empty() {
@@ -168,6 +184,14 @@ mod tests {
             String::from("name"),
             String::from("kind"),
         ];
+        let sql = Select::new(Some(cols), String::from("packages"));
+        assert_eq!(statement, sql.to_string());
+    }
+
+    #[test]
+    fn test_ifnull_with_max() {
+        let statement = String::from("SELECT IFNULL(MAX(index_timestamp), 0) FROM packages;");
+        let cols = vec![String::from("IFNULL(MAX(index_timestamp), 0)")];
         let sql = Select::new(Some(cols), String::from("packages"));
         assert_eq!(statement, sql.to_string());
     }
@@ -267,13 +291,15 @@ mod tests {
         assert_eq!(expected, sql.to_string());
 
         let expected = "SELECT * FROM people ORDER BY size ASC;";
-        let sql = Select::new(None, String::from("people"))
-            .add_arg(SelectArg::OrderByAsc(String::from("size")));
+        let sql = Select::new(None, String::from("people")).add_arg(SelectArg::OrderBy(vec![
+            OrderType::Asc(String::from("size")),
+        ]));
         assert_eq!(expected, sql.to_string());
 
         let expected = "SELECT * FROM people ORDER BY size DESC;";
-        let sql = Select::new(None, String::from("people"))
-            .add_arg(SelectArg::OrderByDesc(String::from("size")));
+        let sql = Select::new(None, String::from("people")).add_arg(SelectArg::OrderBy(vec![
+            OrderType::Desc(String::from("size")),
+        ]));
         assert_eq!(expected, sql.to_string());
 
         let expected = "SELECT * FROM people GROUP BY name, size;";
@@ -315,6 +341,24 @@ mod tests {
         );
         let sql = Select::new(Some(vec![String::from("surname")]), String::from("people"))
             .add_arg(SelectArg::Except(sql1));
+        assert_eq!(expected, sql.to_string());
+
+        let expected = String::from("SELECT v_major, v_minor, v_patch, v_tag, v_readable FROM repository WHERE name = ?1 ORDER BY v_major DESC, v_minor DESC, v_patch DESC LIMIT 1;");
+        let sql1 = vec![
+            String::from("v_major"),
+            String::from("v_minor"),
+            String::from("v_patch"),
+            String::from("v_tag"),
+            String::from("v_readable"),
+        ];
+        let sql = Select::new(Some(sql1), String::from("repository"))
+            .where_condition(Where::Equal(1, String::from("name")))
+            .add_arg(SelectArg::OrderBy(vec![
+                OrderType::Desc(String::from("v_major")),
+                OrderType::Desc(String::from("v_minor")),
+                OrderType::Desc(String::from("v_patch")),
+            ]))
+            .add_arg(SelectArg::Limit(1));
         assert_eq!(expected, sql.to_string());
     }
 
