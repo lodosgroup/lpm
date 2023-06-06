@@ -22,14 +22,14 @@ use std::{
 };
 
 trait PkgInstallTasks {
-    fn start_install_task(path: &str) -> Result<(), LpmError<MainError>>;
+    fn start_install_task(db: &Database, path: &str) -> Result<(), LpmError<MainError>>;
     fn copy_programs(&self) -> Result<(), LpmError<MainError>>;
     fn copy_scripts(&self) -> Result<(), LpmError<MainError>>;
     fn install(&self) -> Result<(), LpmError<MainError>>;
 }
 
 impl PkgInstallTasks for PkgDataFromFs {
-    fn start_install_task(path: &str) -> Result<(), LpmError<MainError>> {
+    fn start_install_task(db: &Database, path: &str) -> Result<(), LpmError<MainError>> {
         let pkg_path = PathBuf::from(path);
 
         info!("Extracting..");
@@ -37,38 +37,36 @@ impl PkgInstallTasks for PkgDataFromFs {
         info!("Validating files..");
         pkg.start_validate_task()?;
 
-        let db = Database::open(Path::new(CORE_DB_PATH))?;
         info!("Syncing with package database..");
-        pkg.insert_to_db(&db)?;
+        pkg.insert_to_db(db)?;
 
         if let Err(err) = pkg.scripts.execute_script(ScriptPhase::PreInstall) {
-            transaction_op(&db, Transaction::Rollback)?;
+            transaction_op(db, Transaction::Rollback)?;
             return Err(err);
         }
 
         info!("Installing package files into system..");
         if let Err(err) = pkg.install() {
-            transaction_op(&db, Transaction::Rollback)?;
+            transaction_op(db, Transaction::Rollback)?;
             return Err(err);
         };
 
         info!("Cleaning temporary files..");
         if let Err(err) = pkg.cleanup() {
-            transaction_op(&db, Transaction::Rollback)?;
+            transaction_op(db, Transaction::Rollback)?;
             return Err(err.into());
         };
 
-        if let Err(err) = transaction_op(&db, Transaction::Commit) {
-            transaction_op(&db, Transaction::Rollback)?;
+        if let Err(err) = transaction_op(db, Transaction::Commit) {
+            transaction_op(db, Transaction::Rollback)?;
             return Err(err.into());
         };
 
         if let Err(err) = pkg.scripts.execute_script(ScriptPhase::PostInstall) {
-            transaction_op(&db, Transaction::Rollback)?;
+            transaction_op(db, Transaction::Rollback)?;
             return Err(err);
         }
 
-        db.close();
         info!("Installation transaction completed.");
 
         Ok(())
@@ -125,7 +123,6 @@ pub fn install_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>
     if is_package_exists(&db, pkg_name)? {
         return Err(PackageErrorKind::AlreadyInstalled(pkg_name.to_owned()).to_lpm_err())?;
     }
-    db.close();
 
     let index = find_most_recent_pkg_index(pkg_name)?;
     let pkg_path = index.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
@@ -133,15 +130,22 @@ pub fn install_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>
     download_file(&index.pkg_url(), &pkg_path)?;
 
     let pkg_path_as_string = pkg_path.display().to_string();
-    install_from_lod_file(&pkg_path_as_string)?;
+    info!("Package installation started for {}", &pkg_path_as_string);
+    PkgDataFromFs::start_install_task(&db, &pkg_path_as_string)?;
+    db.close();
     remove_file(pkg_path)?;
 
+    success!("Operation successfully completed.");
     Ok(())
 }
 
 pub fn install_from_lod_file(pkg_path: &str) -> Result<(), LpmError<MainError>> {
+    let db = Database::open(Path::new(CORE_DB_PATH))?;
+
     info!("Package installation started for {}", pkg_path);
-    PkgDataFromFs::start_install_task(pkg_path)?;
+    PkgDataFromFs::start_install_task(&db, pkg_path)?;
+    db.close();
+
     success!("Operation successfully completed.");
     Ok(())
 }
