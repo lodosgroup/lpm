@@ -1,13 +1,13 @@
 use crate::{
     extract::{get_pkg_tmp_output_path, PkgExtractTasks},
-    repository::find_most_recent_pkg_index,
+    repository::find_pkg_index,
     stage1::{Stage1Tasks, PKG_SCRIPTS_DIR},
     validate::PkgValidateTasks,
 };
 
 use common::{
     download_file,
-    pkg::{PkgDataFromFs, ScriptPhase},
+    pkg::{PkgDataFromFs, PkgToQuery, ScriptPhase},
 };
 use db::{
     pkg::{is_package_exists, DbOpsForBuildFile},
@@ -119,12 +119,15 @@ impl PkgInstallTasks for PkgDataFromFs {
 }
 
 pub fn install_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>> {
+    let pkg_to_query = PkgToQuery::parse(pkg_name)
+        .ok_or_else(|| PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err())?;
+
     let db = Database::open(Path::new(CORE_DB_PATH))?;
-    if is_package_exists(&db, pkg_name)? {
-        return Err(PackageErrorKind::AlreadyInstalled(pkg_name.to_owned()).to_lpm_err())?;
+    if is_package_exists(&db, &pkg_to_query.name)? {
+        return Err(PackageErrorKind::AlreadyInstalled(pkg_to_query.name).to_lpm_err())?;
     }
 
-    let index = find_most_recent_pkg_index(pkg_name)?;
+    let index = find_pkg_index(&pkg_to_query)?;
     let pkg_path = index.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
 
     download_file(&index.pkg_url(), &pkg_path)?;

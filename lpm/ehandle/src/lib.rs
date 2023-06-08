@@ -25,6 +25,7 @@ pub enum ResultCode {
     PackageError_UnrecognizedRepository = 108,
     PackageError_DbOperationFailed = 109,
     PackageError_FailedExecutingStage1Script = 110,
+    PackageError_InvalidPackageName = 111,
 
     // 200-299 Module related errors
     ModuleError_DynamicLibraryNotFound = 200,

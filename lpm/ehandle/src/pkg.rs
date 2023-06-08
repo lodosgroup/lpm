@@ -18,6 +18,7 @@ pub enum PackageErrorKind {
     UnrecognizedRepository(String),
     DbOperationFailed(String),
     FailedExecutingStage1Script { script_name: String, output: String },
+    InvalidPackageName(String),
 }
 
 impl ErrorCommons for PackageErrorKind {
@@ -36,6 +37,7 @@ impl ErrorCommons for PackageErrorKind {
             Self::UnrecognizedRepository(_) => "UnrecognizedRepository",
             Self::DbOperationFailed(_) => "DbOperationFailed",
             Self::FailedExecutingStage1Script { .. } => "FailedExecutingStage1Script",
+            Self::InvalidPackageName(_) => "InvalidPackageName",
         }
     }
 
@@ -96,6 +98,10 @@ impl ErrorCommons for PackageErrorKind {
                 kind: self.as_str().to_owned(),
                 reason: format!("Stage1 script '{}' failed. Output: {}", script_name, output)
             },
+            Self::InvalidPackageName(ref pkg_name) => Self::Error {
+                kind: self.as_str().to_owned(),
+                reason: format!("'{pkg_name}' is not a valid package name.")
+            },
         }
     }
 
@@ -135,6 +141,7 @@ impl ErrorCommons for PackageErrorKind {
             PackageErrorKind::FailedExecutingStage1Script { .. } => {
                 ResultCode::PackageError_FailedExecutingStage1Script
             }
+            PackageErrorKind::InvalidPackageName(_) => ResultCode::PackageError_InvalidPackageName,
         }
     }
 }

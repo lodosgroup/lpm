@@ -1,3 +1,4 @@
+use common::pkg::PkgToQuery;
 use db::{
     get_repositories, insert_repository, is_repository_exists, PkgIndex, CORE_DB_PATH,
     REPOSITORY_DB_DIR, SQL_NO_CALLBACK_FN,
@@ -126,8 +127,9 @@ pub fn get_and_apply_repository_patches() -> Result<(), LpmError<RepositoryError
     Ok(())
 }
 
-pub(crate) fn find_most_recent_pkg_index(
-    pkg_name: &str,
+/// Finds most recent one when version is not specified
+pub(crate) fn find_pkg_index(
+    pkg_to_query: &PkgToQuery,
 ) -> Result<PkgIndex, LpmError<RepositoryError>> {
     let db = Database::open(Path::new(CORE_DB_PATH))?;
 
@@ -136,26 +138,31 @@ pub(crate) fn find_most_recent_pkg_index(
 
     if list.is_empty() {
         info!("No repository has been found within the database.");
-        return Err(RepositoryErrorKind::PackageNotFound(pkg_name.to_owned()).to_lpm_err());
+        return Err(RepositoryErrorKind::PackageNotFound(pkg_to_query.name.clone()).to_lpm_err());
     }
 
     let mut most_recent_index = PkgIndex::default();
 
     for (name, address) in &list {
         let repository_db_path = Path::new(REPOSITORY_DB_DIR).join(name);
+        let db_file = fs::metadata(&repository_db_path)?;
         let db = Database::open(Path::new(&repository_db_path))?;
+        let is_initialized = db_file.len() > 0;
 
-        if let Some(index) =
-            PkgIndex::get_by_pkg_name(&db, pkg_name.to_owned(), address.to_owned())?
-        {
-            if index.version.compare(&most_recent_index.version) == std::cmp::Ordering::Greater {
-                most_recent_index = index
-            };
+        if is_initialized {
+            if let Some(index) =
+                PkgIndex::query_pkg_with_versions(&db, pkg_to_query, address.to_owned())?
+            {
+                if index.version.compare(&most_recent_index.version) == std::cmp::Ordering::Greater
+                {
+                    most_recent_index = index
+                };
+            }
         }
     }
 
     if most_recent_index.version.readable_format.is_empty() {
-        return Err(RepositoryErrorKind::PackageNotFound(pkg_name.to_owned()).to_lpm_err());
+        return Err(RepositoryErrorKind::PackageNotFound(pkg_to_query.name.clone()).to_lpm_err());
     }
 
     Ok(most_recent_index)

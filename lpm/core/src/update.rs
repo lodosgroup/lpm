@@ -1,6 +1,6 @@
 use crate::{
     extract::get_pkg_tmp_output_path,
-    repository::find_most_recent_pkg_index,
+    repository::find_pkg_index,
     stage1::{get_scripts, Stage1Tasks, PKG_SCRIPTS_DIR},
     validate::PkgValidateTasks,
     PkgExtractTasks,
@@ -8,7 +8,7 @@ use crate::{
 
 use common::{
     download_file,
-    pkg::{PkgDataFromDb, PkgDataFromFs, ScriptPhase},
+    pkg::{PkgDataFromDb, PkgDataFromFs, PkgToQuery, ScriptPhase},
     Files,
 };
 use db::{
@@ -171,10 +171,17 @@ pub fn update_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>>
     // ensure the pkg exists
     let mut old_pkg = PkgDataFromDb::load(&db, pkg_name)?;
 
-    let index = find_most_recent_pkg_index(pkg_name)?;
+    let pkg_to_query = PkgToQuery {
+        name: pkg_name.to_owned(),
+        major: None,
+        minor: None,
+        patch: None,
+        tag: None,
+    };
+    let index = find_pkg_index(&pkg_to_query)?;
 
     if old_pkg.meta_fields.meta.version.compare(&index.version) == std::cmp::Ordering::Equal {
-        info!("{pkg_name} is up to date");
+        info!("{} is up to date", pkg_name);
         return Ok(());
     }
 
