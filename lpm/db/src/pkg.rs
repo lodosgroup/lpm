@@ -4,6 +4,7 @@ use common::meta::FileStruct;
 use common::pkg::MetaDir;
 use common::pkg::PkgDataFromDb;
 use common::pkg::PkgDataFromFs;
+use common::version::Condition;
 use common::{meta::Meta, version::VersionStruct, Files};
 use ehandle::{
     db::SqlError,
@@ -253,6 +254,7 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
             patch: sql.get_data(V_PATCH_COL_PRE_ID)?,
             tag: sql.get_data(V_TAG_COL_PRE_ID)?,
             readable_format: sql.get_data(V_READABLE_COL_PRE_ID)?,
+            condition: Condition::default(),
         };
 
         let meta = Meta {

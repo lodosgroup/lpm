@@ -1,6 +1,9 @@
 use crate::SQL_NO_CALLBACK_FN;
 
-use common::{pkg::PkgToQuery, version::VersionStruct};
+use common::{
+    pkg::PkgToQuery,
+    version::{Condition, VersionStruct},
+};
 use ehandle::{
     db::SqlError, lpm::LpmError, simple_e_fmt, try_bind_val, try_execute_prepared, ErrorCommons,
 };
@@ -130,6 +133,7 @@ impl PkgIndex {
             patch: sql.get_data(2)?,
             tag: sql.get_data(3)?,
             readable_format: sql.get_data(4)?,
+            condition: Condition::default(),
         };
 
         Ok(Some(Self {

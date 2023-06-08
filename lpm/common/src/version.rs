@@ -10,6 +10,30 @@ pub struct VersionStruct {
     pub minor: u8,
     pub patch: u8,
     pub tag: Option<String>,
+    pub condition: Condition,
+}
+
+#[derive(Clone, Debug, Default)]
+pub enum Condition {
+    Less = -2,
+    LessOrEqual = -1,
+    #[default]
+    Equal = 0,
+    GreaterOrEqual = 1,
+    Greater = 2,
+}
+
+impl Condition {
+    fn from_str(operator: &str) -> Self {
+        match operator {
+            "<" => Self::Less,
+            "<=" => Self::LessOrEqual,
+            "=" => Self::Equal,
+            ">=" => Self::GreaterOrEqual,
+            ">" => Self::Equal,
+            _default => Self::default(),
+        }
+    }
 }
 
 impl VersionStruct {
@@ -54,6 +78,7 @@ impl json::Deserialize for VersionStruct {
             minor: de_required_field!(json["minor"].as_u8(), "minor"),
             patch: de_required_field!(json["patch"].as_u8(), "patch"),
             tag: json["tag"].to_string(),
+            condition: Condition::from_str(&json["condition"].to_string().unwrap_or_default()),
         };
 
         Ok(object)
@@ -77,7 +102,7 @@ impl json::Deserialize for VersionStruct {
 
 #[cfg(test)]
 mod tests {
-    use super::VersionStruct;
+    use super::*;
 
     use std::cmp::Ordering;
 
@@ -89,6 +114,7 @@ mod tests {
             minor: 0,
             patch: 0,
             tag: None,
+            condition: Condition::default(),
         };
 
         let mut y = VersionStruct {
@@ -97,6 +123,7 @@ mod tests {
             minor: 0,
             patch: 1,
             tag: None,
+            condition: Condition::default(),
         };
 
         assert_eq!(x.compare(&y), Ordering::Less);

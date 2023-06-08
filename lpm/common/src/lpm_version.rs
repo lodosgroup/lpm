@@ -1,4 +1,4 @@
-use crate::version::VersionStruct;
+use crate::version::{Condition, VersionStruct};
 
 const _V_MAJOR: &str = env!("CARGO_PKG_VERSION_MAJOR");
 const _V_MINOR: &str = env!("CARGO_PKG_VERSION_MINOR");
@@ -12,5 +12,6 @@ pub fn get_lpm_version() -> VersionStruct {
         patch: _V_PATCH.parse().unwrap(),
         tag: None,
         readable_format: format!("{}.{}.{}", _V_MAJOR, _V_MINOR, _V_PATCH),
+        condition: Condition::default(),
     }
 }

@@ -24,6 +24,7 @@ extern "C" fn get_lpm_version(vref: &mut CVersionStruct) -> ResultCode {
         minor,
         patch,
         tag,
+        ..
     } = common::lpm_version::get_lpm_version();
 
     let readable_format = match CString::new(readable_format) {
