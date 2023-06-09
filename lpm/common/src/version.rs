@@ -13,7 +13,7 @@ pub struct VersionStruct {
     pub condition: Condition,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum Condition {
     Less = -2,
     LessOrEqual = -1,
@@ -24,14 +24,24 @@ pub enum Condition {
 }
 
 impl Condition {
-    fn from_str(operator: &str) -> Self {
+    pub fn from_string_slice(operator: &str) -> Self {
         match operator {
             "<" => Self::Less,
             "<=" => Self::LessOrEqual,
             "=" => Self::Equal,
             ">=" => Self::GreaterOrEqual,
-            ">" => Self::Equal,
+            ">" => Self::Greater,
             _default => Self::default(),
+        }
+    }
+
+    pub fn to_str_operator(&self) -> &str {
+        match self {
+            Self::Less => "<",
+            Self::LessOrEqual => "<=",
+            Self::Equal => "=",
+            Self::GreaterOrEqual => ">=",
+            Self::Greater => ">",
         }
     }
 }
@@ -78,7 +88,9 @@ impl json::Deserialize for VersionStruct {
             minor: de_required_field!(json["minor"].as_u8(), "minor"),
             patch: de_required_field!(json["patch"].as_u8(), "patch"),
             tag: json["tag"].to_string(),
-            condition: Condition::from_str(&json["condition"].to_string().unwrap_or_default()),
+            condition: Condition::from_string_slice(
+                &json["condition"].to_string().unwrap_or_default(),
+            ),
         };
 
         Ok(object)
@@ -150,5 +162,44 @@ mod tests {
         x.tag = Some("-alpha1".to_string());
         y.tag = Some("-alpha1".to_string());
         assert_eq!(x.compare(&y), Ordering::Equal);
+    }
+
+    #[test]
+    fn test_cross_check_on_condition_type() {
+        let operator = "";
+        let condition = Condition::from_string_slice(operator);
+        assert_eq!(condition, Condition::Equal);
+        let operator = condition.to_str_operator();
+        assert_eq!(operator, "=");
+
+        let operator = "<";
+        let condition = Condition::from_string_slice(operator);
+        assert_eq!(condition, Condition::Less);
+        let operator = condition.to_str_operator();
+        assert_eq!(operator, "<");
+
+        let operator = "<=";
+        let condition = Condition::from_string_slice(operator);
+        assert_eq!(condition, Condition::LessOrEqual);
+        let operator = condition.to_str_operator();
+        assert_eq!(operator, "<=");
+
+        let operator = "=";
+        let condition = Condition::from_string_slice(operator);
+        assert_eq!(condition, Condition::Equal);
+        let operator = condition.to_str_operator();
+        assert_eq!(operator, "=");
+
+        let operator = ">";
+        let condition = Condition::from_string_slice(operator);
+        assert_eq!(condition, Condition::Greater);
+        let operator = condition.to_str_operator();
+        assert_eq!(operator, ">");
+
+        let operator = ">=";
+        let condition = Condition::from_string_slice(operator);
+        assert_eq!(condition, Condition::GreaterOrEqual);
+        let operator = condition.to_str_operator();
+        assert_eq!(operator, ">=");
     }
 }

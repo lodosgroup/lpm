@@ -2,6 +2,7 @@ use super::ParserTasks;
 use crate::{
     meta::{Files, Meta},
     system::System,
+    version::Condition,
 };
 
 use std::path::{Path, PathBuf};
@@ -59,6 +60,7 @@ pub struct PkgToQuery {
     pub minor: Option<u32>,
     pub patch: Option<u32>,
     pub tag: Option<String>,
+    pub condition: Condition,
 }
 
 impl PkgToQuery {
@@ -74,7 +76,23 @@ impl PkgToQuery {
 
         if let Some(version) = version {
             let mut version_parts = version.split('-');
-            let version_numbers: Vec<&str> = version_parts.next()?.split('.').collect();
+            let mut condition = Condition::default();
+            let mut version_numbers: Vec<&str> = Vec::new();
+
+            if let Some(part) = version_parts.next() {
+                if part.starts_with(">=") || part.starts_with("<=") {
+                    condition = Condition::from_string_slice(&part[..2]);
+                    version_numbers = part[2..].split('.').collect();
+                } else if part.starts_with('>') || part.starts_with('<') {
+                    condition = Condition::from_string_slice(&part[..1]);
+                    version_numbers = part[1..].split('.').collect();
+                } else if let Some(stripped) = part.strip_prefix('=') {
+                    condition = Condition::from_string_slice(&part[0..1]);
+                    version_numbers = stripped.split('.').collect();
+                } else {
+                    version_numbers = part.split('.').collect();
+                }
+            }
 
             let major = version_numbers[0].parse::<u32>().ok();
             let minor = version_numbers.get(1).and_then(|v| v.parse::<u32>().ok());
@@ -83,6 +101,7 @@ impl PkgToQuery {
 
             Some(Self {
                 name,
+                condition,
                 major,
                 minor,
                 patch,
@@ -91,6 +110,7 @@ impl PkgToQuery {
         } else {
             Some(Self {
                 name,
+                condition: Condition::default(),
                 major: None,
                 minor: None,
                 patch: None,
@@ -107,13 +127,101 @@ mod tests {
     #[test]
     fn test_pkg_to_query_with_version() {
         let pkg_name = "htop@1.3.5-beta";
-        let package = PkgToQuery::parse(pkg_name).unwrap();
+        let actual = PkgToQuery::parse(pkg_name).unwrap();
 
-        assert_eq!(package.name, "htop");
-        assert_eq!(package.major, Some(1));
-        assert_eq!(package.minor, Some(3));
-        assert_eq!(package.patch, Some(5));
-        assert_eq!(package.tag, Some("beta".to_string()));
+        let expected = PkgToQuery {
+            name: String::from("htop"),
+            major: Some(1),
+            minor: Some(3),
+            patch: Some(5),
+            tag: Some(String::from("beta")),
+            condition: Condition::default(),
+        };
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_pkg_to_query_with_condition_operator() {
+        {
+            let pkg_name = "htop@=1.3.5-beta";
+            let actual = PkgToQuery::parse(pkg_name).unwrap();
+
+            let expected = PkgToQuery {
+                name: String::from("htop"),
+                major: Some(1),
+                minor: Some(3),
+                patch: Some(5),
+                tag: Some(String::from("beta")),
+                condition: Condition::Equal,
+            };
+
+            assert_eq!(actual, expected);
+        }
+
+        {
+            let pkg_name = "htop@<1.3.5-beta";
+            let actual = PkgToQuery::parse(pkg_name).unwrap();
+
+            let expected = PkgToQuery {
+                name: String::from("htop"),
+                major: Some(1),
+                minor: Some(3),
+                patch: Some(5),
+                tag: Some(String::from("beta")),
+                condition: Condition::Less,
+            };
+
+            assert_eq!(actual, expected);
+        }
+
+        {
+            let pkg_name = "htop@>1.3.5-beta";
+            let actual = PkgToQuery::parse(pkg_name).unwrap();
+
+            let expected = PkgToQuery {
+                name: String::from("htop"),
+                major: Some(1),
+                minor: Some(3),
+                patch: Some(5),
+                tag: Some(String::from("beta")),
+                condition: Condition::Greater,
+            };
+
+            assert_eq!(actual, expected);
+        }
+
+        {
+            let pkg_name = "htop@<=1.3.5-beta";
+            let actual = PkgToQuery::parse(pkg_name).unwrap();
+
+            let expected = PkgToQuery {
+                name: String::from("htop"),
+                major: Some(1),
+                minor: Some(3),
+                patch: Some(5),
+                tag: Some(String::from("beta")),
+                condition: Condition::LessOrEqual,
+            };
+
+            assert_eq!(actual, expected);
+        }
+
+        {
+            let pkg_name = "htop@>=1.3.5-beta";
+            let actual = PkgToQuery::parse(pkg_name).unwrap();
+
+            let expected = PkgToQuery {
+                name: String::from("htop"),
+                major: Some(1),
+                minor: Some(3),
+                patch: Some(5),
+                tag: Some(String::from("beta")),
+                condition: Condition::GreaterOrEqual,
+            };
+
+            assert_eq!(actual, expected);
+        }
     }
 
     #[test]

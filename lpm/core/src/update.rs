@@ -173,6 +173,7 @@ pub fn update_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>>
 
     let pkg_to_query = PkgToQuery {
         name: pkg_name.to_owned(),
+        condition: Default::default(),
         major: None,
         minor: None,
         patch: None,
