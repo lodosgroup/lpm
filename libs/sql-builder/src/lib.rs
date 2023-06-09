@@ -140,7 +140,7 @@ pub enum Where {
     GreaterThan(usize, String),
     /// 1st arg: Prepared statement id for later value binding
     /// 2nd arg: Column name
-    GreaterThanOrEqual(u8, String),
+    GreaterThanOrEqual(usize, String),
     /// 1st and 2nd args: Prepared statement id for later value binding
     /// 3rd arg: Column name
     Between(usize, usize, String),

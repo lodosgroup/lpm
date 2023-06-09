@@ -63,6 +63,16 @@ impl PkgIndex {
         pkg_to_query: &PkgToQuery,
         repository_address: String,
     ) -> Result<Option<Self>, LpmError<SqlError>> {
+        fn get_where_condition(condition: &Condition, col_id: usize, col_name: &str) -> Where {
+            match condition {
+                Condition::Less => Where::LessThan(col_id, col_name.to_owned()),
+                Condition::LessOrEqual => Where::LessThanOrEqual(col_id, col_name.to_owned()),
+                Condition::Equal => Where::Equal(col_id, col_name.to_owned()),
+                Condition::GreaterOrEqual => Where::GreaterThanOrEqual(col_id, col_name.to_owned()),
+                Condition::Greater => Where::GreaterThan(col_id, col_name.to_owned()),
+            }
+        }
+
         const NAME_COL_PRE_ID: usize = 1;
         const V_MAJOR_COL_PRE_ID: usize = 2;
         const V_MINOR_COL_PRE_ID: usize = 3;
@@ -81,23 +91,35 @@ impl PkgIndex {
             .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")));
 
         if pkg_to_query.major.is_some() {
-            sql_builder =
-                sql_builder.and_where(Where::Equal(V_MAJOR_COL_PRE_ID, String::from("v_major")));
+            sql_builder = sql_builder.and_where(get_where_condition(
+                &pkg_to_query.condition,
+                V_MAJOR_COL_PRE_ID,
+                "v_major",
+            ));
         }
 
         if pkg_to_query.minor.is_some() {
-            sql_builder =
-                sql_builder.and_where(Where::Equal(V_MINOR_COL_PRE_ID, String::from("v_minor")));
+            sql_builder = sql_builder.and_where(get_where_condition(
+                &pkg_to_query.condition,
+                V_MINOR_COL_PRE_ID,
+                "v_minor",
+            ));
         }
 
         if pkg_to_query.patch.is_some() {
-            sql_builder =
-                sql_builder.and_where(Where::Equal(V_PATCH_COL_PRE_ID, String::from("v_patch")));
+            sql_builder = sql_builder.and_where(get_where_condition(
+                &pkg_to_query.condition,
+                V_PATCH_COL_PRE_ID,
+                "v_patch",
+            ));
         }
 
         if pkg_to_query.tag.is_some() {
-            sql_builder =
-                sql_builder.and_where(Where::Equal(V_TAG_COL_PRE_ID, String::from("v_tag")));
+            sql_builder = sql_builder.and_where(get_where_condition(
+                &pkg_to_query.condition,
+                V_TAG_COL_PRE_ID,
+                "v_tag",
+            ));
         }
 
         sql_builder = sql_builder
