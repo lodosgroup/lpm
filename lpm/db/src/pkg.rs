@@ -403,6 +403,9 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmErro
     Ok(())
 }
 
+// TODO:
+// Add version conditions to fix problem of always returning true even when we
+// want to install another version.
 pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
     const NAME_COL_PRE_ID: usize = 1;
     let exists_statement = Select::new(None, String::from("packages"))

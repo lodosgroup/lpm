@@ -182,6 +182,7 @@ pub fn update_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>>
     let index = find_pkg_index(&pkg_to_query)?;
 
     if old_pkg.meta_fields.meta.version.compare(&index.version) == std::cmp::Ordering::Equal {
+        db.close();
         info!("{} is up to date", pkg_name);
         return Ok(());
     }

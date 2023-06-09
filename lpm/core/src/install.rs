@@ -124,7 +124,12 @@ pub fn install_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>
 
     let db = Database::open(Path::new(CORE_DB_PATH))?;
     if is_package_exists(&db, &pkg_to_query.name)? {
-        return Err(PackageErrorKind::AlreadyInstalled(pkg_to_query.name).to_lpm_err())?;
+        db.close();
+        logger::info!(
+            "Package '{}' already installed on your machine.",
+            pkg_to_query.to_string()
+        );
+        return Ok(());
     }
 
     let index = find_pkg_index(&pkg_to_query)?;

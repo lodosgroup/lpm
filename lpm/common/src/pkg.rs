@@ -120,6 +120,29 @@ impl PkgToQuery {
     }
 }
 
+impl ToString for PkgToQuery {
+    fn to_string(&self) -> String {
+        let mut s = self.name.clone();
+        if let Some(v) = self.major {
+            s = format!("{s}@{v}");
+        }
+
+        if let Some(v) = self.minor {
+            s = format!("{s}.{v}");
+        }
+
+        if let Some(v) = self.patch {
+            s = format!("{s}.{v}");
+        }
+
+        if let Some(v) = &self.tag {
+            s = format!("{s}-{v}");
+        }
+
+        s
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
