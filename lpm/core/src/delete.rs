@@ -3,7 +3,7 @@ use crate::stage1::{get_scripts, Stage1Tasks, PKG_SCRIPTS_DIR};
 use common::pkg::{PkgDataFromDb, ScriptPhase};
 use db::{enable_foreign_keys, pkg::DbOpsForInstalledPkg, transaction_op, Transaction};
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
-use logger::{info, success, warning};
+use logger::{info, warning};
 use min_sqlite3_sys::prelude::Database;
 use std::{fs, path::Path};
 
@@ -76,6 +76,5 @@ pub fn delete_lod(core_db: &Database, pkg_name: &str) -> Result<(), LpmError<Mai
 
     info!("Package deletion started for {}", pkg_name);
     pkg.start_delete_task(core_db)?;
-    success!("Operation successfully completed.");
     Ok(())
 }

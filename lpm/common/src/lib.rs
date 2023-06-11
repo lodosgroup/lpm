@@ -56,6 +56,7 @@ macro_rules! some_or_error {
 }
 
 pub fn download_file(url: &str, output_dir: &Path) -> std::io::Result<()> {
+    logger::info!("Downloading from '{url}' into {}", output_dir.display());
     let response = Rekuest::new(url)?.get()?;
 
     fs::create_dir_all(some_or_error!(

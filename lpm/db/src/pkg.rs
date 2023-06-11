@@ -56,12 +56,6 @@ impl DbOpsForBuildFile for PkgDataFromFs {
     ) -> Result<i64, LpmError<PackageError>> {
         enable_foreign_keys(core_db)?;
 
-        if is_package_exists(core_db, &self.meta_dir.meta.name)? {
-            return Err(
-                PackageErrorKind::AlreadyInstalled(self.meta_dir.meta.name.clone()).to_lpm_err(),
-            );
-        }
-
         transaction_op(core_db, Transaction::Begin)?;
 
         const NAME_COL_PRE_ID: usize = 1;
@@ -152,12 +146,6 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         pkg_id: i64,
     ) -> Result<(), LpmError<PackageError>> {
         enable_foreign_keys(core_db)?;
-
-        if !is_package_exists(core_db, &self.meta_dir.meta.name)? {
-            return Err(
-                PackageErrorKind::DoesNotExists(self.meta_dir.meta.name.clone()).to_lpm_err(),
-            );
-        }
 
         transaction_op(core_db, Transaction::Begin)?;
 

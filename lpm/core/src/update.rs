@@ -16,7 +16,7 @@ use db::{
     transaction_op, Transaction,
 };
 use ehandle::{lpm::LpmError, MainError};
-use logger::{debug, info, success, warning};
+use logger::{debug, info, warning};
 use min_sqlite3_sys::prelude::Database;
 use std::{
     fs::{self, create_dir_all, remove_file},
@@ -199,7 +199,6 @@ pub fn update_from_repository(
 
     remove_file(pkg_path)?;
 
-    success!("Operation successfully completed.");
     Ok(())
 }
 
@@ -214,7 +213,6 @@ pub fn update_from_lod_file(
 
     info!("Package update started for {}", pkg_name);
     old_pkg.start_update_task(core_db, &mut requested_pkg)?;
-    success!("Operation successfully completed.");
 
     Ok(())
 }

@@ -5,7 +5,7 @@ use ehandle::{
     module::{ModuleError, ModuleErrorKind},
     ErrorCommons,
 };
-use logger::{debug, info, success};
+use logger::{debug, info};
 use min_sqlite3_sys::prelude::*;
 use std::ffi::CString;
 
@@ -142,7 +142,6 @@ pub fn add_module(
 
     info!("Adding {name} module to the database..");
     insert_module(core_db, name, &dylib_path)?;
-    success!("Operation successfully completed.");
 
     Ok(())
 }
@@ -163,7 +162,6 @@ pub fn delete_modules(
 
     info!("Deleting list of modules: {:?}", module_names);
     db::delete_modules(core_db, module_names.to_vec())?;
-    success!("Operation successfully completed.");
 
     Ok(())
 }

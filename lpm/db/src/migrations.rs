@@ -17,7 +17,7 @@ pub fn migrate_database_tables(core_db: &Database) -> Result<(), LpmError<SqlErr
     create_core_tables(core_db, &mut initial_version)?;
     create_update_triggers_for_core_tables(core_db, &mut initial_version)?;
 
-    logger::success!("Db migrations are successfully completed.");
+    logger::info!("Db migrations are successfully completed.");
 
     Ok(())
 }

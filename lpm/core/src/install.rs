@@ -16,11 +16,12 @@ use db::{
     transaction_op, Transaction,
 };
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
-use logger::{debug, info, success, warning};
+use logger::{debug, info, warning};
 use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all, remove_file},
     path::{Path, PathBuf},
+    thread,
 };
 
 trait PkgInstallTasks {
@@ -53,6 +54,15 @@ impl PkgInstallTasks for PkgDataFromFs {
 
         info!("Extracting..");
         let pkg = PkgDataFromFs::start_extract_task(&pkg_path)?;
+
+        if is_package_exists(core_db, &pkg.meta_dir.meta.name)? {
+            logger::info!(
+                "Package '{}' already installed on your machine.",
+                pkg.meta_dir.meta.name
+            );
+            return Ok(());
+        }
+
         info!("Validating files..");
         pkg.start_validate_task()?;
 
@@ -86,7 +96,9 @@ impl PkgInstallTasks for PkgDataFromFs {
             return Err(err)?;
         };
 
-        Self::install_dependencies(core_db, pkg_id, &pkg.meta_dir.meta.dependencies)?;
+        if src_pkg_id.is_none() {
+            Self::install_dependencies(core_db, pkg_id, &pkg.meta_dir.meta.dependencies)?;
+        }
 
         info!("Installation transaction completed.");
 
@@ -156,9 +168,39 @@ impl PkgInstallTasks for PkgDataFromFs {
             Self::resolve_dependencies(&index_db, &mut dependency_stack)?;
         }
 
+        let mut thread_handlers = Vec::new();
+        let mut dependency_download_paths = Vec::new();
+
         for dependency in dependency_stack {
-            info!("Installing '{dependency}' dependency..");
-            install_from_repository(core_db, &dependency, Some(src_pkg_id))?;
+            let pkg_to_query = PkgToQuery::parse(&dependency).ok_or_else(|| {
+                PackageErrorKind::InvalidPackageName(dependency.to_owned()).to_lpm_err()
+            })?;
+
+            if is_package_exists(core_db, &pkg_to_query.name)? {
+                logger::info!(
+                    "Dependency '{}' already exists on your machine. Skipping it..",
+                    &pkg_to_query.name
+                );
+                return Ok(());
+            }
+
+            let index = find_pkg_index(core_db, &pkg_to_query)?;
+            let pkg_path = index.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
+            dependency_download_paths.push(pkg_path.clone());
+
+            let handler = thread::spawn(move || download_file(&index.pkg_url(), &pkg_path));
+
+            thread_handlers.push(handler);
+        }
+
+        for handler in thread_handlers {
+            handler.join().unwrap()?;
+        }
+
+        for dependency_path in dependency_download_paths {
+            let dependency_path = dependency_path.to_str().unwrap();
+            info!("Installing '{}' dependency..", dependency_path);
+            install_from_lod_file(core_db, dependency_path, Some(src_pkg_id))?;
         }
 
         Ok(())
@@ -236,17 +278,16 @@ pub fn install_from_repository(
     PkgDataFromFs::start_install_task(core_db, &pkg_path_as_string, src_pkg_id)?;
     remove_file(pkg_path)?;
 
-    success!("Operation successfully completed.");
     Ok(())
 }
 
 pub fn install_from_lod_file(
     core_db: &Database,
     pkg_path: &str,
+    src_pkg_id: Option<i64>,
 ) -> Result<(), LpmError<MainError>> {
     info!("Package installation started for {}", pkg_path);
-    PkgDataFromFs::start_install_task(core_db, pkg_path, None)?;
+    PkgDataFromFs::start_install_task(core_db, pkg_path, src_pkg_id)?;
 
-    success!("Operation successfully completed.");
     Ok(())
 }

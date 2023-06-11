@@ -8,7 +8,7 @@ use ehandle::{
     repository::{RepositoryError, RepositoryErrorKind},
     ErrorCommons,
 };
-use logger::{debug, info, success, warning};
+use logger::{debug, info, warning};
 use min_sqlite3_sys::prelude::*;
 use rekuest::Rekuest;
 use std::{fs, path::Path};
@@ -36,8 +36,6 @@ pub fn add_repository(
     info!("Initializing {name} database file..");
     let _db = Database::open(repository_index_db_path)?;
 
-    success!("Operation successfully completed.");
-
     Ok(())
 }
 
@@ -57,7 +55,6 @@ pub fn delete_repositories(
 
     info!("Deleting list of repositories: {:?}", repository_names);
     db::delete_repositories(core_db, repository_names.to_vec())?;
-    success!("Operation successfully completed.");
 
     Ok(())
 }

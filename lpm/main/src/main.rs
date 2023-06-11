@@ -27,7 +27,11 @@ fn main() {
     match Command::parse_args(&args) {
         Command::Install(pkg_name_or_filepath, subcommand) => match subcommand {
             InstallSubcommand::Local => {
-                try_or_error!(install_from_lod_file(&core_db(), pkg_name_or_filepath))
+                try_or_error!(install_from_lod_file(
+                    &core_db(),
+                    pkg_name_or_filepath,
+                    None
+                ))
             }
 
             InstallSubcommand::None => {
@@ -116,4 +120,6 @@ fn main() {
             panic!("Invalid command on 'lpm'.");
         }
     }
+
+    logger::success!("Operation successfully completed.");
 }
