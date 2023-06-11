@@ -40,8 +40,6 @@ pub fn insert_repository(
     logger::debug!("Inserting repository\n  name: {name}\n  address: {address}");
     let status = try_execute_prepared!(sql, simple_e_fmt!("Error on inserting repository {name}"));
 
-    sql.kill();
-
     Ok(status)
 }
 
@@ -71,8 +69,6 @@ pub fn delete_repositories(
         simple_e_fmt!("Error on deleting repositories '{repository_names}'")
     );
 
-    sql.kill();
-
     Ok(status)
 }
 
@@ -93,7 +89,6 @@ pub fn is_repository_exists(core_db: &Database, name: &str) -> Result<bool, LpmE
     );
 
     let result = sql.get_data::<i64>(0).unwrap_or(0);
-    sql.kill();
 
     Ok(result == 1)
 }
@@ -107,8 +102,6 @@ pub fn get_repositories(core_db: &Database) -> Result<Vec<(String, String)>, Lpm
     while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
         result.push((sql.get_data(1)?, sql.get_data(2)?));
     }
-
-    sql.kill();
 
     Ok(result)
 }

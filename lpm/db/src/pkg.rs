@@ -114,7 +114,6 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         let sql_status = sql.execute_prepared();
         if PreparedStatementStatus::Done != sql_status {
-            sql.kill();
             transaction_op(core_db, Transaction::Rollback)?;
             logger::error!(
                 "Database sync failed with '{}' package. Sql status: {:?}",
@@ -128,8 +127,6 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         }
 
         let pkg_id = super::get_last_insert_row_id(core_db)?;
-
-        sql.kill();
 
         match insert_files(core_db, pkg_id, &self.meta_dir.files) {
             Ok(_) => Ok(pkg_id),
@@ -203,15 +200,12 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         );
 
         if PreparedStatementStatus::Done != sql.execute_prepared() {
-            sql.kill();
             transaction_op(core_db, Transaction::Rollback)?;
 
             return Err(
                 PackageErrorKind::InstallationFailed(self.meta_dir.meta.name.clone()).to_lpm_err(),
             );
         }
-
-        sql.kill();
 
         match delete_pkg_files(core_db, pkg_id) {
             Ok(_) => (),
@@ -259,7 +253,6 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
         let src_pkg_package_id = sql.get_data(SRC_PKG_ID_COL_PRE_ID)?;
 
         if id == 0 {
-            sql.kill();
             return Err(PackageErrorKind::DoesNotExists(name.to_string()).to_lpm_err());
         }
 
@@ -280,8 +273,6 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
             dependencies: Vec::new(),
             suggestions: Vec::new(),
         };
-
-        sql.kill();
 
         const PACKAGE_ID_COL_PRE_ID: usize = 1;
 
@@ -308,7 +299,6 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
 
             files.push(file);
         }
-        sql.kill();
 
         let files = Files(files);
         let meta_fields = MetaDir {
@@ -344,8 +334,6 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
 
         let name = sql.get_data(0)?;
 
-        sql.kill();
-
         Ok(name)
     }
 
@@ -364,7 +352,6 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
                 self.meta_fields.meta.name
             )
         );
-        sql.kill();
 
         Ok(())
     }
@@ -388,8 +375,6 @@ fn delete_pkg_files(
         sql,
         simple_e_fmt!("Could not delete from 'files' for package_id {}.", pkg_id)
     );
-
-    sql.kill();
 
     Ok(status)
 }
@@ -439,8 +424,6 @@ fn insert_files(
         try_bind_val!(sql, PACKAGE_ID_COL_PRE_ID, pkg_id);
 
         try_execute_prepared!(sql, simple_e_fmt!("Could not insert to \"files\" table."));
-
-        sql.kill();
     }
 
     Ok(())
@@ -463,7 +446,6 @@ pub fn is_package_exists(core_db: &Database, name: &str) -> Result<bool, LpmErro
     );
 
     let result = sql.get_data::<i64>(0).unwrap_or(0);
-    sql.kill();
 
     Ok(result == 1)
 }

@@ -32,8 +32,6 @@ pub fn insert_module(
     logger::debug!("Inserting module\n  name: {name}\n  dylib_path: {dylib_path}");
     let status = try_execute_prepared!(sql, simple_e_fmt!("Error on inserting module {name}"));
 
-    sql.kill();
-
     Ok(status)
 }
 
@@ -63,8 +61,6 @@ pub fn delete_modules(
         simple_e_fmt!("Error on deleting modules '{module_names}'")
     );
 
-    sql.kill();
-
     Ok(status)
 }
 
@@ -85,7 +81,6 @@ pub fn is_module_exists(core_db: &Database, name: &str) -> Result<bool, LpmError
     );
 
     let result = sql.get_data::<i64>(0).unwrap_or(0);
-    sql.kill();
 
     Ok(result == 1)
 }
@@ -112,8 +107,6 @@ pub fn get_dylib_path_by_name(
     );
 
     let result = sql.get_data::<Option<String>>(0)?;
-    sql.kill();
-
     Ok(result)
 }
 
@@ -126,8 +119,6 @@ pub fn get_modules(core_db: &Database) -> Result<Vec<(String, String)>, LpmError
     while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
         result.push((sql.get_data(1)?, sql.get_data(2)?));
     }
-
-    sql.kill();
 
     Ok(result)
 }

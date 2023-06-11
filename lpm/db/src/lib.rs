@@ -61,7 +61,6 @@ fn get_last_insert_row_id(any_db: &Database) -> Result<i64, LpmError<SqlError>> 
     );
 
     let data = sql.get_data::<i64>(0)?;
-    sql.kill();
     Ok(data)
 }
 
@@ -102,7 +101,6 @@ pub fn get_current_datetime(any_db: &Database) -> Result<String, LpmError<SqlErr
     );
 
     let data = sql.get_data::<String>(0)?;
-    sql.kill();
     Ok(data)
 }
 

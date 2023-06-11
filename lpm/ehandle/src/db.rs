@@ -14,8 +14,6 @@ macro_rules! try_bind_val {
     ($sql: expr, $c_index: expr, $val: expr) => {
         let status = $sql.bind_val($c_index, $val);
         if status != min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok {
-            $sql.kill();
-
             return Err(ehandle::db::SqlErrorKind::FailedParameterBinding(
                 $c_index,
                 format!("{:?}", $val),
@@ -37,7 +35,6 @@ macro_rules! try_execute_prepared {
                 min_sqlite3_sys::prelude::PreparedStatementStatus::Done
             }
             code => {
-                $sql.kill();
                 return Err(ehandle::db::SqlErrorKind::FailedPreparedExecuting(format!(
                     "{}, SQLite status: {code:?}",
                     $err

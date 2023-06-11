@@ -23,8 +23,6 @@ macro_rules! try_bind_val_if_some {
         if let Some(val) = $val {
             let status = $sql.bind_val($c_index, val);
             if status != min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok {
-                $sql.kill();
-
                 return Err(ehandle::db::SqlErrorKind::FailedParameterBinding(
                     $c_index,
                     format!("{:?}", val),

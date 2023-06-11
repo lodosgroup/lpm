@@ -81,9 +81,9 @@ checksum = "db72ce3d43abd8842d06aebad519b34cf804eca36bc3c2c5e723e4b3092b6ece"
 
 [[package]]
 name = "min-sqlite3-sys"
-version = "1.4.0"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f81c09ec20a3c76671b22d2957c8e14588a59c263db96f6947bbca8eff4e956"
+checksum = "b9440c1fddde41d4142a080e8a008a0c7fe3b7ff3d062688436e42caeacf77d5"
 dependencies = [
  "sqlite3-builder",
 ]

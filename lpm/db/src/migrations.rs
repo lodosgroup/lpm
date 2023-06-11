@@ -44,7 +44,6 @@ fn can_migrate(core_db: &Database, version: i64) -> Result<bool, LpmError<SqlErr
 
     let db_user_version = sql.clone().get_data::<i64>(0)?;
     let result = version > db_user_version;
-    sql.kill();
     Ok(result)
 }
 
