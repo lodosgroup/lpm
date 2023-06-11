@@ -13,7 +13,15 @@ extern "C" fn install_lod_file(pkg_path: *const std::os::raw::c_char) -> ResultC
         }
     };
 
-    if let Err(err) = core::install_from_lod_file(pkg_path) {
+    let core_db = match core::open_core_db_connection() {
+        Ok(t) => t,
+        Err(err) => {
+            logger::error!("{:?}", err);
+            return err.result_code;
+        }
+    };
+
+    if let Err(err) = core::install_from_lod_file(&core_db, pkg_path) {
         logger::error!("{:?}", err);
         return err.result_code;
     }
@@ -46,7 +54,15 @@ extern "C" fn update_from_lod_file(
         }
     };
 
-    if let Err(err) = core::update_from_lod_file(pkg_name, pkg_path) {
+    let core_db = match core::open_core_db_connection() {
+        Ok(t) => t,
+        Err(err) => {
+            logger::error!("{:?}", err);
+            return err.result_code;
+        }
+    };
+
+    if let Err(err) = core::update_from_lod_file(&core_db, pkg_name, pkg_path) {
         logger::error!("{:?}", err);
         return err.result_code;
     }
@@ -66,7 +82,15 @@ extern "C" fn delete_lod(pkg_name: *const std::os::raw::c_char) -> ResultCode {
         }
     };
 
-    if let Err(err) = core::delete_lod(pkg_name) {
+    let core_db = match core::open_core_db_connection() {
+        Ok(t) => t,
+        Err(err) => {
+            logger::error!("{:?}", err);
+            return err.result_code;
+        }
+    };
+
+    if let Err(err) = core::delete_lod(&core_db, pkg_name) {
         logger::error!("{:?}", err);
         return err.result_code;
     }

@@ -1,9 +1,7 @@
 use cli_parser::{Command, InstallSubcommand, ModuleSubcommand, UpdateSubcommand};
 use common::some_or_error;
 use core::*;
-use db::{enable_core_db_pragmas, CORE_DB_PATH};
-use min_sqlite3_sys::prelude::*;
-use std::{env, panic, path::Path};
+use std::{env, panic};
 
 macro_rules! try_or_error {
     ($fn: expr) => {
@@ -23,11 +21,7 @@ fn main() {
     // TODO
     // get executed command and print it on `cmd::None`
 
-    let core_db = || {
-        let core_db = try_or_error!(Database::open(Path::new(CORE_DB_PATH)));
-        let _ = enable_core_db_pragmas(&core_db);
-        core_db
-    };
+    let core_db = || try_or_error!(open_core_db_connection());
 
     let args: Vec<String> = env::args().collect();
     match Command::parse_args(&args) {

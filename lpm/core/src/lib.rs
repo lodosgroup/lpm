@@ -9,6 +9,7 @@ mod validate;
 
 use std::path::Path;
 
+use db::enable_core_db_pragmas;
 pub use delete::delete_lod;
 pub(crate) use extract::PkgExtractTasks;
 pub use install::{install_from_lod_file, install_from_repository};
@@ -31,4 +32,10 @@ pub fn update_database_migrations() -> Result<(), LpmError<MainError>> {
     db::migrate_database_tables(&core_db)?;
 
     Ok(())
+}
+
+pub fn open_core_db_connection() -> Result<Database, LpmError<MainError>> {
+    let core_db = Database::open(Path::new(db::CORE_DB_PATH))?;
+    enable_core_db_pragmas(&core_db)?;
+    Ok(core_db)
 }
