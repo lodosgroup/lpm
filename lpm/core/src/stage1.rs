@@ -38,8 +38,7 @@ impl Stage1Tasks for Vec<Stage1Script> {
                     script_name: script.path.to_string_lossy().to_string(),
                     output: String::from_utf8_lossy(&output.stderr).to_string(),
                 }
-                .to_lpm_err()
-                .into());
+                .to_lpm_err())?;
             }
         }
 

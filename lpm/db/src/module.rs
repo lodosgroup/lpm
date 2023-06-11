@@ -8,7 +8,7 @@ use sql_builder::select::*;
 use sql_builder::Column;
 
 pub fn insert_module(
-    db: &Database,
+    core_db: &Database,
     name: &str,
     dylib_path: &str,
 ) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
@@ -24,7 +24,7 @@ pub fn insert_module(
 
     let statement = sql_builder.to_string();
 
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, NAME_COL_PRE_ID, name);
     try_bind_val!(sql, DYLIB_PATH_COL_PRE_ID, dylib_path);
@@ -38,7 +38,7 @@ pub fn insert_module(
 }
 
 pub fn delete_modules(
-    db: &Database,
+    core_db: &Database,
     module_names: Vec<String>,
 ) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
     let mut pre_ids = vec![];
@@ -50,7 +50,7 @@ pub fn delete_modules(
         .where_condition(Where::In(pre_ids, String::from("name")))
         .to_string();
 
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     for (index, name) in module_names.iter().enumerate() {
         try_bind_val!(sql, index + 1, &**name);
@@ -68,14 +68,14 @@ pub fn delete_modules(
     Ok(status)
 }
 
-pub fn is_module_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
+pub fn is_module_exists(core_db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
     const NAME_COL_PRE_ID: usize = 1;
     let exists_statement = Select::new(None, String::from("modules"))
         .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
         .exists()
         .to_string();
 
-    let mut sql = db.prepare(exists_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(exists_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, NAME_COL_PRE_ID, name);
 
@@ -91,7 +91,7 @@ pub fn is_module_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlE
 }
 
 pub fn get_dylib_path_by_name(
-    db: &Database,
+    core_db: &Database,
     name: &str,
 ) -> Result<Option<String>, LpmError<SqlError>> {
     const NAME_COL_PRE_ID: usize = 1;
@@ -102,7 +102,7 @@ pub fn get_dylib_path_by_name(
     .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
     .to_string();
 
-    let mut sql = db.prepare(select_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(select_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, NAME_COL_PRE_ID, name);
 
@@ -117,10 +117,10 @@ pub fn get_dylib_path_by_name(
     Ok(result)
 }
 
-pub fn get_modules(db: &Database) -> Result<Vec<(String, String)>, LpmError<SqlError>> {
+pub fn get_modules(core_db: &Database) -> Result<Vec<(String, String)>, LpmError<SqlError>> {
     let select_statement = Select::new(None, String::from("modules")).to_string();
 
-    let mut sql = db.prepare(select_statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(select_statement, super::SQL_NO_CALLBACK_FN)?;
 
     let mut result = vec![];
     while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {

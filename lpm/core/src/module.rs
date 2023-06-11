@@ -7,7 +7,7 @@ use ehandle::{
 };
 use logger::{debug, info, success};
 use min_sqlite3_sys::prelude::*;
-use std::{ffi::CString, path::Path};
+use std::ffi::CString;
 
 struct ModuleController(*mut std::os::raw::c_void);
 
@@ -102,18 +102,17 @@ impl ModuleController {
     }
 }
 
-pub fn trigger_lpm_module(args: Vec<String>) -> Result<(), LpmError<ModuleError>> {
+pub fn trigger_lpm_module(
+    core_db: &Database,
+    args: Vec<String>,
+) -> Result<(), LpmError<ModuleError>> {
     let module_name = some_or_error!(
         args.get(2),
         "Provide the name of the module you wish to run."
     );
 
-    let db = Database::open(Path::new(CORE_DB_PATH))?;
-
-    let dylib_path = get_dylib_path_by_name(&db, module_name)?
+    let dylib_path = get_dylib_path_by_name(core_db, module_name)?
         .ok_or_else(|| ModuleErrorKind::ModuleNotFound(module_name.to_owned()).to_lpm_err())?;
-
-    db.close();
 
     let module_controller = ModuleController::load(&dylib_path)?;
     info!("Module '{}' loaded.", module_name);
@@ -124,14 +123,16 @@ pub fn trigger_lpm_module(args: Vec<String>) -> Result<(), LpmError<ModuleError>
     Ok(())
 }
 
-pub fn add_module(name: &str, dylib_path: &str) -> Result<(), LpmError<ModuleError>> {
+pub fn add_module(
+    core_db: &Database,
+    name: &str,
+    dylib_path: &str,
+) -> Result<(), LpmError<ModuleError>> {
     // read absolute path of the dynamic library
     let dylib_path = std::fs::canonicalize(dylib_path)?;
     let dylib_path = dylib_path.to_string_lossy();
 
-    let db = Database::open(Path::new(CORE_DB_PATH))?;
-
-    if is_module_exists(&db, name)? {
+    if is_module_exists(core_db, name)? {
         return Err(ModuleErrorKind::ModuleAlreadyExists(name.to_owned()).to_lpm_err());
     }
 
@@ -140,40 +141,36 @@ pub fn add_module(name: &str, dylib_path: &str) -> Result<(), LpmError<ModuleErr
     ModuleController::validate(&dylib_path)?;
 
     info!("Adding {name} module to the database..");
-    insert_module(&db, name, &dylib_path)?;
-    db.close();
+    insert_module(core_db, name, &dylib_path)?;
     success!("Operation successfully completed.");
 
     Ok(())
 }
 
-pub fn delete_modules(module_names: &[String]) -> Result<(), LpmError<ModuleError>> {
+pub fn delete_modules(
+    core_db: &Database,
+    module_names: &[String],
+) -> Result<(), LpmError<ModuleError>> {
     if module_names.is_empty() {
         panic!("At least 1 module must be provided.");
     }
 
-    let db = Database::open(Path::new(CORE_DB_PATH))?;
-
     for name in module_names {
-        if !is_module_exists(&db, name)? {
+        if !is_module_exists(core_db, name)? {
             return Err(ModuleErrorKind::ModuleNotFound(name.to_owned()).to_lpm_err());
         }
     }
 
     info!("Deleting list of modules: {:?}", module_names);
-    db::delete_modules(&db, module_names.to_vec())?;
-    db.close();
+    db::delete_modules(core_db, module_names.to_vec())?;
     success!("Operation successfully completed.");
 
     Ok(())
 }
 
-pub fn print_modules() -> Result<(), LpmError<ModuleError>> {
-    let db = Database::open(Path::new(CORE_DB_PATH))?;
-
+pub fn print_modules(core_db: &Database) -> Result<(), LpmError<ModuleError>> {
     info!("Getting module list from the database..");
-    let list = db::get_modules(&db)?;
-    db.close();
+    let list = db::get_modules(core_db)?;
 
     println!();
 

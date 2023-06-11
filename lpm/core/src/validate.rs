@@ -52,8 +52,7 @@ impl PkgValidateTasks for PkgDataFromFs {
             return Err(PackageErrorKind::UnsupportedPackageArchitecture(
                 self.meta_dir.meta.arch.clone(),
             )
-            .to_lpm_err()
-            .into());
+            .to_lpm_err())?;
         }
 
         let pkg_output_path = get_pkg_tmp_output_path(&self.path);
@@ -90,14 +89,13 @@ fn check_program_checksums(dir: &Path, files: &Files) -> Result<(), LpmError<Mai
                 &f_path.display()
             );
             if file_hash.ne(&file.checksum) {
-                return Err(PackageErrorKind::InvalidPackageFiles.to_lpm_err().into());
+                return Err(PackageErrorKind::InvalidPackageFiles.to_lpm_err())?;
             }
         } else {
             return Err(PackageErrorKind::UnsupportedChecksumAlgorithm(
                 file.checksum_algorithm.clone(),
             )
-            .to_lpm_err()
-            .into());
+            .to_lpm_err())?;
         }
     }
 

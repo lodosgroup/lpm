@@ -21,8 +21,7 @@ macro_rules! try_bind_val {
                 format!("{:?}", $val),
                 status,
             )
-            .to_lpm_err()
-            .into());
+            .to_lpm_err())?;
         }
     };
 }
@@ -37,11 +36,13 @@ macro_rules! try_execute_prepared {
             min_sqlite3_sys::prelude::PreparedStatementStatus::Done => {
                 min_sqlite3_sys::prelude::PreparedStatementStatus::Done
             }
-            _ => {
+            code => {
                 $sql.kill();
-                return Err(ehandle::db::SqlErrorKind::FailedPreparedExecuting($err)
-                    .to_lpm_err()
-                    .into());
+                return Err(ehandle::db::SqlErrorKind::FailedPreparedExecuting(format!(
+                    "{}, SQLite status: {code:?}",
+                    $err
+                ))
+                .to_lpm_err())?;
             }
         }
     };
@@ -53,9 +54,7 @@ macro_rules! try_execute {
         match $db.execute($statement.clone(), super::SQL_NO_CALLBACK_FN)? {
             min_sqlite3_sys::prelude::SqlitePrimaryResult::Ok => SqlitePrimaryResult::Ok,
             e => {
-                return Err(ehandle::db::SqlErrorKind::FailedExecuting($statement, e)
-                    .to_lpm_err()
-                    .into());
+                return Err(ehandle::db::SqlErrorKind::FailedExecuting($statement, e).to_lpm_err())?;
             }
         }
     };

@@ -6,30 +6,26 @@ use ehandle::{
     simple_e_fmt, try_execute, try_execute_prepared, ErrorCommons,
 };
 use min_sqlite3_sys::prelude::*;
-use std::path::Path;
 
 const INITIAL_VERSION: i64 = 0;
 
-pub fn migrate_database_tables() -> Result<(), LpmError<SqlError>> {
-    let db = Database::open(Path::new(super::CORE_DB_PATH))?;
-    super::enable_foreign_keys(&db)?;
+pub fn migrate_database_tables(core_db: &Database) -> Result<(), LpmError<SqlError>> {
+    super::enable_foreign_keys(core_db)?;
 
     let mut initial_version: i64 = INITIAL_VERSION;
 
-    create_core_tables(&db, &mut initial_version)?;
-    create_update_triggers_for_core_tables(&db, &mut initial_version)?;
-
-    db.close();
+    create_core_tables(core_db, &mut initial_version)?;
+    create_update_triggers_for_core_tables(core_db, &mut initial_version)?;
 
     logger::success!("Db migrations are successfully completed.");
 
     Ok(())
 }
 
-fn set_migration_version(db: &Database, version: i64) -> Result<(), LpmError<SqlError>> {
+fn set_migration_version(core_db: &Database, version: i64) -> Result<(), LpmError<SqlError>> {
     let statement = format!("PRAGMA user_version = {};", version);
 
-    match db.execute(statement, super::SQL_NO_CALLBACK_FN) {
+    match core_db.execute(statement, super::SQL_NO_CALLBACK_FN) {
         Ok(_) => Ok(()),
         Err(_) => {
             Err(SqlErrorKind::MigrationError(MigrationErrorKind::VersionCouldNotSet).to_lpm_err())
@@ -37,10 +33,10 @@ fn set_migration_version(db: &Database, version: i64) -> Result<(), LpmError<Sql
     }
 }
 
-fn can_migrate(db: &Database, version: i64) -> Result<bool, LpmError<SqlError>> {
+fn can_migrate(core_db: &Database, version: i64) -> Result<bool, LpmError<SqlError>> {
     let statement = String::from("PRAGMA user_version;");
 
-    let mut sql = db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
     try_execute_prepared!(
         sql,
         simple_e_fmt!("Failed executing SQL statement `{}`.", statement)
@@ -52,9 +48,9 @@ fn can_migrate(db: &Database, version: i64) -> Result<bool, LpmError<SqlError>> 
     Ok(result)
 }
 
-fn create_core_tables(db: &Database, version: &mut i64) -> Result<(), LpmError<SqlError>> {
+fn create_core_tables(core_db: &Database, version: &mut i64) -> Result<(), LpmError<SqlError>> {
     *version += 1;
-    if !can_migrate(db, *version)? {
+    if !can_migrate(core_db, *version)? {
         logger::warning!("migration 'create_core_tables' already applied, skipping it.");
         return Ok(());
     }
@@ -92,7 +88,7 @@ fn create_core_tables(db: &Database, version: &mut i64) -> Result<(), LpmError<S
                created_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
                updated_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
 
-               FOREIGN KEY(src_pkg_package_id) REFERENCES packages(id)
+               FOREIGN KEY(src_pkg_package_id) REFERENCES packages(id) ON DELETE CASCADE
             );
 
             /*
@@ -124,19 +120,19 @@ fn create_core_tables(db: &Database, version: &mut i64) -> Result<(), LpmError<S
         ",
     );
 
-    try_execute!(db, statement);
-    set_migration_version(db, *version)?;
+    try_execute!(core_db, statement);
+    set_migration_version(core_db, *version)?;
     logger::info!("'create_core_tables' migration is finished.");
 
     Ok(())
 }
 
 fn create_update_triggers_for_core_tables(
-    db: &Database,
+    core_db: &Database,
     version: &mut i64,
 ) -> Result<(), LpmError<SqlError>> {
     *version += 1;
-    if !can_migrate(db, *version)? {
+    if !can_migrate(core_db, *version)? {
         logger::warning!(
             "migration 'create_update_triggers_for_core_tables' already applied, skipping it."
         );
@@ -169,8 +165,8 @@ fn create_update_triggers_for_core_tables(
         ",
     );
 
-    try_execute!(db, statement);
-    set_migration_version(db, *version)?;
+    try_execute!(core_db, statement);
+    set_migration_version(core_db, *version)?;
     logger::info!("'create_update_triggers_for_core_tables' migration is finished.");
 
     Ok(())

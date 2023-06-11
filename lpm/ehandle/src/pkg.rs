@@ -19,6 +19,7 @@ pub enum PackageErrorKind {
     DbOperationFailed(String),
     FailedExecutingStage1Script { script_name: String, output: String },
     InvalidPackageName(String),
+    DependencyOfAnotherPackage { package: String, depends_on: String },
 }
 
 impl ErrorCommons for PackageErrorKind {
@@ -38,6 +39,7 @@ impl ErrorCommons for PackageErrorKind {
             Self::DbOperationFailed(_) => "DbOperationFailed",
             Self::FailedExecutingStage1Script { .. } => "FailedExecutingStage1Script",
             Self::InvalidPackageName(_) => "InvalidPackageName",
+            Self::DependencyOfAnotherPackage { .. } => "DependencyOfAnotherPackage",
         }
     }
 
@@ -102,6 +104,10 @@ impl ErrorCommons for PackageErrorKind {
                 kind: self.as_str().to_owned(),
                 reason: format!("'{pkg_name}' is not a valid package name.")
             },
+            Self::DependencyOfAnotherPackage{ package, depends_on } => Self::Error {
+                kind: self.as_str().to_owned(),
+                reason: format!("'{package}' is dependency of '{depends_on}' package.")
+            },
         }
     }
 
@@ -142,6 +148,9 @@ impl ErrorCommons for PackageErrorKind {
                 ResultCode::PackageError_FailedExecutingStage1Script
             }
             PackageErrorKind::InvalidPackageName(_) => ResultCode::PackageError_InvalidPackageName,
+            PackageErrorKind::DependencyOfAnotherPackage { .. } => {
+                ResultCode::PackageError_DependencyOfAnotherPackage
+            }
         }
     }
 }

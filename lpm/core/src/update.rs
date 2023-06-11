@@ -13,11 +13,11 @@ use common::{
 };
 use db::{
     pkg::{DbOpsForBuildFile, DbOpsForInstalledPkg},
-    transaction_op, Transaction, CORE_DB_PATH,
+    transaction_op, Transaction,
 };
 use ehandle::{lpm::LpmError, MainError};
 use logger::{debug, info, success, warning};
-use min_sqlite3_sys::prelude::{Connection, Database};
+use min_sqlite3_sys::prelude::Database;
 use std::{
     fs::{self, create_dir_all, remove_file},
     path::Path,
@@ -26,7 +26,7 @@ use std::{
 trait PkgUpdateTasks {
     fn start_update_task(
         &mut self,
-        db: &Database,
+        core_db: &Database,
         to: &mut PkgDataFromFs,
     ) -> Result<(), LpmError<MainError>>;
 
@@ -40,7 +40,7 @@ trait PkgUpdateTasks {
 impl PkgUpdateTasks for PkgDataFromDb {
     fn start_update_task(
         &mut self,
-        db: &Database,
+        core_db: &Database,
         to_pkg: &mut PkgDataFromFs,
     ) -> Result<(), LpmError<MainError>> {
         debug!("Comparing versions..");
@@ -75,7 +75,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
         let source_path = get_pkg_tmp_output_path(&to_pkg.path).join("program");
 
         if let Err(err) = scripts.execute_script(pre_script) {
-            transaction_op(db, Transaction::Rollback)?;
+            transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }
 
@@ -83,22 +83,22 @@ impl PkgUpdateTasks for PkgDataFromDb {
         self.compare_and_update_files_on_fs(&source_path, to_pkg.meta_dir.files.clone())?;
 
         info!("Syncing with package database..");
-        to_pkg.update_existing_pkg(db, self.pkg_id)?;
+        to_pkg.update_existing_pkg(core_db, self.pkg_id)?;
 
         info!("Cleaning temporary files..");
         if let Err(err) = to_pkg.cleanup() {
-            transaction_op(db, Transaction::Rollback)?;
-            return Err(err.into());
+            transaction_op(core_db, Transaction::Rollback)?;
+            return Err(err)?;
         };
 
         if let Err(err) = scripts.execute_script(post_script) {
-            transaction_op(db, Transaction::Rollback)?;
+            transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }
 
-        if let Err(err) = transaction_op(db, Transaction::Commit) {
-            transaction_op(db, Transaction::Rollback)?;
-            return Err(err.into());
+        if let Err(err) = transaction_op(core_db, Transaction::Commit) {
+            transaction_op(core_db, Transaction::Rollback)?;
+            return Err(err)?;
         };
         info!("Update transaction completed.");
 
@@ -166,10 +166,12 @@ impl PkgUpdateTasks for PkgDataFromDb {
     }
 }
 
-pub fn update_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>> {
-    let db = Database::open(Path::new(CORE_DB_PATH))?;
+pub fn update_from_repository(
+    core_db: &Database,
+    pkg_name: &str,
+) -> Result<(), LpmError<MainError>> {
     // ensure the pkg exists
-    let mut old_pkg = PkgDataFromDb::load(&db, pkg_name)?;
+    let mut old_pkg = PkgDataFromDb::load(core_db, pkg_name)?;
 
     let pkg_to_query = PkgToQuery {
         name: pkg_name.to_owned(),
@@ -179,10 +181,9 @@ pub fn update_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>>
         patch: None,
         tag: None,
     };
-    let index = find_pkg_index(&pkg_to_query)?;
+    let index = find_pkg_index(core_db, &pkg_to_query)?;
 
     if old_pkg.meta_fields.meta.version.compare(&index.version) == std::cmp::Ordering::Equal {
-        db.close();
         info!("{} is up to date", pkg_name);
         return Ok(());
     }
@@ -194,24 +195,25 @@ pub fn update_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>>
     let mut requested_pkg = PkgDataFromFs::start_extract_task(&pkg_path)?;
 
     info!("Package update started for {}", pkg_name);
-    old_pkg.start_update_task(&db, &mut requested_pkg)?;
+    old_pkg.start_update_task(core_db, &mut requested_pkg)?;
 
-    db.close();
     remove_file(pkg_path)?;
 
     success!("Operation successfully completed.");
     Ok(())
 }
 
-pub fn update_from_lod_file(pkg_name: &str, pkg_path: &str) -> Result<(), LpmError<MainError>> {
-    let db = Database::open(Path::new(CORE_DB_PATH))?;
-    let mut old_pkg = PkgDataFromDb::load(&db, pkg_name)?;
+pub fn update_from_lod_file(
+    core_db: &Database,
+    pkg_name: &str,
+    pkg_path: &str,
+) -> Result<(), LpmError<MainError>> {
+    let mut old_pkg = PkgDataFromDb::load(core_db, pkg_name)?;
 
     let mut requested_pkg = PkgDataFromFs::start_extract_task(Path::new(pkg_path))?;
 
     info!("Package update started for {}", pkg_name);
-    old_pkg.start_update_task(&db, &mut requested_pkg)?;
-    db.close();
+    old_pkg.start_update_task(core_db, &mut requested_pkg)?;
     success!("Operation successfully completed.");
 
     Ok(())

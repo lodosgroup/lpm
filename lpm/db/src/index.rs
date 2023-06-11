@@ -7,7 +7,7 @@ use common::{
 use ehandle::{
     db::SqlError, lpm::LpmError, simple_e_fmt, try_bind_val, try_execute_prepared, ErrorCommons,
 };
-use min_sqlite3_sys::prelude::*;
+use min_sqlite3_sys::{prelude::*, statement::SqlStatement};
 use sql_builder::select::*;
 use std::path::PathBuf;
 
@@ -30,15 +30,14 @@ macro_rules! try_bind_val_if_some {
                     format!("{:?}", val),
                     status,
                 )
-                .to_lpm_err()
-                .into());
+                .to_lpm_err())?;
             }
         }
     };
 }
 
 impl PkgIndex {
-    pub fn latest_timestamp(db: &Database) -> Result<u32, LpmError<SqlError>> {
+    pub fn latest_timestamp(index_db: &Database) -> Result<u32, LpmError<SqlError>> {
         let cols = vec![String::from("IFNULL(MAX(index_timestamp), 0)")];
         let statement = Select::new(Some(cols), String::from("repository"))
             .add_arg(SelectArg::OrderBy(vec![OrderType::Desc(String::from(
@@ -47,7 +46,7 @@ impl PkgIndex {
             .add_arg(SelectArg::Limit(1))
             .to_string();
 
-        let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
+        let mut sql = index_db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
 
         try_execute_prepared!(
             sql,
@@ -58,11 +57,11 @@ impl PkgIndex {
         Ok(index.unwrap_or(0))
     }
 
-    pub fn query_pkg_with_versions(
-        db: &Database,
+    fn abstract_index_query(
+        index_db: &Database,
         pkg_to_query: &PkgToQuery,
-        repository_address: String,
-    ) -> Result<Option<Self>, LpmError<SqlError>> {
+        columns: Vec<String>,
+    ) -> Result<Option<SqlStatement>, LpmError<SqlError>> {
         fn get_where_condition(condition: &Condition, col_id: usize, col_name: &str) -> Where {
             match condition {
                 Condition::Less => Where::LessThan(col_id, col_name.to_owned()),
@@ -78,14 +77,6 @@ impl PkgIndex {
         const V_MINOR_COL_PRE_ID: usize = 3;
         const V_PATCH_COL_PRE_ID: usize = 4;
         const V_TAG_COL_PRE_ID: usize = 5;
-
-        let columns = vec![
-            String::from("v_major"),
-            String::from("v_minor"),
-            String::from("v_patch"),
-            String::from("v_tag"),
-            String::from("v_readable"),
-        ];
 
         let mut sql_builder = Select::new(Some(columns), String::from("repository"))
             .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")));
@@ -132,7 +123,7 @@ impl PkgIndex {
 
         let statement = sql_builder.to_string();
 
-        let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
+        let mut sql = index_db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
 
         try_bind_val!(sql, NAME_COL_PRE_ID, pkg_to_query.name.as_str());
         try_bind_val_if_some!(sql, V_MAJOR_COL_PRE_ID, pkg_to_query.major);
@@ -149,20 +140,42 @@ impl PkgIndex {
             return Ok(None);
         }
 
-        let version = VersionStruct {
-            major: sql.get_data(0)?,
-            minor: sql.get_data(1)?,
-            patch: sql.get_data(2)?,
-            tag: sql.get_data(3)?,
-            readable_format: sql.get_data(4)?,
-            condition: Condition::default(),
-        };
+        Ok(Some(sql))
+    }
 
-        Ok(Some(Self {
-            name: pkg_to_query.name.clone(),
-            repository_address,
-            version,
-        }))
+    pub fn query_pkg_with_versions(
+        index_db: &Database,
+        pkg_to_query: &PkgToQuery,
+        repository_address: String,
+    ) -> Result<Option<Self>, LpmError<SqlError>> {
+        let columns = vec![
+            String::from("v_major"),
+            String::from("v_minor"),
+            String::from("v_patch"),
+            String::from("v_tag"),
+            String::from("v_readable"),
+        ];
+
+        let sql = Self::abstract_index_query(index_db, pkg_to_query, columns)?;
+
+        if let Some(sql) = sql {
+            let version = VersionStruct {
+                major: sql.get_data(0)?,
+                minor: sql.get_data(1)?,
+                patch: sql.get_data(2)?,
+                tag: sql.get_data(3)?,
+                readable_format: sql.get_data(4)?,
+                condition: Condition::default(),
+            };
+
+            Ok(Some(Self {
+                name: pkg_to_query.name.clone(),
+                repository_address,
+                version,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn pkg_url(&self) -> String {
@@ -178,5 +191,33 @@ impl PkgIndex {
 
     pub fn pkg_output_path(&self, output_dir: &str) -> PathBuf {
         PathBuf::from(output_dir.to_string()).join(self.pkg_filename())
+    }
+
+    pub fn get_mandatory_dependencies(
+        index_db: &Database,
+        pkg_to_query: &PkgToQuery,
+    ) -> Result<Vec<String>, LpmError<SqlError>> {
+        let sql = Self::abstract_index_query(
+            index_db,
+            pkg_to_query,
+            vec![String::from("mandatory_dependencies")],
+        )?;
+
+        if let Some(sql) = sql {
+            let dependencies_as_string: String = sql.get_data(0)?;
+
+            if dependencies_as_string.is_empty() {
+                Ok(Vec::new())
+            } else {
+                let dependencies: Vec<String> = dependencies_as_string
+                    .split(',')
+                    .map(String::from)
+                    .collect();
+
+                Ok(dependencies)
+            }
+        } else {
+            Ok(Vec::new())
+        }
     }
 }

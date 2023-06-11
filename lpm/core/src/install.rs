@@ -7,14 +7,16 @@ use crate::{
 
 use common::{
     download_file,
+    meta::DependencyStruct,
     pkg::{PkgDataFromFs, PkgToQuery, ScriptPhase},
+    some_or_error,
 };
 use db::{
     pkg::{is_package_exists, DbOpsForBuildFile},
-    transaction_op, Transaction, CORE_DB_PATH,
+    transaction_op, Transaction,
 };
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
-use logger::{debug, info, success};
+use logger::{debug, info, success, warning};
 use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all, remove_file},
@@ -22,14 +24,31 @@ use std::{
 };
 
 trait PkgInstallTasks {
-    fn start_install_task(db: &Database, path: &str) -> Result<(), LpmError<MainError>>;
+    fn start_install_task(
+        core_db: &Database,
+        path: &str,
+        src_pkg_id: Option<i64>,
+    ) -> Result<(), LpmError<MainError>>;
+    fn resolve_dependencies(
+        index_db: &Database,
+        dependencies: &mut Vec<String>,
+    ) -> Result<(), LpmError<MainError>>;
+    fn install_dependencies(
+        core_db: &Database,
+        src_pkg_id: i64,
+        pkg_dependencies: &[DependencyStruct],
+    ) -> Result<(), LpmError<MainError>>;
     fn copy_programs(&self) -> Result<(), LpmError<MainError>>;
     fn copy_scripts(&self) -> Result<(), LpmError<MainError>>;
     fn install(&self) -> Result<(), LpmError<MainError>>;
 }
 
 impl PkgInstallTasks for PkgDataFromFs {
-    fn start_install_task(db: &Database, path: &str) -> Result<(), LpmError<MainError>> {
+    fn start_install_task(
+        core_db: &Database,
+        path: &str,
+        src_pkg_id: Option<i64>,
+    ) -> Result<(), LpmError<MainError>> {
         let pkg_path = PathBuf::from(path);
 
         info!("Extracting..");
@@ -38,36 +57,109 @@ impl PkgInstallTasks for PkgDataFromFs {
         pkg.start_validate_task()?;
 
         info!("Syncing with package database..");
-        pkg.insert_to_db(db)?;
+        let pkg_id = pkg.insert_to_db(core_db, src_pkg_id)?;
 
         if let Err(err) = pkg.scripts.execute_script(ScriptPhase::PreInstall) {
-            transaction_op(db, Transaction::Rollback)?;
+            transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }
 
         info!("Installing package files into system..");
         if let Err(err) = pkg.install() {
-            transaction_op(db, Transaction::Rollback)?;
+            transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         };
 
         info!("Cleaning temporary files..");
         if let Err(err) = pkg.cleanup() {
-            transaction_op(db, Transaction::Rollback)?;
-            return Err(err.into());
-        };
-
-        if let Err(err) = transaction_op(db, Transaction::Commit) {
-            transaction_op(db, Transaction::Rollback)?;
-            return Err(err.into());
+            transaction_op(core_db, Transaction::Rollback)?;
+            return Err(err)?;
         };
 
         if let Err(err) = pkg.scripts.execute_script(ScriptPhase::PostInstall) {
-            transaction_op(db, Transaction::Rollback)?;
+            transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }
 
+        if let Err(err) = transaction_op(core_db, Transaction::Commit) {
+            transaction_op(core_db, Transaction::Rollback)?;
+            return Err(err)?;
+        };
+
+        Self::install_dependencies(core_db, pkg_id, &pkg.meta_dir.meta.dependencies)?;
+
         info!("Installation transaction completed.");
+
+        Ok(())
+    }
+
+    // TODO
+    // - remove duplicated dependencies with different versions(e.g. pkg@1.2.3, pkg@1.2.2, pkg@1.3.4)
+    //   this can happen when lpm has multiple repositories.
+    // - remove dependencies if already installed
+    fn resolve_dependencies(
+        index_db: &Database,
+        dependencies: &mut Vec<String>,
+    ) -> Result<(), LpmError<MainError>> {
+        let mut i = 0;
+        loop {
+            if i >= dependencies.len() {
+                break;
+            }
+
+            let dependency_name = &dependencies[i];
+            let pkg_to_query = some_or_error!(
+                PkgToQuery::parse(dependency_name),
+                "Failed resolving package name '{dependency_name}'"
+            );
+
+            let new_dependencies =
+                db::PkgIndex::get_mandatory_dependencies(index_db, &pkg_to_query)?;
+            dependencies.extend(new_dependencies);
+            i += 1;
+        }
+
+        dependencies.dedup();
+
+        Ok(())
+    }
+
+    fn install_dependencies(
+        core_db: &Database,
+        src_pkg_id: i64,
+        pkg_dependencies: &[DependencyStruct],
+    ) -> Result<(), LpmError<MainError>> {
+        let mut dependency_stack: Vec<String> = pkg_dependencies
+            .iter()
+            .map(|dependency| {
+                format!(
+                    "{}@{}{}",
+                    dependency.name,
+                    dependency.version.condition.to_str_operator(),
+                    dependency.version.readable_format
+                )
+            })
+            .collect();
+
+        let list = db::get_repositories(core_db)?;
+        for (name, _) in &list {
+            let repository_db_path = Path::new(db::REPOSITORY_INDEX_DB_DIR).join(name);
+            let db_file = fs::metadata(&repository_db_path)?;
+            let index_db = Database::open(Path::new(&repository_db_path))?;
+            let is_initialized = db_file.len() > 0;
+
+            if !is_initialized {
+                warning!("{name} repository is not initialized");
+                continue;
+            }
+
+            Self::resolve_dependencies(&index_db, &mut dependency_stack)?;
+        }
+
+        for dependency in dependency_stack {
+            info!("Installing '{dependency}' dependency..");
+            install_from_repository(core_db, &dependency, Some(src_pkg_id))?;
+        }
 
         Ok(())
     }
@@ -118,13 +210,15 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 }
 
-pub fn install_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>> {
+pub fn install_from_repository(
+    core_db: &Database,
+    pkg_name: &str,
+    src_pkg_id: Option<i64>,
+) -> Result<(), LpmError<MainError>> {
     let pkg_to_query = PkgToQuery::parse(pkg_name)
         .ok_or_else(|| PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err())?;
 
-    let db = Database::open(Path::new(CORE_DB_PATH))?;
-    if is_package_exists(&db, &pkg_to_query.name)? {
-        db.close();
+    if is_package_exists(core_db, &pkg_to_query.name)? {
         logger::info!(
             "Package '{}' already installed on your machine.",
             pkg_to_query.to_string()
@@ -132,27 +226,26 @@ pub fn install_from_repository(pkg_name: &str) -> Result<(), LpmError<MainError>
         return Ok(());
     }
 
-    let index = find_pkg_index(&pkg_to_query)?;
+    let index = find_pkg_index(core_db, &pkg_to_query)?;
     let pkg_path = index.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
 
     download_file(&index.pkg_url(), &pkg_path)?;
 
     let pkg_path_as_string = pkg_path.display().to_string();
     info!("Package installation started for {}", &pkg_path_as_string);
-    PkgDataFromFs::start_install_task(&db, &pkg_path_as_string)?;
-    db.close();
+    PkgDataFromFs::start_install_task(core_db, &pkg_path_as_string, src_pkg_id)?;
     remove_file(pkg_path)?;
 
     success!("Operation successfully completed.");
     Ok(())
 }
 
-pub fn install_from_lod_file(pkg_path: &str) -> Result<(), LpmError<MainError>> {
-    let db = Database::open(Path::new(CORE_DB_PATH))?;
-
+pub fn install_from_lod_file(
+    core_db: &Database,
+    pkg_path: &str,
+) -> Result<(), LpmError<MainError>> {
     info!("Package installation started for {}", pkg_path);
-    PkgDataFromFs::start_install_task(&db, pkg_path)?;
-    db.close();
+    PkgDataFromFs::start_install_task(core_db, pkg_path, None)?;
 
     success!("Operation successfully completed.");
     Ok(())

@@ -8,7 +8,7 @@ use sql_builder::select::Select;
 use sql_builder::Column;
 
 pub fn insert_repository(
-    db: &Database,
+    core_db: &Database,
     name: &str,
     address: &str,
     index_db_path: &str,
@@ -30,7 +30,7 @@ pub fn insert_repository(
 
     let statement = sql_builder.to_string();
 
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, NAME_COL_PRE_ID, name);
     try_bind_val!(sql, ADDRESS_COL_PRE_ID, address);
@@ -46,7 +46,7 @@ pub fn insert_repository(
 }
 
 pub fn delete_repositories(
-    db: &Database,
+    core_db: &Database,
     repository_names: Vec<String>,
 ) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
     let mut pre_ids = vec![];
@@ -58,7 +58,7 @@ pub fn delete_repositories(
         .where_condition(Where::In(pre_ids, String::from("name")))
         .to_string();
 
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     for (index, name) in repository_names.iter().enumerate() {
         try_bind_val!(sql, index + 1, &**name);
@@ -76,14 +76,14 @@ pub fn delete_repositories(
     Ok(status)
 }
 
-pub fn is_repository_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
+pub fn is_repository_exists(core_db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
     const NAME_COL_PRE_ID: usize = 1;
     let exists_statement = Select::new(None, String::from("repositories"))
         .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
         .exists()
         .to_string();
 
-    let mut sql = db.prepare(exists_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(exists_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, NAME_COL_PRE_ID, name);
 
@@ -98,10 +98,10 @@ pub fn is_repository_exists(db: &Database, name: &str) -> Result<bool, LpmError<
     Ok(result == 1)
 }
 
-pub fn get_repositories(db: &Database) -> Result<Vec<(String, String)>, LpmError<SqlError>> {
+pub fn get_repositories(core_db: &Database) -> Result<Vec<(String, String)>, LpmError<SqlError>> {
     let select_statement = Select::new(None, String::from("repositories")).to_string();
 
-    let mut sql = db.prepare(select_statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(select_statement, super::SQL_NO_CALLBACK_FN)?;
 
     let mut result = vec![];
     while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {

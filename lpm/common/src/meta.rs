@@ -7,8 +7,7 @@ use std::fs;
 #[derive(Debug, Clone)]
 pub struct Meta {
     pub name: String,
-    pub source_pkg: Option<String>,
-    pub arch: String, // maybe use enums
+    pub arch: String, // TODO: use enums
     pub installed_size: i64,
     pub version: VersionStruct,
     pub dependencies: Vec<DependencyStruct>,
@@ -25,7 +24,6 @@ impl json::Deserialize for Meta {
 
         Ok(Self {
             name: de_required_field!(json["name"].to_string(), "name"),
-            source_pkg: None,
             arch: de_required_field!(json["arch"].to_string(), "arch"),
             installed_size: de_required_field!(json["installed_size"].as_i64(), "installed_size"),
             version,

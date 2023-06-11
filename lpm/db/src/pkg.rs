@@ -23,29 +23,46 @@ use std::path::Path;
 use std::path::PathBuf;
 
 pub trait DbOpsForInstalledPkg {
-    fn load(db: &Database, name: &str) -> Result<Self, LpmError<PackageError>>
+    fn load(core_db: &Database, name: &str) -> Result<Self, LpmError<PackageError>>
     where
         Self: Sized;
-    fn delete_from_db(&self, db: &Database) -> Result<(), LpmError<PackageError>>;
+    fn get_name_by_id(
+        core_db: &Database,
+        id: i64,
+    ) -> Result<Option<String>, LpmError<PackageError>>
+    where
+        Self: Sized;
+    fn delete_from_db(&self, core_db: &Database) -> Result<(), LpmError<PackageError>>;
 }
 
 pub trait DbOpsForBuildFile {
-    fn insert_to_db(&self, db: &Database) -> Result<(), LpmError<PackageError>>;
-    fn update_existing_pkg(&self, db: &Database, pkg_id: i64)
-        -> Result<(), LpmError<PackageError>>;
+    fn insert_to_db(
+        &self,
+        core_db: &Database,
+        src_pkg_id: Option<i64>,
+    ) -> Result<i64, LpmError<PackageError>>;
+    fn update_existing_pkg(
+        &self,
+        core_db: &Database,
+        pkg_id: i64,
+    ) -> Result<(), LpmError<PackageError>>;
 }
 
 impl DbOpsForBuildFile for PkgDataFromFs {
-    fn insert_to_db(&self, db: &Database) -> Result<(), LpmError<PackageError>> {
-        enable_foreign_keys(db)?;
+    fn insert_to_db(
+        &self,
+        core_db: &Database,
+        src_pkg_id: Option<i64>,
+    ) -> Result<i64, LpmError<PackageError>> {
+        enable_foreign_keys(core_db)?;
 
-        if is_package_exists(db, &self.meta_dir.meta.name)? {
+        if is_package_exists(core_db, &self.meta_dir.meta.name)? {
             return Err(
                 PackageErrorKind::AlreadyInstalled(self.meta_dir.meta.name.clone()).to_lpm_err(),
             );
         }
 
-        transaction_op(db, Transaction::Begin)?;
+        transaction_op(core_db, Transaction::Begin)?;
 
         const NAME_COL_PRE_ID: usize = 1;
         const SRC_PKG_ID_COL_PRE_ID: usize = 2;
@@ -69,13 +86,15 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         let statement = Insert::new(Some(package_columns), String::from("packages")).to_string();
 
-        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
         try_bind_val!(sql, NAME_COL_PRE_ID, &*self.meta_dir.meta.name);
 
-        // TODO
-        // will be used for sub-packages
-        try_bind_val!(sql, SRC_PKG_ID_COL_PRE_ID, SQLITE_NULL);
+        if let Some(pkg_id) = src_pkg_id {
+            try_bind_val!(sql, SRC_PKG_ID_COL_PRE_ID, pkg_id);
+        } else {
+            try_bind_val!(sql, SRC_PKG_ID_COL_PRE_ID, SQLITE_NULL);
+        }
 
         try_bind_val!(
             sql,
@@ -99,23 +118,29 @@ impl DbOpsForBuildFile for PkgDataFromFs {
             &*self.meta_dir.meta.version.readable_format
         );
 
-        if PreparedStatementStatus::Done != sql.execute_prepared() {
+        let sql_status = sql.execute_prepared();
+        if PreparedStatementStatus::Done != sql_status {
             sql.kill();
-            transaction_op(db, Transaction::Rollback)?;
+            transaction_op(core_db, Transaction::Rollback)?;
+            logger::error!(
+                "Database sync failed with '{}' package. Sql status: {:?}",
+                self.meta_dir.meta.name,
+                sql_status
+            );
 
             return Err(
                 PackageErrorKind::InstallationFailed(self.meta_dir.meta.name.clone()).to_lpm_err(),
             );
         }
 
-        let pkg_id = super::get_last_insert_row_id(db)?;
+        let pkg_id = super::get_last_insert_row_id(core_db)?;
 
         sql.kill();
 
-        match insert_files(db, pkg_id, &self.meta_dir.files) {
-            Ok(_) => Ok(()),
+        match insert_files(core_db, pkg_id, &self.meta_dir.files) {
+            Ok(_) => Ok(pkg_id),
             Err(err) => {
-                transaction_op(db, Transaction::Rollback)?;
+                transaction_op(core_db, Transaction::Rollback)?;
                 Err(err)
             }
         }
@@ -123,18 +148,18 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
     fn update_existing_pkg(
         &self,
-        db: &Database,
+        core_db: &Database,
         pkg_id: i64,
     ) -> Result<(), LpmError<PackageError>> {
-        enable_foreign_keys(db)?;
+        enable_foreign_keys(core_db)?;
 
-        if !is_package_exists(db, &self.meta_dir.meta.name)? {
+        if !is_package_exists(core_db, &self.meta_dir.meta.name)? {
             return Err(
                 PackageErrorKind::DoesNotExists(self.meta_dir.meta.name.clone()).to_lpm_err(),
             );
         }
 
-        transaction_op(db, Transaction::Begin)?;
+        transaction_op(core_db, Transaction::Begin)?;
 
         const NAME_COL_PRE_ID: usize = 1;
         const SRC_PKG_ID_COL_PRE_ID: usize = 2;
@@ -159,7 +184,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
             .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
             .to_string();
 
-        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
         try_bind_val!(sql, NAME_COL_PRE_ID, &*self.meta_dir.meta.name);
 
@@ -191,7 +216,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         if PreparedStatementStatus::Done != sql.execute_prepared() {
             sql.kill();
-            transaction_op(db, Transaction::Rollback)?;
+            transaction_op(core_db, Transaction::Rollback)?;
 
             return Err(
                 PackageErrorKind::InstallationFailed(self.meta_dir.meta.name.clone()).to_lpm_err(),
@@ -200,18 +225,18 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         sql.kill();
 
-        match delete_pkg_files(db, pkg_id) {
+        match delete_pkg_files(core_db, pkg_id) {
             Ok(_) => (),
             Err(err) => {
-                transaction_op(db, Transaction::Rollback)?;
-                return Err(err.into());
+                transaction_op(core_db, Transaction::Rollback)?;
+                return Err(err)?;
             }
         };
 
-        match insert_files(db, pkg_id, &self.meta_dir.files) {
+        match insert_files(core_db, pkg_id, &self.meta_dir.files) {
             Ok(_) => Ok(()),
             Err(err) => {
-                transaction_op(db, Transaction::Rollback)?;
+                transaction_op(core_db, Transaction::Rollback)?;
                 Err(err)
             }
         }
@@ -219,12 +244,12 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 }
 
 impl DbOpsForInstalledPkg for PkgDataFromDb {
-    fn load(db: &Database, name: &str) -> Result<Self, LpmError<PackageError>> {
+    fn load(core_db: &Database, name: &str) -> Result<Self, LpmError<PackageError>> {
         info!("Loading '{}' from database..", name);
 
         const PKG_ID_COL_PRE_ID: usize = 0;
         const NAME_COL_PRE_ID: usize = 1;
-        // const SRC_PKG_ID_COL_PRE_ID: usize = 2; TODO
+        const SRC_PKG_ID_COL_PRE_ID: usize = 2;
         const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
         const V_MAJOR_COL_PRE_ID: usize = 4;
         const V_MINOR_COL_PRE_ID: usize = 5;
@@ -235,13 +260,15 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
         let statement = Select::new(None, String::from("packages"))
             .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
             .to_string();
-        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
         try_bind_val!(sql, NAME_COL_PRE_ID, name);
         try_execute_prepared!(
             sql,
             simple_e_fmt!("Error SELECT query on 'packages' table.")
         );
+
         let id: i64 = sql.get_data(PKG_ID_COL_PRE_ID).unwrap_or(0);
+        let src_pkg_package_id = sql.get_data(SRC_PKG_ID_COL_PRE_ID)?;
 
         if id == 0 {
             sql.kill();
@@ -259,7 +286,6 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
 
         let meta = Meta {
             name: sql.get_data(NAME_COL_PRE_ID)?,
-            source_pkg: None, // TODO
             arch: String::new(),
             installed_size: sql.get_data(INSTALLED_SIZE_COL_PRE_ID)?,
             version,
@@ -277,7 +303,7 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
                 String::from("package_id"),
             ))
             .to_string();
-        let mut sql = db.prepare(files_statement, super::SQL_NO_CALLBACK_FN)?;
+        let mut sql = core_db.prepare(files_statement, super::SQL_NO_CALLBACK_FN)?;
         try_bind_val!(sql, PACKAGE_ID_COL_PRE_ID, id);
 
         let mut files: Vec<FileStruct> = Vec::new();
@@ -306,17 +332,42 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
         info!("Package '{}' successfully loaded.", name);
         Ok(PkgDataFromDb {
             pkg_id: id,
+            src_pkg_package_id,
             meta_fields,
         })
     }
 
-    fn delete_from_db<'lpkg>(&self, db: &Database) -> Result<(), LpmError<PackageError>> {
+    fn get_name_by_id(
+        core_db: &Database,
+        id: i64,
+    ) -> Result<Option<String>, LpmError<PackageError>> {
+        const ID_COL_PRE_ID: usize = 1;
+
+        let statement = Select::new(Some(vec![String::from("name")]), String::from("packages"))
+            .where_condition(Where::Equal(ID_COL_PRE_ID, String::from("id")))
+            .to_string();
+
+        let mut sql = core_db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+        try_bind_val!(sql, ID_COL_PRE_ID, id);
+        try_execute_prepared!(
+            sql,
+            simple_e_fmt!("Failed executing SQL statement \n{}.", statement)
+        );
+
+        let name = sql.get_data(0)?;
+
+        sql.kill();
+
+        Ok(name)
+    }
+
+    fn delete_from_db<'lpkg>(&self, core_db: &Database) -> Result<(), LpmError<PackageError>> {
         const NAME_COL_PRE_ID: usize = 1;
         let statement = Delete::new(String::from("packages"))
             .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
             .to_string();
 
-        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
         try_bind_val!(sql, NAME_COL_PRE_ID, self.meta_fields.meta.name.clone());
         try_execute_prepared!(
             sql,
@@ -332,7 +383,7 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
 }
 
 fn delete_pkg_files(
-    db: &Database,
+    core_db: &Database,
     pkg_id: i64,
 ) -> Result<PreparedStatementStatus, LpmError<SqlError>> {
     const PKG_ID_COL_PRE_ID: usize = 1;
@@ -341,7 +392,7 @@ fn delete_pkg_files(
         .where_condition(Where::Equal(PKG_ID_COL_PRE_ID, String::from("package_id")))
         .to_string();
 
-    let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, PKG_ID_COL_PRE_ID, pkg_id);
 
@@ -355,7 +406,11 @@ fn delete_pkg_files(
     Ok(status)
 }
 
-fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmError<PackageError>> {
+fn insert_files(
+    core_db: &Database,
+    pkg_id: i64,
+    files: &Files,
+) -> Result<(), LpmError<PackageError>> {
     let files = &files.0;
 
     for file in files {
@@ -379,7 +434,7 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmErro
         ];
         let statement = Insert::new(Some(file_columns), String::from("files")).to_string();
 
-        let mut sql = db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+        let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
         try_bind_val!(
             sql,
@@ -403,17 +458,14 @@ fn insert_files(db: &Database, pkg_id: i64, files: &Files) -> Result<(), LpmErro
     Ok(())
 }
 
-// TODO:
-// Add version conditions to fix problem of always returning true even when we
-// want to install another version.
-pub fn is_package_exists(db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
+pub fn is_package_exists(core_db: &Database, name: &str) -> Result<bool, LpmError<SqlError>> {
     const NAME_COL_PRE_ID: usize = 1;
     let exists_statement = Select::new(None, String::from("packages"))
         .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
         .exists()
         .to_string();
 
-    let mut sql = db.prepare(exists_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(exists_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, NAME_COL_PRE_ID, name);
 

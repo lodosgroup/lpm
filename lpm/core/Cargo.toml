@@ -10,7 +10,7 @@ db = { path = "../db" }
 ehandle = { path = "../ehandle" }
 hash = { path = "../../libs/hash" }
 logger = { path = "../../libs/logger" }
-min-sqlite3-sys = "1.3"
+min-sqlite3-sys = "1.4"
 rekuest = { path = "../../libs/rekuest" }
 untar = { path = "../../libs/untar" }
 tiny-lz4-decoder-sys = "1.0"

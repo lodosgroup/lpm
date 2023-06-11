@@ -14,7 +14,7 @@ pub use repository::{
     delete_repositories, get_repositories, insert_repository, is_repository_exists,
 };
 
-pub const REPOSITORY_DB_DIR: &str = "/var/lib/lpm/db/repositories";
+pub const REPOSITORY_INDEX_DB_DIR: &str = "/var/lib/lpm/db/repositories";
 pub const CORE_DB_PATH: &str = "/var/lib/lpm/db/core-db";
 
 pub const SQL_NO_CALLBACK_FN: Option<
@@ -22,8 +22,8 @@ pub const SQL_NO_CALLBACK_FN: Option<
 > = None::<Box<dyn FnOnce(SqlitePrimaryResult, String)>>;
 
 #[allow(clippy::disallowed_methods)]
-pub fn enable_foreign_keys(db: &Database) -> Result<(), LpmError<SqlError>> {
-    db.execute(
+pub fn enable_foreign_keys(any_db: &Database) -> Result<(), LpmError<SqlError>> {
+    any_db.execute(
         String::from("PRAGMA foreign_keys = on;"),
         SQL_NO_CALLBACK_FN,
     )?;
@@ -31,9 +31,29 @@ pub fn enable_foreign_keys(db: &Database) -> Result<(), LpmError<SqlError>> {
     Ok(())
 }
 
-fn get_last_insert_row_id(db: &Database) -> Result<i64, LpmError<SqlError>> {
+#[allow(clippy::disallowed_methods)]
+pub fn enable_core_db_pragmas(core_db: &Database) -> Result<(), LpmError<SqlError>> {
+    core_db.execute(
+        String::from("PRAGMA journal_mode = WAL;"),
+        SQL_NO_CALLBACK_FN,
+    )?;
+
+    core_db.execute(
+        String::from("PRAGMA temp_storage = memory;"),
+        SQL_NO_CALLBACK_FN,
+    )?;
+
+    core_db.execute(
+        String::from("PRAGMA synchronous = normal;"),
+        SQL_NO_CALLBACK_FN,
+    )?;
+
+    Ok(())
+}
+
+fn get_last_insert_row_id(any_db: &Database) -> Result<i64, LpmError<SqlError>> {
     let statement = String::from("SELECT LAST_INSERT_ROWID();");
-    let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
+    let mut sql = any_db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
 
     try_execute_prepared!(
         sql,
@@ -62,19 +82,19 @@ impl Transaction {
 }
 
 pub fn transaction_op(
-    db: &Database,
+    any_db: &Database,
     transaction: Transaction,
 ) -> Result<SqlitePrimaryResult, LpmError<SqlError>> {
     #[allow(clippy::disallowed_methods)]
-    match db.execute(transaction.to_statement(), SQL_NO_CALLBACK_FN)? {
+    match any_db.execute(transaction.to_statement(), SQL_NO_CALLBACK_FN)? {
         SqlitePrimaryResult::Ok => Ok(SqlitePrimaryResult::Ok),
         e => Err(SqlErrorKind::FailedExecuting(transaction.to_statement(), e).to_lpm_err()),
     }
 }
 
-pub fn get_current_datetime(db: &Database) -> Result<String, LpmError<SqlError>> {
+pub fn get_current_datetime(any_db: &Database) -> Result<String, LpmError<SqlError>> {
     let statement = String::from("SELECT datetime(CURRENT_TIMESTAMP, 'localtime');");
-    let mut sql = db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
+    let mut sql = any_db.prepare(statement.clone(), SQL_NO_CALLBACK_FN)?;
 
     try_execute_prepared!(
         sql,
