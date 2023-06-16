@@ -15,7 +15,7 @@ use db::{
     pkg::{DbOpsForBuildFile, DbOpsForInstalledPkg},
     transaction_op, Transaction,
 };
-use ehandle::{lpm::LpmError, MainError};
+use ehandle::{lpm::LpmError, repository::RepositoryErrorKind, ErrorCommons, MainError};
 use logger::{debug, info, warning};
 use min_sqlite3_sys::prelude::Database;
 use std::{
@@ -181,7 +181,15 @@ pub fn update_from_repository(
         patch: None,
         tag: None,
     };
-    let index = find_pkg_index(core_db, &pkg_to_query)?;
+
+    let index_db_list = db::get_repositories(core_db)?;
+
+    if index_db_list.is_empty() {
+        info!("No repository has been found within the database.");
+        return Err(RepositoryErrorKind::PackageNotFound(pkg_to_query.name).to_lpm_err())?;
+    }
+
+    let index = find_pkg_index(&index_db_list, &pkg_to_query)?;
 
     if old_pkg.meta_fields.meta.version.compare(&index.version) == std::cmp::Ordering::Equal {
         info!("{} is up to date", pkg_name);

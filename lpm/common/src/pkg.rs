@@ -2,7 +2,7 @@ use super::ParserTasks;
 use crate::{
     meta::{Files, Meta},
     system::System,
-    version::Condition,
+    version::{Condition, VersionStruct},
 };
 
 use std::path::{Path, PathBuf};
@@ -57,9 +57,9 @@ impl MetaDir {
 #[derive(Debug, PartialEq)]
 pub struct PkgToQuery {
     pub name: String,
-    pub major: Option<u32>,
-    pub minor: Option<u32>,
-    pub patch: Option<u32>,
+    pub major: Option<u16>,
+    pub minor: Option<u16>,
+    pub patch: Option<u16>,
     pub tag: Option<String>,
     pub condition: Condition,
 }
@@ -95,9 +95,9 @@ impl PkgToQuery {
                 }
             }
 
-            let major = version_numbers[0].parse::<u32>().ok();
-            let minor = version_numbers.get(1).and_then(|v| v.parse::<u32>().ok());
-            let patch = version_numbers.get(2).and_then(|v| v.parse::<u32>().ok());
+            let major = version_numbers[0].parse::<u16>().ok();
+            let minor = version_numbers.get(1).and_then(|v| v.parse::<u16>().ok());
+            let patch = version_numbers.get(2).and_then(|v| v.parse::<u16>().ok());
             let tag = version_parts.next().map(|v| v.to_string());
 
             Some(Self {
@@ -117,6 +117,38 @@ impl PkgToQuery {
                 patch: None,
                 tag: None,
             })
+        }
+    }
+
+    pub fn version_string(&self) -> String {
+        let mut s = String::new();
+        if let Some(v) = self.major {
+            s = format!("{s}{v}");
+        }
+
+        if let Some(v) = self.minor {
+            s = format!("{s}.{v}");
+        }
+
+        if let Some(v) = self.patch {
+            s = format!("{s}.{v}");
+        }
+
+        if let Some(v) = &self.tag {
+            s = format!("{s}-{v}");
+        }
+
+        s
+    }
+
+    pub fn version_struct(&self) -> VersionStruct {
+        VersionStruct {
+            major: self.major.unwrap_or_default(),
+            minor: self.minor.unwrap_or_default(),
+            patch: self.patch.unwrap_or_default(),
+            tag: self.tag.clone(),
+            condition: self.condition,
+            readable_format: self.version_string(),
         }
     }
 }

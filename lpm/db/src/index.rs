@@ -188,7 +188,7 @@ impl PkgIndex {
     }
 
     pub fn pkg_output_path(&self, output_dir: &str) -> PathBuf {
-        PathBuf::from(output_dir.to_string()).join(self.pkg_filename())
+        PathBuf::from(output_dir).join(self.pkg_filename())
     }
 
     pub fn get_mandatory_dependencies(

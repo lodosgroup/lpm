@@ -6,14 +6,14 @@ use std::cmp::Ordering;
 #[derive(Clone, Debug, Default)]
 pub struct VersionStruct {
     pub readable_format: String,
-    pub major: u8,
-    pub minor: u8,
-    pub patch: u8,
+    pub major: u16,
+    pub minor: u16,
+    pub patch: u16,
     pub tag: Option<String>,
     pub condition: Condition,
 }
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub enum Condition {
     Less = -2,
     LessOrEqual = -1,
@@ -84,9 +84,9 @@ impl json::Deserialize for VersionStruct {
                 json["readable_format"].to_string(),
                 "readable_format"
             ),
-            major: de_required_field!(json["major"].as_u8(), "major"),
-            minor: de_required_field!(json["minor"].as_u8(), "minor"),
-            patch: de_required_field!(json["patch"].as_u8(), "patch"),
+            major: de_required_field!(json["major"].as_u16(), "major"),
+            minor: de_required_field!(json["minor"].as_u16(), "minor"),
+            patch: de_required_field!(json["patch"].as_u16(), "patch"),
             tag: json["tag"].to_string(),
             condition: Condition::from_string_slice(
                 &json["condition"].to_string().unwrap_or_default(),

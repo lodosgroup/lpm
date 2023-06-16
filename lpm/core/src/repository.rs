@@ -120,19 +120,13 @@ pub fn get_and_apply_repository_patches(
 
 /// Finds most recent one when version is not specified
 pub(crate) fn find_pkg_index(
-    core_db: &Database,
+    index_db_list: &[(String, String)],
     pkg_to_query: &PkgToQuery,
 ) -> Result<PkgIndex, LpmError<RepositoryError>> {
-    let list = get_repositories(core_db)?;
-
-    if list.is_empty() {
-        info!("No repository has been found within the database.");
-        return Err(RepositoryErrorKind::PackageNotFound(pkg_to_query.name.clone()).to_lpm_err());
-    }
 
     let mut most_recent_index = PkgIndex::default();
 
-    for (name, address) in &list {
+    for (name, address) in index_db_list {
         let repository_db_path = Path::new(REPOSITORY_INDEX_DB_DIR).join(name);
         let db_file = fs::metadata(&repository_db_path)?;
         let db = Database::open(Path::new(&repository_db_path))?;

@@ -54,7 +54,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         core_db: &Database,
         src_pkg_id: Option<i64>,
     ) -> Result<i64, LpmError<PackageError>> {
-        enable_foreign_keys(core_db)?;
+        // enable_foreign_keys(core_db)?;
 
         transaction_op(core_db, Transaction::Begin)?;
 
