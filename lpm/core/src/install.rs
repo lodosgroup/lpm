@@ -34,15 +34,9 @@ trait PkgInstallTasks {
     fn pre_install_task(path: &Path) -> Result<Self, LpmError<MainError>>
     where
         Self: Sized;
-    fn start_install_task(&self) -> Result<(), LpmError<MainError>>;
-    fn sync_with_db(
-        &self,
-        core_db: &Database,
-        src_pkg_id: Option<i64>,
-    ) -> Result<i64, LpmError<MainError>>;
+    fn install_files(&self) -> Result<(), LpmError<MainError>>;
     fn copy_programs(&self) -> Result<(), LpmError<MainError>>;
     fn copy_scripts(&self) -> Result<(), LpmError<MainError>>;
-    fn install(&self) -> Result<(), LpmError<MainError>>;
 }
 
 impl PkgInstallTasks for PkgDataFromFs {
@@ -130,11 +124,12 @@ impl PkgInstallTasks for PkgDataFromFs {
         Ok(pkg)
     }
 
-    fn start_install_task(&self) -> Result<(), LpmError<MainError>> {
+    fn install_files(&self) -> Result<(), LpmError<MainError>> {
         self.scripts.execute_script(ScriptPhase::PreInstall)?;
 
         info!("Installing package files into system..");
-        self.install()?;
+        self.copy_scripts()?;
+        self.copy_programs()?;
 
         info!("Cleaning temporary files..");
         self.cleanup()?;
@@ -142,23 +137,6 @@ impl PkgInstallTasks for PkgDataFromFs {
         self.scripts.execute_script(ScriptPhase::PostInstall)?;
 
         Ok(())
-    }
-
-    fn sync_with_db(
-        &self,
-        core_db: &Database,
-        src_pkg_id: Option<i64>,
-    ) -> Result<i64, LpmError<MainError>> {
-        info!("Syncing with package database..");
-        let pkg_id = self.insert_to_db(core_db, src_pkg_id)?;
-
-        Ok(pkg_id)
-    }
-
-    #[inline(always)]
-    fn install(&self) -> Result<(), LpmError<MainError>> {
-        self.copy_scripts()?;
-        self.copy_programs()
     }
 
     fn copy_programs(&self) -> Result<(), LpmError<MainError>> {
@@ -204,7 +182,6 @@ impl PkgInstallTasks for PkgDataFromFs {
 pub fn install_from_repository(
     core_db: Database,
     pkg_name: &str,
-    _src_pkg_id: Option<i64>,
 ) -> Result<(), LpmError<MainError>> {
     let pkg_to_query = PkgToQuery::parse(pkg_name)
         .ok_or_else(|| PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err())?;
@@ -217,7 +194,6 @@ pub fn install_from_repository(
         return Ok(());
     }
 
-    // Find package stack(package itself and it's dependencies)
     let pkg_stack = PkgDataFromFs::get_pkg_stack(&core_db, pkg_to_query)?;
 
     let core_db = Arc::new(core_db);
@@ -236,14 +212,16 @@ pub fn install_from_repository(
             let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
 
             info!("Package installation started for {}", pkg_path.display());
-            pkg.start_install_task()?;
+            pkg.install_files()?;
 
             if is_src_pkg {
-                let pkg_id = pkg.sync_with_db(&core_db, *src_pkg_id.read().unwrap())?;
+                info!("Syncing with package database..");
+                let pkg_id = pkg.insert_to_db(&core_db, *src_pkg_id.read().unwrap())?;
                 *src_pkg_id.write().unwrap() = Some(pkg_id); // write src id so deps can use it
             } else {
                 while src_pkg_id.read().unwrap().is_none() {} // block until src id gets ready
-                let _ = pkg.sync_with_db(&core_db, *src_pkg_id.read().unwrap())?;
+                info!("Syncing with package database..");
+                let _ = pkg.insert_to_db(&core_db, *src_pkg_id.read().unwrap())?;
             };
 
             Ok(())
@@ -259,16 +237,25 @@ pub fn install_from_repository(
     Ok(())
 }
 
-pub fn install_from_lod_file(
-    _core_db: Database,
-    pkg_path: &str,
-    _src_pkg_id: Option<i64>,
-) -> Result<(), LpmError<MainError>> {
+/// Local installations ignores the sub-packages(dependencies) for now.
+pub fn install_from_lod_file(core_db: Database, pkg_path: &str) -> Result<(), LpmError<MainError>> {
     info!("Package installation started for {}", pkg_path);
+
     let pkg_path = PathBuf::from(pkg_path);
-    let _pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
-    // TODO
-    // pkg.start_install_task(core_db, src_pkg_id)?;
+    let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
+
+    if is_package_exists(&core_db, &pkg.meta_dir.meta.name)? {
+        logger::info!(
+            "Package '{}' already installed on your machine.",
+            pkg.meta_dir.meta.name
+        );
+        return Ok(());
+    }
+
+    pkg.install_files()?;
+
+    info!("Syncing with package database..");
+    let _ = pkg.insert_to_db(&core_db, None)?;
 
     Ok(())
 }
