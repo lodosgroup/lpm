@@ -28,8 +28,7 @@ pub fn update_database_migrations() -> Result<(), LpmError<MainError>> {
     std::fs::create_dir_all(db::REPOSITORY_INDEX_DB_DIR)?;
     std::fs::create_dir_all(stage1::PKG_SCRIPTS_DIR)?;
 
-    let core_db = Database::open(Path::new(db::CORE_DB_PATH))?;
-    db::migrate_database_tables(&core_db)?;
+    db::migrate_database_tables(&open_core_db_connection()?)?;
 
     Ok(())
 }
