@@ -93,8 +93,10 @@ impl ModuleController {
 
         Ok(())
     }
+}
 
-    fn unload(self) {
+impl Drop for ModuleController {
+    fn drop(&mut self) {
         #[allow(unsafe_code)]
         unsafe {
             dlclose(self.0);
@@ -114,11 +116,11 @@ pub fn trigger_lpm_module(
     let dylib_path = get_dylib_path_by_name(core_db, module_name)?
         .ok_or_else(|| ModuleErrorKind::ModuleNotFound(module_name.to_owned()).to_lpm_err())?;
 
-    let module_controller = ModuleController::load(&dylib_path)?;
     info!("Module '{}' loaded.", module_name);
+    let module_controller = ModuleController::load(&dylib_path)?;
+
     module_controller.run(args.clone())?;
-    module_controller.unload();
-    info!("Module '{}' finished running and unloaded.", module_name);
+    info!("Module '{}' finished running.", module_name);
 
     Ok(())
 }
