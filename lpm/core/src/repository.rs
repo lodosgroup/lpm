@@ -123,7 +123,6 @@ pub(crate) fn find_pkg_index(
     index_db_list: &[(String, String)],
     pkg_to_query: &PkgToQuery,
 ) -> Result<PkgIndex, LpmError<RepositoryError>> {
-
     let mut most_recent_index = PkgIndex::default();
 
     for (name, address) in index_db_list {

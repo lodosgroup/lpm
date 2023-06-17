@@ -22,6 +22,7 @@ use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},
     path::{Path, PathBuf},
+    sync::{Arc, RwLock},
     thread,
 };
 
@@ -30,11 +31,14 @@ trait PkgInstallTasks {
         core_db: &Database,
         pkg_to_query: PkgToQuery,
     ) -> Result<Vec<PkgIndex>, LpmError<MainError>>;
+    fn pre_install_task(path: &Path) -> Result<Self, LpmError<MainError>>
+    where
+        Self: Sized;
     fn start_install_task(
+        &self,
         core_db: &Database,
-        path: &str,
         src_pkg_id: Option<i64>,
-    ) -> Result<(), LpmError<MainError>>;
+    ) -> Result<i64, LpmError<MainError>>;
     fn copy_programs(&self) -> Result<(), LpmError<MainError>>;
     fn copy_scripts(&self) -> Result<(), LpmError<MainError>>;
     fn install(&self) -> Result<(), LpmError<MainError>>;
@@ -49,9 +53,7 @@ impl PkgInstallTasks for PkgDataFromFs {
         let index_db_list = db::get_repositories(core_db)?;
         if index_db_list.is_empty() {
             info!("No repository has been found within the database.");
-            return Err(
-                RepositoryErrorKind::PackageNotFound(pkg_to_query.name).to_lpm_err(),
-            )?;
+            return Err(RepositoryErrorKind::PackageNotFound(pkg_to_query.name).to_lpm_err())?;
         }
 
         let index = find_pkg_index(&index_db_list, &pkg_to_query)?;
@@ -117,48 +119,42 @@ impl PkgInstallTasks for PkgDataFromFs {
         Ok(pkg_stack)
     }
 
-    fn start_install_task(
-        core_db: &Database,
-        path: &str,
-        src_pkg_id: Option<i64>,
-    ) -> Result<(), LpmError<MainError>> {
-        let pkg_path = PathBuf::from(path);
-
+    fn pre_install_task(path: &Path) -> Result<Self, LpmError<MainError>> {
         info!("Extracting..");
-        let pkg = PkgDataFromFs::start_extract_task(&pkg_path)?;
-
-        if is_package_exists(core_db, &pkg.meta_dir.meta.name)? {
-            logger::info!(
-                "Package '{}' already installed on your machine.",
-                pkg.meta_dir.meta.name
-            );
-            return Ok(());
-        }
+        let pkg = PkgDataFromFs::start_extract_task(path)?;
 
         info!("Validating files..");
         pkg.start_validate_task()?;
 
-        info!("Syncing with package database..");
-        let _pkg_id = pkg.insert_to_db(core_db, src_pkg_id)?;
+        Ok(pkg)
+    }
 
-        if let Err(err) = pkg.scripts.execute_script(ScriptPhase::PreInstall) {
+    fn start_install_task(
+        &self,
+        core_db: &Database,
+        src_pkg_id: Option<i64>,
+    ) -> Result<i64, LpmError<MainError>> {
+        info!("Syncing with package database..");
+        let pkg_id = self.insert_to_db(core_db, src_pkg_id)?;
+
+        if let Err(err) = self.scripts.execute_script(ScriptPhase::PreInstall) {
             transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }
 
         info!("Installing package files into system..");
-        if let Err(err) = pkg.install() {
+        if let Err(err) = self.install() {
             transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         };
 
         info!("Cleaning temporary files..");
-        if let Err(err) = pkg.cleanup() {
+        if let Err(err) = self.cleanup() {
             transaction_op(core_db, Transaction::Rollback)?;
             return Err(err)?;
         };
 
-        if let Err(err) = pkg.scripts.execute_script(ScriptPhase::PostInstall) {
+        if let Err(err) = self.scripts.execute_script(ScriptPhase::PostInstall) {
             transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }
@@ -170,7 +166,7 @@ impl PkgInstallTasks for PkgDataFromFs {
 
         info!("Installation transaction completed.");
 
-        Ok(())
+        Ok(pkg_id)
     }
 
     #[inline(always)]
@@ -222,7 +218,7 @@ impl PkgInstallTasks for PkgDataFromFs {
 pub fn install_from_repository(
     core_db: &Database,
     pkg_name: &str,
-    src_pkg_id: Option<i64>,
+    _src_pkg_id: Option<i64>,
 ) -> Result<(), LpmError<MainError>> {
     let pkg_to_query = PkgToQuery::parse(pkg_name)
         .ok_or_else(|| PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err())?;
@@ -240,21 +236,47 @@ pub fn install_from_repository(
 
     let mut thread_handlers = Vec::new();
 
+    // - Download all in parallel
+    // - Extract all in parallel
+    // - Install all in parallel
+
+    // - Insert the source package, get the src id and insert the rest of them in parallel
+
+    let shared_data: Arc<RwLock<Option<i64>>> = Arc::new(RwLock::new(None));
+    let root_pkg_filename = pkg_stack.first().unwrap().pkg_filename();
     for item in pkg_stack {
+        let shared_data = Arc::clone(&shared_data);
+        let is_root_pkg = item.pkg_filename() == root_pkg_filename;
+
         let pkg_path = item.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
-        let handler = thread::spawn(move || {
+        let handler = thread::spawn(move || -> Result<i64, LpmError<MainError>> {
             let core_db = crate::open_core_db_connection()?;
             download_file(&item.pkg_url(), &pkg_path)?;
-            let pkg_path_as_string = pkg_path.display().to_string();
-            info!("Package installation started for {}", &pkg_path_as_string);
-            PkgDataFromFs::start_install_task(&core_db, &pkg_path_as_string, src_pkg_id)
+            let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
+            info!("Package installation started for {}", pkg_path.display());
+
+            let pkg_id = if is_root_pkg {
+                let pkg_id = pkg.start_install_task(&core_db, *shared_data.read().unwrap())?;
+                *shared_data.write().unwrap() = Some(pkg_id); // Write pkg_id to shared_data for the first element
+
+                pkg_id
+            } else {
+                while shared_data.read().unwrap().is_none() {
+                    thread::yield_now(); // Wait until shared_data has a value
+                }
+                let pkg_id = pkg.start_install_task(&core_db, *shared_data.read().unwrap())?; // Use shared_data for other elements
+
+                pkg_id
+            };
+
+            Ok(pkg_id)
         });
 
         thread_handlers.push(handler);
     }
 
     for handler in thread_handlers {
-        handler.join().unwrap()?;
+        let _ = handler.join().unwrap()?;
     }
 
     Ok(())
@@ -266,7 +288,9 @@ pub fn install_from_lod_file(
     src_pkg_id: Option<i64>,
 ) -> Result<(), LpmError<MainError>> {
     info!("Package installation started for {}", pkg_path);
-    PkgDataFromFs::start_install_task(core_db, pkg_path, src_pkg_id)?;
+    let pkg_path = PathBuf::from(pkg_path);
+    let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
+    pkg.start_install_task(core_db, src_pkg_id)?;
 
     Ok(())
 }
