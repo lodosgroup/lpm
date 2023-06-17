@@ -21,7 +21,7 @@ extern "C" fn install_lod_file(pkg_path: *const std::os::raw::c_char) -> ResultC
         }
     };
 
-    if let Err(err) = core::install_from_lod_file(&core_db, pkg_path, None) {
+    if let Err(err) = core::install_from_lod_file(core_db, pkg_path, None) {
         logger::error!("{:?}", err);
         return err.result_code;
     }

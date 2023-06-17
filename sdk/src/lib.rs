@@ -10,9 +10,9 @@ use ehandle::ResultCode;
 #[repr(C)]
 struct CVersionStruct {
     pub readable_format: *const std::os::raw::c_char,
-    pub major: u8,
-    pub minor: u8,
-    pub patch: u8,
+    pub major: u16,
+    pub minor: u16,
+    pub patch: u16,
     pub tag: *const std::os::raw::c_char,
 }
 

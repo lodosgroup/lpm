@@ -12,7 +12,7 @@ use common::{
 };
 use db::{
     pkg::{is_package_exists, DbOpsForBuildFile},
-    transaction_op, PkgIndex, Transaction,
+    PkgIndex,
 };
 use ehandle::{
     lpm::LpmError, pkg::PackageErrorKind, repository::RepositoryErrorKind, ErrorCommons, MainError,
@@ -34,7 +34,8 @@ trait PkgInstallTasks {
     fn pre_install_task(path: &Path) -> Result<Self, LpmError<MainError>>
     where
         Self: Sized;
-    fn start_install_task(
+    fn start_install_task(&self) -> Result<(), LpmError<MainError>>;
+    fn sync_with_db(
         &self,
         core_db: &Database,
         src_pkg_id: Option<i64>,
@@ -129,42 +130,27 @@ impl PkgInstallTasks for PkgDataFromFs {
         Ok(pkg)
     }
 
-    fn start_install_task(
+    fn start_install_task(&self) -> Result<(), LpmError<MainError>> {
+        self.scripts.execute_script(ScriptPhase::PreInstall)?;
+
+        info!("Installing package files into system..");
+        self.install()?;
+
+        info!("Cleaning temporary files..");
+        self.cleanup()?;
+
+        self.scripts.execute_script(ScriptPhase::PostInstall)?;
+
+        Ok(())
+    }
+
+    fn sync_with_db(
         &self,
         core_db: &Database,
         src_pkg_id: Option<i64>,
     ) -> Result<i64, LpmError<MainError>> {
         info!("Syncing with package database..");
         let pkg_id = self.insert_to_db(core_db, src_pkg_id)?;
-
-        if let Err(err) = self.scripts.execute_script(ScriptPhase::PreInstall) {
-            transaction_op(core_db, Transaction::Rollback)?;
-            return Err(err);
-        }
-
-        info!("Installing package files into system..");
-        if let Err(err) = self.install() {
-            transaction_op(core_db, Transaction::Rollback)?;
-            return Err(err);
-        };
-
-        info!("Cleaning temporary files..");
-        if let Err(err) = self.cleanup() {
-            transaction_op(core_db, Transaction::Rollback)?;
-            return Err(err)?;
-        };
-
-        if let Err(err) = self.scripts.execute_script(ScriptPhase::PostInstall) {
-            transaction_op(core_db, Transaction::Rollback)?;
-            return Err(err);
-        }
-
-        if let Err(err) = transaction_op(core_db, Transaction::Commit) {
-            transaction_op(core_db, Transaction::Rollback)?;
-            return Err(err)?;
-        };
-
-        info!("Installation transaction completed.");
 
         Ok(pkg_id)
     }
@@ -216,14 +202,14 @@ impl PkgInstallTasks for PkgDataFromFs {
 }
 
 pub fn install_from_repository(
-    core_db: &Database,
+    core_db: Database,
     pkg_name: &str,
     _src_pkg_id: Option<i64>,
 ) -> Result<(), LpmError<MainError>> {
     let pkg_to_query = PkgToQuery::parse(pkg_name)
         .ok_or_else(|| PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err())?;
 
-    if is_package_exists(core_db, &pkg_to_query.name)? {
+    if is_package_exists(&core_db, &pkg_to_query.name)? {
         logger::info!(
             "Package '{}' already installed on your machine.",
             pkg_to_query.to_string()
@@ -232,65 +218,57 @@ pub fn install_from_repository(
     }
 
     // Find package stack(package itself and it's dependencies)
-    let pkg_stack = PkgDataFromFs::get_pkg_stack(core_db, pkg_to_query)?;
+    let pkg_stack = PkgDataFromFs::get_pkg_stack(&core_db, pkg_to_query)?;
+
+    let core_db = Arc::new(core_db);
+    let src_pkg_id: Arc<RwLock<Option<i64>>> = Arc::new(RwLock::new(None));
+    let src_pkg_filename = pkg_stack.first().unwrap().pkg_filename();
 
     let mut thread_handlers = Vec::new();
-
-    // - Download all in parallel
-    // - Extract all in parallel
-    // - Install all in parallel
-
-    // - Insert the source package, get the src id and insert the rest of them in parallel
-
-    let shared_data: Arc<RwLock<Option<i64>>> = Arc::new(RwLock::new(None));
-    let root_pkg_filename = pkg_stack.first().unwrap().pkg_filename();
     for item in pkg_stack {
-        let shared_data = Arc::clone(&shared_data);
-        let is_root_pkg = item.pkg_filename() == root_pkg_filename;
+        let core_db = core_db.clone();
+        let src_pkg_id = Arc::clone(&src_pkg_id);
+        let is_src_pkg = item.pkg_filename() == src_pkg_filename;
 
         let pkg_path = item.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
-        let handler = thread::spawn(move || -> Result<i64, LpmError<MainError>> {
-            let core_db = crate::open_core_db_connection()?;
+        let handler = thread::spawn(move || -> Result<(), LpmError<MainError>> {
             download_file(&item.pkg_url(), &pkg_path)?;
             let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
+
             info!("Package installation started for {}", pkg_path.display());
+            pkg.start_install_task()?;
 
-            let pkg_id = if is_root_pkg {
-                let pkg_id = pkg.start_install_task(&core_db, *shared_data.read().unwrap())?;
-                *shared_data.write().unwrap() = Some(pkg_id); // Write pkg_id to shared_data for the first element
-
-                pkg_id
+            if is_src_pkg {
+                let pkg_id = pkg.sync_with_db(&core_db, *src_pkg_id.read().unwrap())?;
+                *src_pkg_id.write().unwrap() = Some(pkg_id); // write src id so deps can use it
             } else {
-                while shared_data.read().unwrap().is_none() {
-                    thread::yield_now(); // Wait until shared_data has a value
-                }
-                let pkg_id = pkg.start_install_task(&core_db, *shared_data.read().unwrap())?; // Use shared_data for other elements
-
-                pkg_id
+                while src_pkg_id.read().unwrap().is_none() {} // block until src id gets ready
+                let _ = pkg.sync_with_db(&core_db, *src_pkg_id.read().unwrap())?;
             };
 
-            Ok(pkg_id)
+            Ok(())
         });
 
         thread_handlers.push(handler);
     }
 
     for handler in thread_handlers {
-        let _ = handler.join().unwrap()?;
+        handler.join().unwrap()?;
     }
 
     Ok(())
 }
 
 pub fn install_from_lod_file(
-    core_db: &Database,
+    _core_db: Database,
     pkg_path: &str,
-    src_pkg_id: Option<i64>,
+    _src_pkg_id: Option<i64>,
 ) -> Result<(), LpmError<MainError>> {
     info!("Package installation started for {}", pkg_path);
     let pkg_path = PathBuf::from(pkg_path);
-    let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
-    pkg.start_install_task(core_db, src_pkg_id)?;
+    let _pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
+    // TODO
+    // pkg.start_install_task(core_db, src_pkg_id)?;
 
     Ok(())
 }

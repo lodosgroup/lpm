@@ -56,8 +56,6 @@ impl DbOpsForBuildFile for PkgDataFromFs {
     ) -> Result<i64, LpmError<PackageError>> {
         enable_foreign_keys(core_db)?;
 
-        transaction_op(core_db, Transaction::Begin)?;
-
         const NAME_COL_PRE_ID: usize = 1;
         const SRC_PKG_ID_COL_PRE_ID: usize = 2;
         const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
@@ -114,7 +112,6 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         let sql_status = sql.execute_prepared();
         if PreparedStatementStatus::Done != sql_status {
-            transaction_op(core_db, Transaction::Rollback)?;
             logger::error!(
                 "Database sync failed with '{}' package. Sql status: {:?}",
                 self.meta_dir.meta.name,
@@ -130,10 +127,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         match insert_files(core_db, pkg_id, &self.meta_dir.files) {
             Ok(_) => Ok(pkg_id),
-            Err(err) => {
-                transaction_op(core_db, Transaction::Rollback)?;
-                Err(err)
-            }
+            Err(err) => Err(err),
         }
     }
 
