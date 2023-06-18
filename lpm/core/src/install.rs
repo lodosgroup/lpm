@@ -200,35 +200,36 @@ pub fn install_from_repository(
     let src_pkg_id: Arc<RwLock<Option<i64>>> = Arc::new(RwLock::new(None));
     let src_pkg_filename = pkg_stack.first().unwrap().pkg_filename();
 
-    let mut thread_handlers = Vec::new();
-    for item in pkg_stack {
-        let core_db = core_db.clone();
-        let src_pkg_id = Arc::clone(&src_pkg_id);
-        let is_src_pkg = item.pkg_filename() == src_pkg_filename;
+    let thread_handlers: Vec<_> = pkg_stack
+        .into_iter()
+        .map(|item| {
+            let core_db = core_db.clone();
+            let src_pkg_id = Arc::clone(&src_pkg_id);
+            let is_src_pkg = item.pkg_filename() == src_pkg_filename;
 
-        let pkg_path = item.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
-        let handler = thread::spawn(move || -> Result<(), LpmError<MainError>> {
-            download_file(&item.pkg_url(), &pkg_path)?;
-            let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
+            let pkg_path = item.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
 
-            info!("Package installation started for {}", pkg_path.display());
-            pkg.install_files()?;
+            thread::spawn(move || -> Result<(), LpmError<MainError>> {
+                download_file(&item.pkg_url(), &pkg_path)?;
+                let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
 
-            if is_src_pkg {
-                info!("Syncing with package database..");
-                let pkg_id = pkg.insert_to_db(&core_db, *src_pkg_id.read().unwrap())?;
-                *src_pkg_id.write().unwrap() = Some(pkg_id); // write src id so deps can use it
-            } else {
-                while src_pkg_id.read().unwrap().is_none() {} // block until src id gets ready
-                info!("Syncing with package database..");
-                let _ = pkg.insert_to_db(&core_db, *src_pkg_id.read().unwrap())?;
-            };
+                info!("Package installation started for {}", pkg_path.display());
+                pkg.install_files()?;
 
-            Ok(())
-        });
+                if is_src_pkg {
+                    info!("Syncing with package database..");
+                    let pkg_id = pkg.insert_to_db(&core_db, *src_pkg_id.read().unwrap())?;
+                    *src_pkg_id.write().unwrap() = Some(pkg_id); // write src id so deps can use it
+                } else {
+                    while src_pkg_id.read().unwrap().is_none() {} // block until src id gets ready
+                    info!("Syncing with package database..");
+                    let _ = pkg.insert_to_db(&core_db, *src_pkg_id.read().unwrap())?;
+                };
 
-        thread_handlers.push(handler);
-    }
+                Ok(())
+            })
+        })
+        .collect();
 
     for handler in thread_handlers {
         handler.join().unwrap()?;

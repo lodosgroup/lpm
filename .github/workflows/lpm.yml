@@ -20,16 +20,41 @@ jobs:
           cargo clippy --all-targets --all-features -- --D warnings
 
   test:
-    timeout-minutes: 10
+    timeout-minutes: 20
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
     steps:
       - uses: actions/checkout@v3
-      - name: test
+
+      - name: unit tests
         run: |
           cargo test --all-features
+
+      - name: build lpm
+        run: |
+          cargo build
+
+      - name: lpm --update --all
+        run: |
+          sudo ./target/debug/lpm --update --all
+
+      - name: Sync with 'linux-amd64-default' repository
+        run: |
+          sudo ./target/debug/lpm --repository --add linux-amd64-default linux-amd64-default.lodpm.com
+          sudo ./target/debug/lpm --update --index
+
+      - name: lpm --install
+        run: |
+          sudo ./target/debug/lpm --install lzip
+          sudo ./target/debug/lpm --install gc-devel
+
+      - name: lpm --delete
+        run: |
+          sudo ./target/debug/lpm --delete lzip
+          sudo ./target/debug/lpm --delete gc-devel
+
 
   build:
     timeout-minutes: 10
