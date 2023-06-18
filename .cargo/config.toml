@@ -1,6 +1,5 @@
 [target.'cfg(all())']
 rustflags = [
 	"-Dunsafe_code",
-	"-Dwarnings",
 	"-Ctarget-cpu=native"
 ]
