@@ -24,7 +24,11 @@ impl Ctx {
 
         let mut input = [0u8; 2];
         loop {
-            print!("{q} [Y/n]:");
+            print!(
+                "{} [Y/n]: ",
+                logger::build_log(logger::OutputMode::QUESTION, q)
+            );
+
             io::stdout().flush()?;
 
             io::stdin().read_exact(&mut input)?;
