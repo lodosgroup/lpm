@@ -6,7 +6,7 @@ macro_rules! create_stdout_log_fn {
         #[no_mangle]
         extern "C" fn $fn_name(msg: *const std::os::raw::c_char) {
             let msg = unsafe { CStr::from_ptr(msg).to_bytes() };
-            let log = build_log($log_mode, String::from_utf8_lossy(msg).to_string());
+            let log = build_log($log_mode, &String::from_utf8_lossy(msg));
             log_to_stdout(log.as_bytes());
         }
     };
@@ -19,7 +19,7 @@ create_stdout_log_fn!(warning_log, OutputMode::WARNING);
 #[no_mangle]
 extern "C" fn error_log(msg: *const std::os::raw::c_char) {
     let msg = unsafe { CStr::from_ptr(msg).to_bytes() };
-    let log = build_log(OutputMode::ERROR, String::from_utf8_lossy(msg).to_string());
+    let log = build_log(OutputMode::ERROR, &String::from_utf8_lossy(msg));
     log_to_stderr(log.as_bytes());
 }
 
@@ -27,7 +27,7 @@ extern "C" fn error_log(msg: *const std::os::raw::c_char) {
 #[cfg(debug_assertions)]
 extern "C" fn debug_log(msg: *const std::os::raw::c_char) {
     let msg = unsafe { CStr::from_ptr(msg).to_bytes() };
-    let log = build_log(OutputMode::DEBUG, String::from_utf8_lossy(msg).to_string());
+    let log = build_log(OutputMode::DEBUG, &String::from_utf8_lossy(msg));
     log_to_stdout(log.as_bytes());
 }
 
