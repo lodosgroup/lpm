@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::TcpStream;
 
@@ -8,7 +7,7 @@ pub struct Rekuest {
 }
 
 pub struct HttpResponse {
-    pub headers: HashMap<String, String>,
+    pub headers: Vec<(String, String)>,
     pub body: Vec<u8>,
     pub status_code: u16,
 }
@@ -44,6 +43,7 @@ impl Rekuest {
 
     pub fn get(self) -> io::Result<HttpResponse> {
         let mut stream = TcpStream::connect(&self.host)?;
+        stream.set_nodelay(true)?;
 
         let mut request_data = self.request_data;
         request_data.push_str("\r\n");
@@ -52,7 +52,7 @@ impl Rekuest {
         stream.write_all(request_data.as_bytes())?;
 
         let mut response = HttpResponse {
-            headers: HashMap::new(),
+            headers: Vec::new(),
             body: Vec::new(),
             status_code: 0,
         };
@@ -76,7 +76,7 @@ impl Rekuest {
 
         for line in lines {
             if let Some((header_name, header_value)) = parse_header(line) {
-                response.headers.insert(header_name, header_value);
+                response.headers.push((header_name, header_value));
             }
         }
 
@@ -86,6 +86,17 @@ impl Rekuest {
         response.body = body;
 
         Ok(response)
+    }
+}
+
+impl HttpResponse {
+    pub fn get_header_value(&self, k: &str) -> Option<&str> {
+        for (header_key, header_value) in &self.headers {
+            if header_key == k {
+                return Some(header_value);
+            }
+        }
+        None
     }
 }
 

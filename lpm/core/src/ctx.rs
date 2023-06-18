@@ -5,14 +5,14 @@ use min_sqlite3_sys::prelude::Database;
 use std::io::{self, Read, Write};
 
 pub struct Ctx {
-    pub db: Database,
+    pub core_db: Database,
     pub force_yes: bool,
 }
 
 impl Ctx {
     pub fn new() -> Result<Self, LpmError<MainError>> {
         Ok(Self {
-            db: open_core_db_connection()?,
+            core_db: open_core_db_connection()?,
             force_yes: false,
         })
     }
