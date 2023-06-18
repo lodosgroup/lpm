@@ -2,7 +2,7 @@ use crate::open_core_db_connection;
 
 use ehandle::{lpm::LpmError, MainError};
 use min_sqlite3_sys::prelude::Database;
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 
 pub struct Ctx {
     pub core_db: Database,
@@ -22,8 +22,9 @@ impl Ctx {
             return Ok(true);
         }
 
-        let mut input = [0u8; 2];
         loop {
+            let mut input = String::new();
+
             print!(
                 "{} [Y/n]: ",
                 logger::build_log(logger::OutputMode::QUESTION, q)
@@ -31,22 +32,20 @@ impl Ctx {
 
             io::stdout().flush()?;
 
-            io::stdin().read_exact(&mut input)?;
+            io::stdin().read_line(&mut input)?;
 
             // Expect next char to be new line, so anything other than Y-y/N-n
             // will fail.
-            if input[1] != b'\n' {
-                io::stdin().read_line(&mut Default::default())?; // Clear remaining bytes
+            if input.len() > 2 {
                 continue;
             }
 
-            match input[0] {
-                b'y' | b'Y' => return Ok(true),
-                b'n' | b'N' => return Ok(false),
-                _ => {
-                    io::stdin().read_line(&mut Default::default())?; // Clear remaining bytes
-                    continue;
-                }
+            if input.to_lowercase().starts_with("y\n") {
+                return Ok(true);
+            }
+
+            if input.to_lowercase().starts_with("n\n") {
+                return Ok(false);
             }
         }
     }
