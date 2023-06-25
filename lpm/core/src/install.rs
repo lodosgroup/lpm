@@ -199,16 +199,15 @@ pub fn install_from_repository(
     let src_pkg_id: Arc<AtomicI64> = Arc::new(AtomicI64::new(-61));
     let src_pkg_filename = pkg_stack.first().unwrap().pkg_filename();
 
-    let thread_handlers: Vec<_> = pkg_stack
-        .into_iter()
-        .map(|item| {
+    thread::scope(|s| -> Result<(), LpmError<MainError>> {
+        for item in pkg_stack {
             let core_db = core_db.clone();
             let src_pkg_id = src_pkg_id.clone();
             let is_src_pkg = item.pkg_filename() == src_pkg_filename;
 
             let pkg_path = item.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
 
-            thread::spawn(move || -> Result<(), LpmError<MainError>> {
+            s.spawn(move || -> Result<(), LpmError<MainError>> {
                 download_file(&item.pkg_url(), &pkg_path)?;
                 let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
 
@@ -226,13 +225,11 @@ pub fn install_from_repository(
                 };
 
                 Ok(())
-            })
-        })
-        .collect();
+            });
+        }
 
-    for handler in thread_handlers {
-        handler.join().unwrap()?;
-    }
+        Ok(())
+    })?;
 
     Ok(())
 }
