@@ -8,7 +8,7 @@ use common::{
 use ehandle::lpm::LpmError;
 use logger::debug;
 use std::{
-    fs::{remove_dir_all, File},
+    fs::File,
     io,
     path::{Path, PathBuf},
 };
@@ -19,7 +19,6 @@ pub(crate) trait PkgExtractTasks {
         Self: Sized;
     fn unpack_and_decompress(pkg_path: &Path) -> Result<(), LpmError<io::Error>>;
     fn read_pkg_data(pkg_path: &Path) -> Result<PkgDataFromFs, LpmError<io::Error>>;
-    fn cleanup(&self) -> Result<(), LpmError<io::Error>>;
 }
 
 impl PkgExtractTasks for PkgDataFromFs {
@@ -70,14 +69,6 @@ impl PkgExtractTasks for PkgDataFromFs {
             scripts,
             system,
         })
-    }
-
-    fn cleanup(&self) -> Result<(), LpmError<io::Error>> {
-        let path = get_pkg_tmp_output_path(&self.path);
-        debug!("Cleaning {}", path.display());
-        remove_dir_all(path)?;
-
-        Ok(())
     }
 }
 

@@ -85,12 +85,6 @@ impl PkgUpdateTasks for PkgDataFromDb {
         info!("Syncing with package database..");
         to_pkg.update_existing_pkg(core_db, self.pkg_id)?;
 
-        info!("Cleaning temporary files..");
-        if let Err(err) = to_pkg.cleanup() {
-            transaction_op(core_db, Transaction::Rollback)?;
-            return Err(err)?;
-        };
-
         if let Err(err) = scripts.execute_script(post_script) {
             transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);

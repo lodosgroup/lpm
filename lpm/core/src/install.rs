@@ -22,7 +22,10 @@ use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},
     path::{Path, PathBuf},
-    sync::{Arc, RwLock},
+    sync::{
+        atomic::{AtomicI64, Ordering},
+        Arc,
+    },
     thread,
 };
 
@@ -131,9 +134,6 @@ impl PkgInstallTasks for PkgDataFromFs {
         self.copy_scripts()?;
         self.copy_programs()?;
 
-        info!("Cleaning temporary files..");
-        self.cleanup()?;
-
         self.scripts.execute_script(ScriptPhase::PostInstall)?;
 
         Ok(())
@@ -195,16 +195,15 @@ pub fn install_from_repository(
     }
 
     let pkg_stack = PkgDataFromFs::get_pkg_stack(&core_db, pkg_to_query)?;
-
     let core_db = Arc::new(core_db);
-    let src_pkg_id: Arc<RwLock<Option<i64>>> = Arc::new(RwLock::new(None));
+    let src_pkg_id: Arc<AtomicI64> = Arc::new(AtomicI64::new(-61));
     let src_pkg_filename = pkg_stack.first().unwrap().pkg_filename();
 
     let thread_handlers: Vec<_> = pkg_stack
         .into_iter()
         .map(|item| {
             let core_db = core_db.clone();
-            let src_pkg_id = Arc::clone(&src_pkg_id);
+            let src_pkg_id = src_pkg_id.clone();
             let is_src_pkg = item.pkg_filename() == src_pkg_filename;
 
             let pkg_path = item.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
@@ -218,12 +217,12 @@ pub fn install_from_repository(
 
                 if is_src_pkg {
                     info!("Syncing with package database..");
-                    let pkg_id = pkg.insert_to_db(&core_db, *src_pkg_id.read().unwrap())?;
-                    *src_pkg_id.write().unwrap() = Some(pkg_id); // write src id so deps can use it
+                    let pkg_id = pkg.insert_to_db(&core_db, None)?;
+                    src_pkg_id.store(pkg_id, Ordering::Relaxed); // write src id so deps can use it
                 } else {
-                    while src_pkg_id.read().unwrap().is_none() {} // block until src id gets ready
+                    while src_pkg_id.load(Ordering::Relaxed) == -61 {} // block until src id gets ready
                     info!("Syncing with package database..");
-                    let _ = pkg.insert_to_db(&core_db, *src_pkg_id.read().unwrap())?;
+                    let _ = pkg.insert_to_db(&core_db, Some(src_pkg_id.load(Ordering::Relaxed)))?;
                 };
 
                 Ok(())
