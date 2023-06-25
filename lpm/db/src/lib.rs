@@ -34,7 +34,12 @@ pub fn enable_foreign_keys(any_db: &Database) -> Result<(), LpmError<SqlError>> 
 #[allow(clippy::disallowed_methods)]
 pub fn enable_core_db_pragmas(core_db: &Database) -> Result<(), LpmError<SqlError>> {
     core_db.execute(
-        String::from("PRAGMA journal_mode = WAL;"),
+        String::from("PRAGMA journal_mode = DELETE;"),
+        SQL_NO_CALLBACK_FN,
+    )?;
+
+    core_db.execute(
+        String::from("PRAGMA journal_mode = WAL2;"),
         SQL_NO_CALLBACK_FN,
     )?;
 
