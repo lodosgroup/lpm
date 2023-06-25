@@ -90,20 +90,20 @@ pub fn get_dylib_path_by_name(
     name: &str,
 ) -> Result<Option<String>, LpmError<SqlError>> {
     const NAME_COL_PRE_ID: usize = 1;
-    let select_statement = Select::new(
+    let statement = Select::new(
         Some(vec![String::from("dylib_path")]),
         String::from("modules"),
     )
     .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
     .to_string();
 
-    let mut sql = core_db.prepare(select_statement.clone(), super::SQL_NO_CALLBACK_FN)?;
+    let mut sql = core_db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
 
     try_bind_val!(sql, NAME_COL_PRE_ID, name);
 
     try_execute_prepared!(
         sql,
-        simple_e_fmt!("Select id query failed. SQL:\n {}", select_statement)
+        simple_e_fmt!("Select dylib_path query failed. SQL:\n {}", statement)
     );
 
     let result = sql.get_data::<Option<String>>(0)?;
