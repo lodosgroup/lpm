@@ -77,7 +77,7 @@ fn create_core_tables(core_db: &Database, version: &mut i64) -> Result<(), LpmEr
             CREATE TABLE packages (
                id                       INTEGER    PRIMARY KEY    AUTOINCREMENT,
                name                     TEXT       NOT NULL       UNIQUE,
-               src_pkg_package_id       INTEGER,
+               group_id                 TEXT       NOT NULL,
                installed_size           INTEGER    NOT_NULL,
                v_major                  INTEGER    NOT NULL,
                v_minor                  INTEGER    NOT NULL,
@@ -85,9 +85,7 @@ fn create_core_tables(core_db: &Database, version: &mut i64) -> Result<(), LpmEr
                v_tag                    TEXT,
                v_readable               TEXT       NOT NULL,
                created_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
-               updated_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP,
-
-               FOREIGN KEY(src_pkg_package_id) REFERENCES packages(id) ON DELETE CASCADE
+               updated_at               TIMESTAMP  NOT NULL       DEFAULT CURRENT_TIMESTAMP
             );
 
             /*

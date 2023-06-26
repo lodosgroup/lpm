@@ -14,6 +14,12 @@ pub struct Meta {
     pub suggestions: Vec<SuggestionStruct>,
 }
 
+impl Meta {
+    pub fn get_group_id(&self) -> String {
+        format!("{}@{}", self.name, self.version.readable_format)
+    }
+}
+
 impl json::Deserialize for Meta {
     type Error = String;
 

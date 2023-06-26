@@ -63,15 +63,12 @@ impl PkgDeleteTasks for PkgDataFromDb {
 pub fn delete_lod(core_db: &Database, pkg_name: &str) -> Result<(), LpmError<MainError>> {
     let pkg = PkgDataFromDb::load(core_db, pkg_name)?;
 
-    if let Some(src_id) = pkg.src_pkg_package_id {
-        let main_pkg_name = PkgDataFromDb::get_name_by_id(core_db, src_id)?;
-        if let Some(main_pkg_name) = main_pkg_name {
-            return Err(PackageErrorKind::DependencyOfAnotherPackage {
-                package: pkg_name.to_owned(),
-                depends_on: main_pkg_name,
-            }
-            .to_lpm_err())?;
+    if pkg.meta_fields.meta.get_group_id() != pkg.group_id {
+        return Err(PackageErrorKind::DependencyOfAnotherPackage {
+            package: pkg_name.to_owned(),
+            depends_on: pkg.group_id,
         }
+        .to_lpm_err())?;
     };
 
     info!("Package deletion started for {}", pkg_name);

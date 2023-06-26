@@ -26,12 +26,6 @@ pub trait DbOpsForInstalledPkg {
     fn load(core_db: &Database, name: &str) -> Result<Self, LpmError<PackageError>>
     where
         Self: Sized;
-    fn get_name_by_id(
-        core_db: &Database,
-        id: i64,
-    ) -> Result<Option<String>, LpmError<PackageError>>
-    where
-        Self: Sized;
     fn delete_from_db(&self, core_db: &Database) -> Result<(), LpmError<PackageError>>;
 }
 
@@ -39,12 +33,13 @@ pub trait DbOpsForBuildFile {
     fn insert_to_db(
         &self,
         core_db: &Database,
-        src_pkg_id: Option<i64>,
+        group_id: String,
     ) -> Result<i64, LpmError<PackageError>>;
     fn update_existing_pkg(
         &self,
         core_db: &Database,
         pkg_id: i64,
+        new_group_id: String,
     ) -> Result<(), LpmError<PackageError>>;
 }
 
@@ -52,12 +47,10 @@ impl DbOpsForBuildFile for PkgDataFromFs {
     fn insert_to_db(
         &self,
         core_db: &Database,
-        src_pkg_id: Option<i64>,
+        group_id: String,
     ) -> Result<i64, LpmError<PackageError>> {
-        enable_foreign_keys(core_db)?;
-
         const NAME_COL_PRE_ID: usize = 1;
-        const SRC_PKG_ID_COL_PRE_ID: usize = 2;
+        const GROUP_ID_COL_PRE_ID: usize = 2;
         const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
         const V_MAJOR_COL_PRE_ID: usize = 4;
         const V_MINOR_COL_PRE_ID: usize = 5;
@@ -67,7 +60,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         let package_columns = vec![
             Column::new(String::from("name"), NAME_COL_PRE_ID),
-            Column::new(String::from("src_pkg_package_id"), SRC_PKG_ID_COL_PRE_ID),
+            Column::new(String::from("group_id"), GROUP_ID_COL_PRE_ID),
             Column::new(String::from("installed_size"), INSTALLED_SIZE_COL_PRE_ID),
             Column::new(String::from("v_major"), V_MAJOR_COL_PRE_ID),
             Column::new(String::from("v_minor"), V_MINOR_COL_PRE_ID),
@@ -82,11 +75,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         try_bind_val!(sql, NAME_COL_PRE_ID, &*self.meta_dir.meta.name);
 
-        if let Some(pkg_id) = src_pkg_id {
-            try_bind_val!(sql, SRC_PKG_ID_COL_PRE_ID, pkg_id);
-        } else {
-            try_bind_val!(sql, SRC_PKG_ID_COL_PRE_ID, SQLITE_NULL);
-        }
+        try_bind_val!(sql, GROUP_ID_COL_PRE_ID, &*group_id);
 
         try_bind_val!(
             sql,
@@ -135,13 +124,14 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         &self,
         core_db: &Database,
         pkg_id: i64,
+        _new_group_id: String,
     ) -> Result<(), LpmError<PackageError>> {
         enable_foreign_keys(core_db)?;
 
         transaction_op(core_db, Transaction::Begin)?;
 
         const NAME_COL_PRE_ID: usize = 1;
-        const SRC_PKG_ID_COL_PRE_ID: usize = 2;
+        const GROUP_ID_COL_PRE_ID: usize = 2;
         const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
         const V_MAJOR_COL_PRE_ID: usize = 4;
         const V_MINOR_COL_PRE_ID: usize = 5;
@@ -150,7 +140,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         const V_READABLE_COL_PRE_ID: usize = 8;
 
         let update_fields = vec![
-            Column::new(String::from("src_pkg_package_id"), SRC_PKG_ID_COL_PRE_ID),
+            Column::new(String::from("group_id"), GROUP_ID_COL_PRE_ID),
             Column::new(String::from("installed_size"), INSTALLED_SIZE_COL_PRE_ID),
             Column::new(String::from("v_major"), V_MAJOR_COL_PRE_ID),
             Column::new(String::from("v_minor"), V_MINOR_COL_PRE_ID),
@@ -167,9 +157,9 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         try_bind_val!(sql, NAME_COL_PRE_ID, &*self.meta_dir.meta.name);
 
+        // try_bind_val!(sql, GROUP_ID_COL_PRE_ID, &*new_group_id);
         // TODO
-        // will be used for sub-packages
-        try_bind_val!(sql, SRC_PKG_ID_COL_PRE_ID, SQLITE_NULL);
+        // Update all of old group_ids to new one
 
         try_bind_val!(
             sql,
@@ -225,7 +215,7 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
 
         const PKG_ID_COL_PRE_ID: usize = 0;
         const NAME_COL_PRE_ID: usize = 1;
-        const SRC_PKG_ID_COL_PRE_ID: usize = 2;
+        const GROUP_ID_COL_PRE_ID: usize = 2;
         const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
         const V_MAJOR_COL_PRE_ID: usize = 4;
         const V_MINOR_COL_PRE_ID: usize = 5;
@@ -244,7 +234,7 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
         );
 
         let id: i64 = sql.get_data(PKG_ID_COL_PRE_ID).unwrap_or(0);
-        let src_pkg_package_id = sql.get_data(SRC_PKG_ID_COL_PRE_ID)?;
+        let group_id = sql.get_data(GROUP_ID_COL_PRE_ID)?;
 
         if id == 0 {
             return Err(PackageErrorKind::DoesNotExists(name.to_string()).to_lpm_err());
@@ -304,41 +294,23 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
         info!("Package '{}' successfully loaded.", name);
         Ok(PkgDataFromDb {
             pkg_id: id,
-            src_pkg_package_id,
+            group_id,
             meta_fields,
         })
     }
 
-    fn get_name_by_id(
-        core_db: &Database,
-        id: i64,
-    ) -> Result<Option<String>, LpmError<PackageError>> {
-        const ID_COL_PRE_ID: usize = 1;
-
-        let statement = Select::new(Some(vec![String::from("name")]), String::from("packages"))
-            .where_condition(Where::Equal(ID_COL_PRE_ID, String::from("id")))
-            .to_string();
-
-        let mut sql = core_db.prepare(statement.clone(), super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, ID_COL_PRE_ID, id);
-        try_execute_prepared!(
-            sql,
-            simple_e_fmt!("Failed executing SQL statement \n{}.", statement)
-        );
-
-        let name = sql.get_data(0)?;
-
-        Ok(name)
-    }
-
     fn delete_from_db<'lpkg>(&self, core_db: &Database) -> Result<(), LpmError<PackageError>> {
-        const NAME_COL_PRE_ID: usize = 1;
+        const GROUP_ID_COL_PRE_ID: usize = 1;
         let statement = Delete::new(String::from("packages"))
-            .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
+            .where_condition(Where::Equal(GROUP_ID_COL_PRE_ID, String::from("group_id")))
             .to_string();
 
         let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, NAME_COL_PRE_ID, self.meta_fields.meta.name.clone());
+        try_bind_val!(
+            sql,
+            GROUP_ID_COL_PRE_ID,
+            self.meta_fields.meta.get_group_id()
+        );
         try_execute_prepared!(
             sql,
             simple_e_fmt!(

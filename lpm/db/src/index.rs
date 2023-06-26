@@ -187,6 +187,10 @@ impl PkgIndex {
         format!("{}-{}.lod", self.name, self.version.readable_format)
     }
 
+    pub fn get_group_id(&self) -> String {
+        format!("{}@{}", self.name, self.version.readable_format)
+    }
+
     pub fn pkg_output_path(&self, output_dir: &str) -> PathBuf {
         PathBuf::from(output_dir).join(self.pkg_filename())
     }

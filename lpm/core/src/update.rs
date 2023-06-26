@@ -83,7 +83,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
         self.compare_and_update_files_on_fs(&source_path, to_pkg.meta_dir.files.clone())?;
 
         info!("Syncing with package database..");
-        to_pkg.update_existing_pkg(core_db, self.pkg_id)?;
+        to_pkg.update_existing_pkg(core_db, self.pkg_id, self.meta_fields.meta.get_group_id())?;
 
         if let Err(err) = scripts.execute_script(post_script) {
             transaction_op(core_db, Transaction::Rollback)?;

@@ -16,7 +16,7 @@ pub struct PkgDataFromFs {
 
 pub struct PkgDataFromDb {
     pub pkg_id: i64,
-    pub src_pkg_package_id: Option<i64>,
+    pub group_id: String,
     pub meta_fields: MetaDir,
 }
 

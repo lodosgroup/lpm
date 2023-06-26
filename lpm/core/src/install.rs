@@ -22,10 +22,7 @@ use min_sqlite3_sys::prelude::*;
 use std::{
     fs::{self, create_dir_all},
     path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicI64, Ordering},
-        Arc,
-    },
+    sync::Arc,
     thread,
 };
 
@@ -196,16 +193,12 @@ pub fn install_from_repository(
 
     let pkg_stack = PkgDataFromFs::get_pkg_stack(&core_db, pkg_to_query)?;
     let core_db = Arc::new(core_db);
-    let src_pkg_id: Arc<AtomicI64> = Arc::new(AtomicI64::new(-61));
-    let src_pkg_filename = pkg_stack.first().unwrap().pkg_filename();
 
     thread::scope(|s| -> Result<(), LpmError<MainError>> {
-        for item in pkg_stack {
+        for item in &pkg_stack {
             let core_db = core_db.clone();
-            let src_pkg_id = src_pkg_id.clone();
-            let is_src_pkg = item.pkg_filename() == src_pkg_filename;
-
             let pkg_path = item.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
+            let group_id = pkg_stack[0].get_group_id();
 
             s.spawn(move || -> Result<(), LpmError<MainError>> {
                 download_file(&item.pkg_url(), &pkg_path)?;
@@ -214,15 +207,8 @@ pub fn install_from_repository(
                 info!("Package installation started for {}", pkg_path.display());
                 pkg.install_files()?;
 
-                if is_src_pkg {
-                    info!("Syncing with package database..");
-                    let pkg_id = pkg.insert_to_db(&core_db, None)?;
-                    src_pkg_id.store(pkg_id, Ordering::Relaxed); // write src id so deps can use it
-                } else {
-                    while src_pkg_id.load(Ordering::Relaxed) == -61 {} // block until src id gets ready
-                    info!("Syncing with package database..");
-                    let _ = pkg.insert_to_db(&core_db, Some(src_pkg_id.load(Ordering::Relaxed)))?;
-                };
+                info!("Syncing with package database..");
+                let _id = pkg.insert_to_db(&core_db, group_id)?;
 
                 Ok(())
             });
@@ -252,7 +238,7 @@ pub fn install_from_lod_file(core_db: Database, pkg_path: &str) -> Result<(), Lp
     pkg.install_files()?;
 
     info!("Syncing with package database..");
-    let _ = pkg.insert_to_db(&core_db, None)?;
+    let _ = pkg.insert_to_db(&core_db, pkg.meta_dir.meta.get_group_id())?;
 
     Ok(())
 }
