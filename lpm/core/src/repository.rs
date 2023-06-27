@@ -1,4 +1,6 @@
-use common::pkg::PkgToQuery;
+use crate::Ctx;
+
+use common::{ctx_confirmation_check, pkg::PkgToQuery};
 use db::{
     get_repositories, insert_repository, is_repository_exists, PkgIndex, REPOSITORY_INDEX_DB_DIR,
     SQL_NO_CALLBACK_FN,
@@ -6,27 +8,26 @@ use db::{
 use ehandle::{
     lpm::LpmError,
     repository::{RepositoryError, RepositoryErrorKind},
-    ErrorCommons,
+    ErrorCommons, MainError,
 };
 use logger::{debug, info, warning};
 use min_sqlite3_sys::prelude::*;
 use rekuest::Rekuest;
 use std::{fs, path::Path};
 
-pub fn add_repository(
-    core_db: &Database,
-    name: &str,
-    address: &str,
-) -> Result<(), LpmError<RepositoryError>> {
+pub fn add_repository(ctx: Ctx, name: &str, address: &str) -> Result<(), LpmError<MainError>> {
     let repository_index_db_path = Path::new(REPOSITORY_INDEX_DB_DIR).join(name);
 
-    if is_repository_exists(core_db, name)? {
-        return Err(RepositoryErrorKind::RepositoryAlreadyExists(name.to_owned()).to_lpm_err());
+    if is_repository_exists(&ctx.core_db, name)? {
+        return Err(RepositoryErrorKind::RepositoryAlreadyExists(name.to_owned()).to_lpm_err())?;
     }
+
+    println!("TODO -");
+    ctx_confirmation_check!(ctx);
 
     info!("Adding {name} repository to the database..");
     insert_repository(
-        core_db,
+        &ctx.core_db,
         name,
         address,
         repository_index_db_path.to_str().unwrap(),
@@ -40,21 +41,24 @@ pub fn add_repository(
 }
 
 pub fn delete_repositories(
-    core_db: &Database,
+    ctx: Ctx,
     repository_names: &[String],
-) -> Result<(), LpmError<RepositoryError>> {
+) -> Result<(), LpmError<MainError>> {
     if repository_names.is_empty() {
         panic!("At least 1 repository must be provided.");
     }
 
     for name in repository_names {
-        if !is_repository_exists(core_db, name)? {
-            return Err(RepositoryErrorKind::RepositoryNotFound(name.to_owned()).to_lpm_err());
+        if !is_repository_exists(&ctx.core_db, name)? {
+            return Err(RepositoryErrorKind::RepositoryNotFound(name.to_owned()).to_lpm_err())?;
         }
     }
 
+    println!("TODO -");
+    ctx_confirmation_check!(ctx);
+
     info!("Deleting list of repositories: {:?}", repository_names);
-    db::delete_repositories(core_db, repository_names.to_vec())?;
+    db::delete_repositories(&ctx.core_db, repository_names.to_vec())?;
 
     Ok(())
 }

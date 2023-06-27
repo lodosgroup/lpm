@@ -3,10 +3,11 @@ use crate::{
     repository::find_pkg_index,
     stage1::{Stage1Tasks, PKG_SCRIPTS_DIR},
     validate::PkgValidateTasks,
+    Ctx,
 };
 
 use common::{
-    download_file,
+    ctx_confirmation_check, download_file,
     pkg::{PkgDataFromFs, PkgToQuery, ScriptPhase},
     some_or_error,
 };
@@ -176,14 +177,11 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 }
 
-pub fn install_from_repository(
-    core_db: Database,
-    pkg_name: &str,
-) -> Result<(), LpmError<MainError>> {
+pub fn install_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
     let pkg_to_query = PkgToQuery::parse(pkg_name)
         .ok_or_else(|| PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err())?;
 
-    if is_package_exists(&core_db, &pkg_to_query.name)? {
+    if is_package_exists(&ctx.core_db, &pkg_to_query.name)? {
         logger::info!(
             "Package '{}' already installed on your machine.",
             pkg_to_query.to_string()
@@ -191,9 +189,12 @@ pub fn install_from_repository(
         return Ok(());
     }
 
-    let pkg_stack = PkgDataFromFs::get_pkg_stack(&core_db, pkg_to_query)?;
-    let core_db = Arc::new(core_db);
+    let pkg_stack = PkgDataFromFs::get_pkg_stack(&ctx.core_db, pkg_to_query)?;
 
+    println!("TODO - print list of packages that will be installed");
+    ctx_confirmation_check!(ctx);
+
+    let core_db = Arc::new(&ctx.core_db);
     thread::scope(|s| -> Result<(), LpmError<MainError>> {
         for item in &pkg_stack {
             let core_db = core_db.clone();
@@ -221,13 +222,13 @@ pub fn install_from_repository(
 }
 
 /// Local installations ignores the sub-packages(dependencies) for now.
-pub fn install_from_lod_file(core_db: Database, pkg_path: &str) -> Result<(), LpmError<MainError>> {
+pub fn install_from_lod_file(ctx: Ctx, pkg_path: &str) -> Result<(), LpmError<MainError>> {
     info!("Package installation started for {}", pkg_path);
 
     let pkg_path = PathBuf::from(pkg_path);
     let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
 
-    if is_package_exists(&core_db, &pkg.meta_dir.meta.name)? {
+    if is_package_exists(&ctx.core_db, &pkg.meta_dir.meta.name)? {
         logger::info!(
             "Package '{}' already installed on your machine.",
             pkg.meta_dir.meta.name
@@ -235,10 +236,13 @@ pub fn install_from_lod_file(core_db: Database, pkg_path: &str) -> Result<(), Lp
         return Ok(());
     }
 
+    println!("TODO - print list of packages that will be installed");
+    ctx_confirmation_check!(ctx);
+
     pkg.install_files()?;
 
     info!("Syncing with package database..");
-    let _ = pkg.insert_to_db(&core_db, pkg.meta_dir.meta.get_group_id())?;
+    let _ = pkg.insert_to_db(&ctx.core_db, pkg.meta_dir.meta.get_group_id())?;
 
     Ok(())
 }

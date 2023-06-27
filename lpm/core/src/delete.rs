@@ -1,6 +1,12 @@
-use crate::stage1::{get_scripts, Stage1Tasks, PKG_SCRIPTS_DIR};
+use crate::{
+    stage1::{get_scripts, Stage1Tasks, PKG_SCRIPTS_DIR},
+    Ctx,
+};
 
-use common::pkg::{PkgDataFromDb, ScriptPhase};
+use common::{
+    ctx_confirmation_check,
+    pkg::{PkgDataFromDb, ScriptPhase},
+};
 use db::{enable_foreign_keys, pkg::DbOpsForInstalledPkg, transaction_op, Transaction};
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
 use logger::{info, warning};
@@ -60,8 +66,8 @@ impl PkgDeleteTasks for PkgDataFromDb {
     }
 }
 
-pub fn delete_lod(core_db: &Database, pkg_name: &str) -> Result<(), LpmError<MainError>> {
-    let pkg = PkgDataFromDb::load(core_db, pkg_name)?;
+pub fn delete_lod(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
+    let pkg = PkgDataFromDb::load(&ctx.core_db, pkg_name)?;
 
     if pkg.meta_fields.meta.get_group_id() != pkg.group_id {
         return Err(PackageErrorKind::DependencyOfAnotherPackage {
@@ -71,7 +77,10 @@ pub fn delete_lod(core_db: &Database, pkg_name: &str) -> Result<(), LpmError<Mai
         .to_lpm_err())?;
     };
 
+    println!("TODO - print list of packages that will be deleted");
+    ctx_confirmation_check!(ctx);
+
     info!("Package deletion started for {}", pkg_name);
-    pkg.start_delete_task(core_db)?;
+    pkg.start_delete_task(&ctx.core_db)?;
     Ok(())
 }

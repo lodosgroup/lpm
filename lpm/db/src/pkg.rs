@@ -234,11 +234,12 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
         );
 
         let id: i64 = sql.get_data(PKG_ID_COL_PRE_ID).unwrap_or(0);
-        let group_id = sql.get_data(GROUP_ID_COL_PRE_ID)?;
 
         if id == 0 {
             return Err(PackageErrorKind::DoesNotExists(name.to_string()).to_lpm_err());
         }
+
+        let group_id = sql.get_data(GROUP_ID_COL_PRE_ID)?;
 
         let version = VersionStruct {
             major: sql.get_data(V_MAJOR_COL_PRE_ID)?,

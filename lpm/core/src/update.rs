@@ -3,11 +3,11 @@ use crate::{
     repository::find_pkg_index,
     stage1::{get_scripts, Stage1Tasks, PKG_SCRIPTS_DIR},
     validate::PkgValidateTasks,
-    PkgExtractTasks,
+    Ctx, PkgExtractTasks,
 };
 
 use common::{
-    download_file,
+    ctx_confirmation_check, download_file,
     pkg::{PkgDataFromDb, PkgDataFromFs, PkgToQuery, ScriptPhase},
     Files,
 };
@@ -160,12 +160,9 @@ impl PkgUpdateTasks for PkgDataFromDb {
     }
 }
 
-pub fn update_from_repository(
-    core_db: &Database,
-    pkg_name: &str,
-) -> Result<(), LpmError<MainError>> {
+pub fn update_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
     // ensure the pkg exists
-    let mut old_pkg = PkgDataFromDb::load(core_db, pkg_name)?;
+    let mut old_pkg = PkgDataFromDb::load(&ctx.core_db, pkg_name)?;
 
     let pkg_to_query = PkgToQuery {
         name: pkg_name.to_owned(),
@@ -176,7 +173,7 @@ pub fn update_from_repository(
         tag: None,
     };
 
-    let index_db_list = db::get_repositories(core_db)?;
+    let index_db_list = db::get_repositories(&ctx.core_db)?;
 
     if index_db_list.is_empty() {
         info!("No repository has been found within the database.");
@@ -192,12 +189,15 @@ pub fn update_from_repository(
 
     let pkg_path = index.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
 
+    println!("TODO - print list of packages that will be updated");
+    ctx_confirmation_check!(ctx);
+
     download_file(&index.pkg_url(), &pkg_path)?;
 
     let mut requested_pkg = PkgDataFromFs::start_extract_task(&pkg_path)?;
 
     info!("Package update started for {}", pkg_name);
-    old_pkg.start_update_task(core_db, &mut requested_pkg)?;
+    old_pkg.start_update_task(&ctx.core_db, &mut requested_pkg)?;
 
     remove_file(pkg_path)?;
 
@@ -205,16 +205,18 @@ pub fn update_from_repository(
 }
 
 pub fn update_from_lod_file(
-    core_db: &Database,
+    ctx: Ctx,
     pkg_name: &str,
     pkg_path: &str,
 ) -> Result<(), LpmError<MainError>> {
-    let mut old_pkg = PkgDataFromDb::load(core_db, pkg_name)?;
-
+    let mut old_pkg = PkgDataFromDb::load(&ctx.core_db, pkg_name)?;
     let mut requested_pkg = PkgDataFromFs::start_extract_task(Path::new(pkg_path))?;
 
+    println!("TODO - print list of packages that will be updated");
+    ctx_confirmation_check!(ctx);
+
     info!("Package update started for {}", pkg_name);
-    old_pkg.start_update_task(core_db, &mut requested_pkg)?;
+    old_pkg.start_update_task(&ctx.core_db, &mut requested_pkg)?;
 
     Ok(())
 }

@@ -71,3 +71,12 @@ pub fn download_file(url: &str, output_dir: &Path) -> std::io::Result<()> {
 
     Ok(())
 }
+
+#[macro_export]
+macro_rules! ctx_confirmation_check {
+    ($ctx: expr) => {
+        if !$ctx.ask_for_confirmation("Do you want to continue?")? {
+            std::process::exit(0);
+        }
+    };
+}

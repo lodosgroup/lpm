@@ -22,23 +22,24 @@ fn main() {
     // get executed command and print it on `cmd::None`
 
     let core_db = || try_or_error!(open_core_db_connection());
+    let ctx = || try_or_error!(Ctx::new());
 
     let args: Vec<String> = env::args().collect();
     match Command::parse_args(&args) {
         Command::Install(pkg_name_or_filepath, subcommand) => match subcommand {
             InstallSubcommand::Local => {
-                try_or_error!(install_from_lod_file(core_db(), pkg_name_or_filepath))
+                try_or_error!(install_from_lod_file(ctx(), pkg_name_or_filepath))
             }
 
             InstallSubcommand::None => {
-                try_or_error!(install_from_repository(core_db(), pkg_name_or_filepath,))
+                try_or_error!(install_from_repository(ctx(), pkg_name_or_filepath,))
             }
         },
 
         Command::Update(pkg_name, subcommands) => {
             if subcommands.is_empty() {
                 try_or_error!(update_from_repository(
-                    &core_db(),
+                    ctx(),
                     pkg_name.expect("Package name is missing."),
                 ));
             }
@@ -47,7 +48,7 @@ fn main() {
                 match subcommand {
                     UpdateSubcommand::Local(lod_path) => {
                         try_or_error!(update_from_lod_file(
-                            &core_db(),
+                            ctx(),
                             pkg_name.expect("Package name is missing."),
                             lod_path
                         ))
@@ -68,7 +69,7 @@ fn main() {
             }
         }
 
-        Command::Delete(pkg_name) => try_or_error!(delete_lod(&core_db(), pkg_name)),
+        Command::Delete(pkg_name) => try_or_error!(delete_lod(ctx(), pkg_name)),
 
         Command::Module(subcommand) => match subcommand {
             ModuleSubcommand::None => {
@@ -84,9 +85,9 @@ fn main() {
             ModuleSubcommand::Delete(module_names) => {
                 let module_names: Vec<String> =
                     module_names.iter().map(|t| t.to_string()).collect();
-                try_or_error!(delete_modules(&core_db(), &module_names))
+                try_or_error!(delete_modules(ctx(), &module_names))
             }
-            ModuleSubcommand::List => try_or_error!(print_modules(&core_db())),
+            ModuleSubcommand::List => try_or_error!(print_modules(ctx())),
         },
 
         Command::Repository(subcommand) => match subcommand {
@@ -95,12 +96,12 @@ fn main() {
                     some_or_error!(args.first(), "Repository name is missing"),
                     some_or_error!(args.get(1), "Repository address is missing"),
                 );
-                try_or_error!(add_repository(&core_db(), name, address));
+                try_or_error!(add_repository(ctx(), name, address));
             }
             cli_parser::RepositorySubcommand::Delete(repository_names) => {
                 let repository_names: Vec<String> =
                     repository_names.iter().map(|t| t.to_string()).collect();
-                try_or_error!(delete_repositories(&core_db(), &repository_names))
+                try_or_error!(delete_repositories(ctx(), &repository_names))
             }
             cli_parser::RepositorySubcommand::List => try_or_error!(print_repositories(&core_db())),
             cli_parser::RepositorySubcommand::None => {

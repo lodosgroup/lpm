@@ -1,9 +1,11 @@
-use common::some_or_error;
+use crate::Ctx;
+
+use common::{ctx_confirmation_check, some_or_error};
 use db::{get_dylib_path_by_name, insert_module, is_module_exists, CORE_DB_PATH};
 use ehandle::{
     lpm::LpmError,
     module::{ModuleError, ModuleErrorKind},
-    ErrorCommons,
+    ErrorCommons, MainError,
 };
 use logger::{debug, info};
 use min_sqlite3_sys::prelude::*;
@@ -148,29 +150,29 @@ pub fn add_module(
     Ok(())
 }
 
-pub fn delete_modules(
-    core_db: &Database,
-    module_names: &[String],
-) -> Result<(), LpmError<ModuleError>> {
+pub fn delete_modules(ctx: Ctx, module_names: &[String]) -> Result<(), LpmError<MainError>> {
     if module_names.is_empty() {
         panic!("At least 1 module must be provided.");
     }
 
     for name in module_names {
-        if !is_module_exists(core_db, name)? {
-            return Err(ModuleErrorKind::ModuleNotFound(name.to_owned()).to_lpm_err());
+        if !is_module_exists(&ctx.core_db, name)? {
+            return Err(ModuleErrorKind::ModuleNotFound(name.to_owned()).to_lpm_err())?;
         }
     }
 
+    println!("TODO -");
+    ctx_confirmation_check!(ctx);
+
     info!("Deleting list of modules: {:?}", module_names);
-    db::delete_modules(core_db, module_names.to_vec())?;
+    db::delete_modules(&ctx.core_db, module_names.to_vec())?;
 
     Ok(())
 }
 
-pub fn print_modules(core_db: &Database) -> Result<(), LpmError<ModuleError>> {
+pub fn print_modules(ctx: Ctx) -> Result<(), LpmError<MainError>> {
     info!("Getting module list from the database..");
-    let list = db::get_modules(core_db)?;
+    let list = db::get_modules(&ctx.core_db)?;
 
     println!();
 
@@ -178,6 +180,9 @@ pub fn print_modules(core_db: &Database) -> Result<(), LpmError<ModuleError>> {
         println!("No module has been found within the database.");
         return Ok(());
     }
+
+    println!("TODO -");
+    ctx_confirmation_check!(ctx);
 
     println!("Registered module list:");
     for item in list {
