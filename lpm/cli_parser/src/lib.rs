@@ -15,18 +15,26 @@ pub enum Command<'a> {
     Delete(&'a str),
     Module(ModuleSubcommand<'a>),
     Repository(RepositorySubcommand<'a>),
-    None,
 }
 
-impl Command<'_> {
-    pub fn parse_args(args: &[String]) -> Command<'_> {
+#[derive(Default)]
+pub struct CliParser<'a> {
+    pub commands: Vec<Command<'a>>,
+    pub force_yes: bool,
+}
+
+impl CliParser<'_> {
+    pub fn parse_args(args: &[String]) -> CliParser<'_> {
         let mut iter = args.iter().peekable();
 
+        let mut cli_parser = CliParser::default();
         while let Some(arg) = iter.next() {
             match arg.as_str() {
                 "--install" | "-i" => {
                     if let Some(value) = iter.next() {
-                        return Command::Install(value, InstallSubcommand::parse(&mut iter));
+                        cli_parser
+                            .commands
+                            .push(Command::Install(value, InstallSubcommand::parse(&mut iter)));
                     }
                 }
                 "--update" | "-u" => {
@@ -42,24 +50,33 @@ impl Command<'_> {
                         subcommands.push(UpdateSubcommand::parse(&mut iter));
                     }
 
-                    return Command::Update(pkg_name.map(|t| t.as_str()), subcommands);
+                    cli_parser
+                        .commands
+                        .push(Command::Update(pkg_name.map(|t| t.as_str()), subcommands));
                 }
                 "--delete" | "-d" => {
                     if let Some(value) = iter.next() {
-                        return Command::Delete(value);
+                        cli_parser.commands.push(Command::Delete(value));
                     }
                 }
                 "--module" | "-m" => {
-                    return Command::Module(ModuleSubcommand::parse(&mut iter));
+                    cli_parser
+                        .commands
+                        .push(Command::Module(ModuleSubcommand::parse(&mut iter)));
                 }
                 "--repository" | "-r" => {
-                    return Command::Repository(RepositorySubcommand::parse(&mut iter));
+                    cli_parser
+                        .commands
+                        .push(Command::Repository(RepositorySubcommand::parse(&mut iter)));
+                }
+                "--yes" | "-y" => {
+                    cli_parser.force_yes = true;
                 }
                 _ => {}
             }
         }
 
-        Command::None
+        cli_parser
     }
 }
 
@@ -75,11 +92,11 @@ mod tests {
                 String::from("package_name"),
                 String::from("-L"),
             ];
-            let command = Command::parse_args(&args);
-            assert_eq!(
-                command,
-                Command::Install("package_name", InstallSubcommand::Local)
-            );
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
+            assert!(cli_parser
+                .commands
+                .contains(&Command::Install("package_name", InstallSubcommand::Local)));
         }
 
         {
@@ -88,11 +105,11 @@ mod tests {
                 String::from("package_name"),
                 String::from("--local"),
             ];
-            let command = Command::parse_args(&args);
-            assert_eq!(
-                command,
-                Command::Install("package_name", InstallSubcommand::Local)
-            );
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
+            assert!(cli_parser
+                .commands
+                .contains(&Command::Install("package_name", InstallSubcommand::Local)));
         }
     }
 
@@ -100,8 +117,11 @@ mod tests {
     fn test_parse_update() {
         {
             let args = vec![String::from("--update"), String::from("package_name")];
-            let command = Command::parse_args(&args);
-            assert_eq!(command, Command::Update(Some("package_name"), vec![]));
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
+            assert!(cli_parser
+                .commands
+                .contains(&Command::Update(Some("package_name"), vec![])));
         }
 
         {
@@ -111,22 +131,23 @@ mod tests {
                 String::from("--local"),
                 String::from("./path/to/package_name.lod"),
             ];
-            let command = Command::parse_args(&args);
-            assert_eq!(
-                command,
-                Command::Update(
-                    Some("package_name"),
-                    vec![UpdateSubcommand::Local("./path/to/package_name.lod")]
-                )
-            );
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
+            assert!(cli_parser.commands.contains(&Command::Update(
+                Some("package_name"),
+                vec![UpdateSubcommand::Local("./path/to/package_name.lod")]
+            )));
         }
     }
 
     #[test]
     fn test_parse_delete() {
         let args = vec![String::from("--delete"), String::from("package_name")];
-        let command = Command::parse_args(&args);
-        assert_eq!(command, Command::Delete("package_name"));
+        let cli_parser = CliParser::parse_args(&args);
+        assert_eq!(cli_parser.commands.len(), 1);
+        assert!(cli_parser
+            .commands
+            .contains(&Command::Delete("package_name")));
     }
 
     #[test]
@@ -139,10 +160,11 @@ mod tests {
                 String::from("arg2"),
                 String::from("arg3"),
             ];
-            let command = Command::parse_args(&args);
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
             let expected_command =
                 Command::Module(ModuleSubcommand::Add(vec!["arg1", "arg2", "arg3"]));
-            assert_eq!(command, expected_command);
+            assert!(cli_parser.commands.contains(&expected_command));
         }
 
         {
@@ -153,17 +175,19 @@ mod tests {
                 String::from("arg2"),
                 String::from("arg3"),
             ];
-            let command = Command::parse_args(&args);
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
             let expected_command =
                 Command::Module(ModuleSubcommand::Delete(vec!["arg1", "arg2", "arg3"]));
-            assert_eq!(command, expected_command);
+            assert!(cli_parser.commands.contains(&expected_command));
         }
 
         {
             let args = vec![String::from("--module"), String::from("--list")];
-            let command = Command::parse_args(&args);
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
             let expected_command = Command::Module(ModuleSubcommand::List);
-            assert_eq!(command, expected_command);
+            assert!(cli_parser.commands.contains(&expected_command));
         }
     }
     #[test]
@@ -176,12 +200,13 @@ mod tests {
                 String::from("repository-name"),
                 String::from("http://example.address"),
             ];
-            let command = Command::parse_args(&args);
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
             let expected_command = Command::Repository(RepositorySubcommand::Add(vec![
                 "repository-name",
                 "http://example.address",
             ]));
-            assert_eq!(command, expected_command);
+            assert!(cli_parser.commands.contains(&expected_command));
         }
 
         {
@@ -192,20 +217,22 @@ mod tests {
                 String::from("repository-name2"),
                 String::from("repository-name3"),
             ];
-            let command = Command::parse_args(&args);
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
             let expected_command = Command::Repository(RepositorySubcommand::Delete(vec![
                 "repository-name1",
                 "repository-name2",
                 "repository-name3",
             ]));
-            assert_eq!(command, expected_command);
+            assert!(cli_parser.commands.contains(&expected_command));
         }
 
         {
             let args = vec![String::from("--repository"), String::from("--list")];
-            let command = Command::parse_args(&args);
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
             let expected_command = Command::Repository(RepositorySubcommand::List);
-            assert_eq!(command, expected_command);
+            assert!(cli_parser.commands.contains(&expected_command));
         }
     }
 
@@ -213,8 +240,8 @@ mod tests {
     fn test_parse_invalid_commands() {
         {
             let args = vec![String::from("--bla-bla")];
-            let command = Command::parse_args(&args);
-            assert_eq!(command, Command::None);
+            let cli_parser = CliParser::parse_args(&args);
+            assert!(cli_parser.commands.is_empty());
         }
 
         {
@@ -223,11 +250,11 @@ mod tests {
                 String::from("package_name"),
                 String::from("--repository"),
             ];
-            let command = Command::parse_args(&args);
-            assert_eq!(
-                command,
-                Command::Install("package_name", InstallSubcommand::None)
-            );
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
+            assert!(cli_parser
+                .commands
+                .contains(&Command::Install("package_name", InstallSubcommand::None)));
         }
     }
 }

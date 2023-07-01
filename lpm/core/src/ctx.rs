@@ -1,5 +1,6 @@
 use crate::open_core_db_connection;
 
+use cli_parser::CliParser;
 use ehandle::{lpm::LpmError, MainError};
 use min_sqlite3_sys::prelude::Database;
 use std::io::{self, Write};
@@ -14,6 +15,13 @@ impl Ctx {
         Ok(Self {
             core_db: open_core_db_connection()?,
             force_yes: false,
+        })
+    }
+
+    pub fn new_from_cli_parser(cli_parser: &CliParser) -> Result<Self, LpmError<MainError>> {
+        Ok(Self {
+            core_db: open_core_db_connection()?,
+            force_yes: cli_parser.force_yes,
         })
     }
 

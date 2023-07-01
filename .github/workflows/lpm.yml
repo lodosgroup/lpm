@@ -42,18 +42,18 @@ jobs:
 
       - name: Sync with 'linux-amd64-default' repository
         run: |
-          sudo ./target/debug/lpm --repository --add linux-amd64-default linux-amd64-default.lodpm.com
+          sudo ./target/debug/lpm --yes --repository --add linux-amd64-default linux-amd64-default.lodpm.com
           sudo ./target/debug/lpm --update --index
 
       - name: lpm --install
         run: |
-          sudo ./target/debug/lpm --install lzip
-          sudo ./target/debug/lpm --install gc-devel
+          sudo ./target/debug/lpm --yes --install lzip
+          sudo ./target/debug/lpm --yes --install gc-devel
 
       - name: lpm --delete
         run: |
-          sudo ./target/debug/lpm --delete lzip
-          sudo ./target/debug/lpm --delete gc-devel
+          sudo ./target/debug/lpm --yes --delete lzip
+          sudo ./target/debug/lpm --yes --delete gc-devel
 
 
   build:

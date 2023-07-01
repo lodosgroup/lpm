@@ -19,6 +19,7 @@ dependencies = [
 name = "core"
 version = "0.0.1"
 dependencies = [
+ "cli_parser",
  "common",
  "db",
  "ehandle",

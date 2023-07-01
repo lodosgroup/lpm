@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 common = { path = "../common" }
+cli_parser = { path = "../cli_parser" }
 db = { path = "../db" }
 ehandle = { path = "../ehandle" }
 hash = { path = "../../libs/hash" }
