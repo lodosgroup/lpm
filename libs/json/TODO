@@ -1,0 +1,2 @@
+- Optimizations
+	- - Do not iterate for all data-types once we know what we are parsing from the input (e.g., if it's parsing number, no need to check string,object,array conditions in the iteration loop)
