@@ -191,7 +191,18 @@ pub fn install_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<
 
     let pkg_stack = PkgDataFromFs::get_pkg_stack(&ctx.core_db, pkg_to_query)?;
 
-    println!("TODO - print list of packages that will be installed");
+    {
+        // TODO
+        // package size is missing
+        // total installation size is missing
+        // use colors
+        println!("\nPackage list to be installed:");
+        pkg_stack.iter().for_each(|index| {
+            println!("  - {}", index.get_group_id());
+        });
+        println!();
+    }
+
     ctx_confirmation_check!(ctx);
 
     let core_db = Arc::new(&ctx.core_db);
@@ -236,7 +247,16 @@ pub fn install_from_lod_file(ctx: Ctx, pkg_path: &str) -> Result<(), LpmError<Ma
         return Ok(());
     }
 
-    println!("TODO - print list of packages that will be installed");
+    {
+        // TODO
+        // package size is missing
+        // total installation size is missing
+        // use colors
+        println!("\nPackage list to be installed:");
+        println!("  - {}", pkg.meta_dir.meta.get_group_id());
+        println!();
+    }
+
     ctx_confirmation_check!(ctx);
 
     pkg.install_files()?;

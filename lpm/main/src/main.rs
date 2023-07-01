@@ -89,7 +89,7 @@ fn main() {
                         some_or_error!(list.first(), "Module name is missing"),
                         some_or_error!(list.get(1), "Dynamic library path is missing"),
                     );
-                    try_or_error!(add_module(&core_db(), module_name, dylib_path))
+                    try_or_error!(add_module(ctx(), module_name, dylib_path))
                 }
                 ModuleSubcommand::Delete(module_names) => {
                     let module_names: Vec<String> =

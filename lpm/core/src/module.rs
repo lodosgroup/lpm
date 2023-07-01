@@ -127,25 +127,30 @@ pub fn trigger_lpm_module(
     Ok(())
 }
 
-pub fn add_module(
-    core_db: &Database,
-    name: &str,
-    dylib_path: &str,
-) -> Result<(), LpmError<ModuleError>> {
+pub fn add_module(ctx: Ctx, name: &str, dylib_path: &str) -> Result<(), LpmError<MainError>> {
     // read absolute path of the dynamic library
     let dylib_path = std::fs::canonicalize(dylib_path)?;
     let dylib_path = dylib_path.to_string_lossy();
 
-    if is_module_exists(core_db, name)? {
-        return Err(ModuleErrorKind::ModuleAlreadyExists(name.to_owned()).to_lpm_err());
+    if is_module_exists(&ctx.core_db, name)? {
+        return Err(ModuleErrorKind::ModuleAlreadyExists(name.to_owned()).to_lpm_err())?;
     }
+
+    {
+        // TODO
+        // use colors
+        println!("\nModule list to be registered:");
+        println!("  - {name}: {dylib_path}");
+        println!();
+    }
+    ctx_confirmation_check!(ctx);
 
     // validate the module
     debug!("Validating {name} module..");
     ModuleController::validate(&dylib_path)?;
 
     info!("Adding {name} module to the database..");
-    insert_module(core_db, name, &dylib_path)?;
+    insert_module(&ctx.core_db, name, &dylib_path)?;
 
     Ok(())
 }
@@ -161,7 +166,15 @@ pub fn delete_modules(ctx: Ctx, module_names: &[String]) -> Result<(), LpmError<
         }
     }
 
-    println!("TODO -");
+    {
+        // TODO
+        // use colors
+        println!("\nModule list to be deleted:");
+        module_names.iter().for_each(|module| {
+            println!("  - {module}");
+        });
+        println!();
+    }
     ctx_confirmation_check!(ctx);
 
     info!("Deleting list of modules: {:?}", module_names);
@@ -180,9 +193,6 @@ pub fn print_modules(ctx: Ctx) -> Result<(), LpmError<MainError>> {
         println!("No module has been found within the database.");
         return Ok(());
     }
-
-    println!("TODO -");
-    ctx_confirmation_check!(ctx);
 
     println!("Registered module list:");
     for item in list {

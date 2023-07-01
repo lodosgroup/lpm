@@ -77,7 +77,15 @@ pub fn delete_lod(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
         .to_lpm_err())?;
     };
 
-    println!("TODO - print list of packages that will be deleted");
+    {
+        // TODO
+        // package size is missing
+        // total size is missing
+        // use colors
+        println!("\nPackage list to be deleted:");
+        println!("  - {}", pkg.meta_fields.meta.get_group_id());
+        println!();
+    }
     ctx_confirmation_check!(ctx);
 
     info!("Package deletion started for {}", pkg_name);

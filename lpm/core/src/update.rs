@@ -189,7 +189,16 @@ pub fn update_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<M
 
     let pkg_path = index.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
 
-    println!("TODO - print list of packages that will be updated");
+    {
+        // TODO
+        // package size is missing
+        // total installation size is missing
+        // use colors
+        println!("\nPackage list to be updated:");
+        println!("  - {}", index.get_group_id());
+        println!();
+    }
+
     ctx_confirmation_check!(ctx);
 
     download_file(&index.pkg_url(), &pkg_path)?;
@@ -212,7 +221,15 @@ pub fn update_from_lod_file(
     let mut old_pkg = PkgDataFromDb::load(&ctx.core_db, pkg_name)?;
     let mut requested_pkg = PkgDataFromFs::start_extract_task(Path::new(pkg_path))?;
 
-    println!("TODO - print list of packages that will be updated");
+    {
+        // TODO
+        // package size is missing
+        // total installation size is missing
+        // use colors
+        println!("\nPackage list to be updated:");
+        println!("  - {}", requested_pkg.meta_dir.meta.get_group_id());
+        println!();
+    }
     ctx_confirmation_check!(ctx);
 
     info!("Package update started for {}", pkg_name);

@@ -22,7 +22,13 @@ pub fn add_repository(ctx: Ctx, name: &str, address: &str) -> Result<(), LpmErro
         return Err(RepositoryErrorKind::RepositoryAlreadyExists(name.to_owned()).to_lpm_err())?;
     }
 
-    println!("TODO -");
+    {
+        // TODO
+        // use colors
+        println!("\nRepository list to be registered:");
+        println!("  - {name}: {address}");
+        println!();
+    }
     ctx_confirmation_check!(ctx);
 
     info!("Adding {name} repository to the database..");
@@ -54,7 +60,15 @@ pub fn delete_repositories(
         }
     }
 
-    println!("TODO -");
+    {
+        // TODO
+        // use colors
+        println!("\nRepository list to be deleted:");
+        repository_names.iter().for_each(|repository| {
+            println!("  - {repository}");
+        });
+        println!();
+    }
     ctx_confirmation_check!(ctx);
 
     info!("Deleting list of repositories: {:?}", repository_names);
