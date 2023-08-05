@@ -39,7 +39,7 @@ pub fn enable_core_db_pragmas(core_db: &Database) -> Result<(), LpmError<SqlErro
     )?;
 
     core_db.execute(
-        String::from("PRAGMA journal_mode = WAL2;"),
+        String::from("PRAGMA journal_mode = WAL;"),
         SQL_NO_CALLBACK_FN,
     )?;
 
