@@ -56,19 +56,24 @@ macro_rules! some_or_error {
 }
 
 pub fn download_file(url: &str, output_path: &Path) -> std::io::Result<()> {
+    let pkg_filename = output_path.file_name().unwrap();
     // TODO
     // We should check if user wants to force re-downloading.
     if output_path.exists() {
         logger::info!(
             "Skipping package download for {:?}; already exists: '{}'",
-            output_path.file_name().unwrap(),
+            pkg_filename,
             output_path.display()
         );
 
         return Ok(());
     }
 
-    logger::info!("Downloading from '{url}' into '{}'", output_path.display());
+    logger::info!(
+        "Downloading {:?} into '{}'",
+        pkg_filename,
+        output_path.display()
+    );
     let response = Rekuest::new(url)?.get()?;
 
     fs::create_dir_all(some_or_error!(
@@ -80,6 +85,8 @@ pub fn download_file(url: &str, output_path: &Path) -> std::io::Result<()> {
     let mut file = fs::File::create(output_path)?;
     io::Write::write_all(&mut file, &response.body)?;
     io::Write::flush(&mut file)?;
+
+    logger::debug!("Download of {:?} was successful", pkg_filename);
 
     Ok(())
 }
