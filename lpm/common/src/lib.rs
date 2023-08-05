@@ -55,17 +55,29 @@ macro_rules! some_or_error {
     }
 }
 
-pub fn download_file(url: &str, output_dir: &Path) -> std::io::Result<()> {
-    logger::info!("Downloading from '{url}' into {}", output_dir.display());
+pub fn download_file(url: &str, output_path: &Path) -> std::io::Result<()> {
+    // TODO
+    // We should check if user wants to force re-downloading.
+    if output_path.exists() {
+        logger::info!(
+            "Skipping package download for {:?}; already exists: '{}'",
+            output_path.file_name().unwrap(),
+            output_path.display()
+        );
+
+        return Ok(());
+    }
+
+    logger::info!("Downloading from '{url}' into '{}'", output_path.display());
     let response = Rekuest::new(url)?.get()?;
 
     fs::create_dir_all(some_or_error!(
-        output_dir.parent(),
-        "Failed creating parent directories of {}",
-        output_dir.display()
+        output_path.parent(),
+        "Failed creating parent directories of '{}'",
+        output_path.display()
     ))?;
 
-    let mut file = fs::File::create(output_dir)?;
+    let mut file = fs::File::create(output_path)?;
     io::Write::write_all(&mut file, &response.body)?;
     io::Write::flush(&mut file)?;
 
