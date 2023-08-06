@@ -12,6 +12,7 @@ use common::{
     some_or_error,
 };
 use db::{
+    enable_core_db_wal1,
     pkg::{is_package_exists, DbOpsForBuildFile},
     PkgIndex,
 };
@@ -178,6 +179,8 @@ impl PkgInstallTasks for PkgDataFromFs {
 }
 
 pub fn install_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
+    enable_core_db_wal1(&ctx.core_db)?;
+
     let pkg_to_query = PkgToQuery::parse(pkg_name)
         .ok_or_else(|| PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err())?;
 
@@ -234,6 +237,8 @@ pub fn install_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<
 
 /// Local installations ignores the sub-packages(dependencies) for now.
 pub fn install_from_lod_file(ctx: Ctx, pkg_path: &str) -> Result<(), LpmError<MainError>> {
+    enable_core_db_wal1(&ctx.core_db)?;
+
     info!("Package installation started for {}", pkg_path);
 
     let pkg_path = PathBuf::from(pkg_path);

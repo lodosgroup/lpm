@@ -1,8 +1,9 @@
 use crate::open_core_db_connection;
 
 use cli_parser::CliParser;
+use db::SQL_NO_CALLBACK_FN;
 use ehandle::{lpm::LpmError, MainError};
-use min_sqlite3_sys::prelude::Database;
+use min_sqlite3_sys::prelude::{Database, Operations};
 use std::io::{self, Write};
 
 pub struct Ctx {
@@ -56,5 +57,17 @@ impl Ctx {
                 return Ok(false);
             }
         }
+    }
+}
+
+impl Drop for Ctx {
+    fn drop(&mut self) {
+        #[allow(clippy::disallowed_methods)]
+        self.core_db
+            .execute(
+                String::from("PRAGMA journal_mode = DELETE;"),
+                SQL_NO_CALLBACK_FN,
+            )
+            .unwrap();
     }
 }

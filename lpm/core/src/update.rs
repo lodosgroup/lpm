@@ -12,6 +12,7 @@ use common::{
     Files,
 };
 use db::{
+    enable_core_db_wal1,
     pkg::{DbOpsForBuildFile, DbOpsForInstalledPkg},
     transaction_op, Transaction,
 };
@@ -161,6 +162,8 @@ impl PkgUpdateTasks for PkgDataFromDb {
 }
 
 pub fn update_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
+    enable_core_db_wal1(&ctx.core_db)?;
+
     // ensure the pkg exists
     let mut old_pkg = PkgDataFromDb::load(&ctx.core_db, pkg_name)?;
 
@@ -218,6 +221,8 @@ pub fn update_from_lod_file(
     pkg_name: &str,
     pkg_path: &str,
 ) -> Result<(), LpmError<MainError>> {
+    enable_core_db_wal1(&ctx.core_db)?;
+
     let mut old_pkg = PkgDataFromDb::load(&ctx.core_db, pkg_name)?;
     let mut requested_pkg = PkgDataFromFs::start_extract_task(Path::new(pkg_path))?;
 

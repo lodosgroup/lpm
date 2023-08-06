@@ -39,7 +39,7 @@ pub fn enable_core_db_pragmas(core_db: &Database) -> Result<(), LpmError<SqlErro
     )?;
 
     core_db.execute(
-        String::from("PRAGMA journal_mode = WAL;"),
+        String::from("PRAGMA journal_mode = WAL2;"),
         SQL_NO_CALLBACK_FN,
     )?;
 
@@ -50,6 +50,16 @@ pub fn enable_core_db_pragmas(core_db: &Database) -> Result<(), LpmError<SqlErro
 
     core_db.execute(
         String::from("PRAGMA synchronous = normal;"),
+        SQL_NO_CALLBACK_FN,
+    )?;
+
+    Ok(())
+}
+
+#[allow(clippy::disallowed_methods)]
+pub fn enable_core_db_wal1(core_db: &Database) -> Result<(), LpmError<SqlError>> {
+    core_db.execute(
+        String::from("PRAGMA journal_mode = WAL;"),
         SQL_NO_CALLBACK_FN,
     )?;
 

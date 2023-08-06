@@ -7,7 +7,10 @@ use common::{
     ctx_confirmation_check,
     pkg::{PkgDataFromDb, ScriptPhase},
 };
-use db::{enable_foreign_keys, pkg::DbOpsForInstalledPkg, transaction_op, Transaction};
+use db::{
+    enable_core_db_wal1, enable_foreign_keys, pkg::DbOpsForInstalledPkg, transaction_op,
+    Transaction,
+};
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
 use logger::{info, warning};
 use min_sqlite3_sys::prelude::Database;
@@ -67,6 +70,8 @@ impl PkgDeleteTasks for PkgDataFromDb {
 }
 
 pub fn delete_lod(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
+    enable_core_db_wal1(&ctx.core_db)?;
+
     let pkg = PkgDataFromDb::load(&ctx.core_db, pkg_name)?;
 
     if pkg.meta_fields.meta.get_group_id() != pkg.group_id {
