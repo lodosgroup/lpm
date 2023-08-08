@@ -63,7 +63,7 @@ version = "0.1.0"
 
 [[package]]
 name = "lpm"
-version = "0.1.0"
+version = "0.1.0-alpha"
 dependencies = [
  "cli_parser",
  "common",

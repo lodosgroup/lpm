@@ -15,6 +15,7 @@ pub enum Command<'a> {
     Delete(&'a str),
     Module(ModuleSubcommand<'a>),
     Repository(RepositorySubcommand<'a>),
+    Version,
 }
 
 #[derive(Default)]
@@ -71,6 +72,9 @@ impl CliParser<'_> {
                 }
                 "--yes" | "-y" => {
                     cli_parser.force_yes = true;
+                }
+                "--version" | "-v" => {
+                    cli_parser.commands.push(Command::Version);
                 }
                 _ => {}
             }

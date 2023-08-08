@@ -15,6 +15,8 @@ macro_rules! try_or_error {
     };
 }
 
+const LPM_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn main() {
     panic::set_hook(Box::new(|info| logger::error!("{info}")));
 
@@ -31,21 +33,27 @@ fn main() {
         panic!("Invalid command on 'lpm'.");
     }
 
+    let mut should_print_green_message = false;
     cli_parser
         .commands
         .iter()
         .for_each(|command| match command {
-            Command::Install(pkg_name_or_filepath, subcommand) => match subcommand {
-                InstallSubcommand::Local => {
-                    try_or_error!(install_from_lod_file(ctx(), pkg_name_or_filepath))
-                }
+            Command::Install(pkg_name_or_filepath, subcommand) => {
+                should_print_green_message = true;
+                match subcommand {
+                    InstallSubcommand::Local => {
+                        try_or_error!(install_from_lod_file(ctx(), pkg_name_or_filepath));
+                    }
 
-                InstallSubcommand::None => {
-                    try_or_error!(install_from_repository(ctx(), pkg_name_or_filepath,))
+                    InstallSubcommand::None => {
+                        try_or_error!(install_from_repository(ctx(), pkg_name_or_filepath));
+                    }
                 }
-            },
+            }
 
             Command::Update(pkg_name, subcommands) => {
+                should_print_green_message = true;
+
                 if subcommands.is_empty() {
                     try_or_error!(update_from_repository(
                         ctx(),
@@ -78,13 +86,17 @@ fn main() {
                 }
             }
 
-            Command::Delete(pkg_name) => try_or_error!(delete_lod(ctx(), pkg_name)),
+            Command::Delete(pkg_name) => {
+                should_print_green_message = true;
+                try_or_error!(delete_lod(ctx(), pkg_name));
+            }
 
             Command::Module(subcommand) => match subcommand {
                 ModuleSubcommand::None => {
                     try_or_error!(trigger_lpm_module(&core_db(), args.clone()))
                 }
                 ModuleSubcommand::Add(list) => {
+                    should_print_green_message = true;
                     let (module_name, dylib_path) = (
                         some_or_error!(list.first(), "Module name is missing"),
                         some_or_error!(list.get(1), "Dynamic library path is missing"),
@@ -92,6 +104,7 @@ fn main() {
                     try_or_error!(add_module(ctx(), module_name, dylib_path))
                 }
                 ModuleSubcommand::Delete(module_names) => {
+                    should_print_green_message = true;
                     let module_names: Vec<String> =
                         module_names.iter().map(|t| t.to_string()).collect();
                     try_or_error!(delete_modules(ctx(), &module_names))
@@ -101,6 +114,7 @@ fn main() {
 
             Command::Repository(subcommand) => match subcommand {
                 cli_parser::RepositorySubcommand::Add(args) => {
+                    should_print_green_message = true;
                     let (name, address) = (
                         some_or_error!(args.first(), "Repository name is missing"),
                         some_or_error!(args.get(1), "Repository address is missing"),
@@ -108,6 +122,7 @@ fn main() {
                     try_or_error!(add_repository(ctx(), name, address));
                 }
                 cli_parser::RepositorySubcommand::Delete(repository_names) => {
+                    should_print_green_message = true;
                     let repository_names: Vec<String> =
                         repository_names.iter().map(|t| t.to_string()).collect();
                     try_or_error!(delete_repositories(ctx(), &repository_names))
@@ -119,7 +134,13 @@ fn main() {
                     panic!("Invalid command on 'lpm --repository'.");
                 }
             },
+
+            Command::Version => {
+                println!("lpm version: {}", LPM_VERSION);
+            }
         });
 
-    logger::success!("Operation successfully completed.");
+    if should_print_green_message {
+        logger::success!("Operation successfully completed.");
+    }
 }
