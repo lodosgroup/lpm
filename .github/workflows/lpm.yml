@@ -42,7 +42,7 @@ jobs:
 
       - name: Sync with 'linux-amd64-default' repository
         run: |
-          sudo ./target/debug/lpm --yes --repository --add linux-amd64-default linux-amd64-default.lodpm.com
+          sudo ./target/debug/lpm --yes --repository --add linux-amd64-default linux-amd64-default.lpm.lodosgroup.org
           sudo ./target/debug/lpm --update --index
 
       - name: lpm --install

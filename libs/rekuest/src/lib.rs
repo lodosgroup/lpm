@@ -163,37 +163,37 @@ mod tests {
     fn test_parse_url() {
         // with default port and with http prefix
         {
-            let url = "http://linux-amd64-default.lodpm.com";
+            let url = "http://linux-amd64-default.lpm.lodosgroup.org";
             let (host, path) = parse_url(url).unwrap();
-            assert_eq!(host, "linux-amd64-default.lodpm.com:80");
+            assert_eq!(host, "linux-amd64-default.lpm.lodosgroup.org:80");
             assert_eq!(path, "");
 
-            let url = "http://linux-amd64-default.lodpm.com/index-tracker";
+            let url = "http://linux-amd64-default.lpm.lodosgroup.org/index-tracker";
             let (host, path) = parse_url(url).unwrap();
-            assert_eq!(host, "linux-amd64-default.lodpm.com:80");
+            assert_eq!(host, "linux-amd64-default.lpm.lodosgroup.org:80");
             assert_eq!(path, "index-tracker");
 
-            let url = "http://linux-amd64-default.lodpm.com/index-tracker/health";
+            let url = "http://linux-amd64-default.lpm.lodosgroup.org/index-tracker/health";
             let (host, path) = parse_url(url).unwrap();
-            assert_eq!(host, "linux-amd64-default.lodpm.com:80");
+            assert_eq!(host, "linux-amd64-default.lpm.lodosgroup.org:80");
             assert_eq!(path, "index-tracker/health");
         }
 
         // with custom port and without http prefix
         {
-            let url = "linux-amd64-default.lodpm.com:6150";
+            let url = "linux-amd64-default.lpm.lodosgroup.org:6150";
             let (host, path) = parse_url(url).unwrap();
-            assert_eq!(host, "linux-amd64-default.lodpm.com:6150");
+            assert_eq!(host, "linux-amd64-default.lpm.lodosgroup.org:6150");
             assert_eq!(path, "");
 
-            let url = "linux-amd64-default.lodpm.com:6150/index-tracker";
+            let url = "linux-amd64-default.lpm.lodosgroup.org:6150/index-tracker";
             let (host, path) = parse_url(url).unwrap();
-            assert_eq!(host, "linux-amd64-default.lodpm.com:6150");
+            assert_eq!(host, "linux-amd64-default.lpm.lodosgroup.org:6150");
             assert_eq!(path, "index-tracker");
 
-            let url = "linux-amd64-default.lodpm.com:6150/index-tracker/health";
+            let url = "linux-amd64-default.lpm.lodosgroup.org:6150/index-tracker/health";
             let (host, path) = parse_url(url).unwrap();
-            assert_eq!(host, "linux-amd64-default.lodpm.com:6150");
+            assert_eq!(host, "linux-amd64-default.lpm.lodosgroup.org:6150");
             assert_eq!(path, "index-tracker/health");
         }
     }
