@@ -40,8 +40,31 @@ pub fn add_repository(ctx: Ctx, name: &str, address: &str) -> Result<(), LpmErro
         true,
     )?;
 
-    info!("Initializing {name} database file..");
-    let _db = Database::open(repository_index_db_path)?;
+    {
+        info!("Getting {name} indexes..");
+        let index_db = Database::open(&repository_index_db_path)?;
+
+        let index_db_file = fs::metadata(&repository_index_db_path)?;
+        let index_timestamp = if index_db_file.len() == 0 {
+            0
+        } else {
+            PkgIndex::latest_timestamp(&index_db)?
+        };
+
+        let req_url = format!("{address}/index-tracker/{index_timestamp}");
+        debug!("Sending request to '{req_url}'");
+        let r = Rekuest::new(&req_url)?.get()?;
+        let patch = String::from_utf8(r.body)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+        debug!("Applying:\n\n {patch}");
+
+        if !patch.is_empty() {
+            #[allow(clippy::disallowed_methods)]
+            index_db.execute(patch, SQL_NO_CALLBACK_FN)?;
+        }
+
+        info!("{name} indexes successfully updated.");
+    }
 
     Ok(())
 }
