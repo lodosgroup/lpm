@@ -124,7 +124,7 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         &self,
         core_db: &Database,
         pkg_id: i64,
-        _new_group_id: String,
+        new_group_id: String,
     ) -> Result<(), LpmError<PackageError>> {
         enable_foreign_keys(core_db)?;
 
@@ -157,9 +157,9 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         try_bind_val!(sql, NAME_COL_PRE_ID, &*self.meta_dir.meta.name);
 
-        // try_bind_val!(sql, GROUP_ID_COL_PRE_ID, &*new_group_id);
         // TODO
         // Update all of old group_ids to new one
+        try_bind_val!(sql, GROUP_ID_COL_PRE_ID, &*new_group_id);
 
         try_bind_val!(
             sql,
