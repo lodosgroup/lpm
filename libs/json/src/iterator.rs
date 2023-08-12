@@ -297,7 +297,11 @@ pub(crate) fn iterate_tokens(
             // if current char is comma but it's not a value of string
             COMMA if is_non_string_value && !is_key && !is_string_value => {
                 if let Some(JsonValue::Object(parent_object)) = &mut parent_node {
-                    parent_object.insert(key.clone(), JsonValue::Plain(value));
+                    if &value == "null" {
+                        parent_object.insert(key.clone(), JsonValue::Null);
+                    } else {
+                        parent_object.insert(key.clone(), JsonValue::Plain(value));
+                    }
                 } else {
                     match root_object {
                         JsonValue::Object(object) => {
