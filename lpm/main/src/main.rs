@@ -55,16 +55,17 @@ fn main() {
                 should_print_green_message = true;
 
                 if subcommands.is_empty() {
-                    try_or_error!(update_from_repository(
-                        ctx(),
-                        pkg_name.expect("Package name is missing."),
-                    ));
+                    if let Some(pkg_name) = pkg_name {
+                        try_or_error!(update_pkg_from_repository(ctx(), pkg_name));
+                    } else {
+                        try_or_error!(update_pkgs_from_repository(ctx()))
+                    }
                 }
 
                 for subcommand in subcommands {
                     match subcommand {
                         UpdateSubcommand::Local(lod_path) => {
-                            try_or_error!(update_from_lod_file(
+                            try_or_error!(update_pkg_from_lod_file(
                                 ctx(),
                                 pkg_name.expect("Package name is missing."),
                                 lod_path

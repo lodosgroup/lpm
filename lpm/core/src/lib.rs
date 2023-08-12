@@ -18,7 +18,9 @@ pub use install::{install_from_lod_file, install_from_repository};
 pub use module::{add_module, delete_modules, print_modules, trigger_lpm_module};
 pub use repository::get_and_apply_repository_patches;
 pub use repository::{add_repository, delete_repositories, print_repositories};
-pub use update::{update_from_lod_file, update_from_repository};
+pub use update::{
+    update_pkg_from_lod_file, update_pkg_from_repository, update_pkgs_from_repository,
+};
 
 use ehandle::{lpm::LpmError, MainError};
 use min_sqlite3_sys::prelude::*;

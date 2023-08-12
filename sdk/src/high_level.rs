@@ -30,7 +30,7 @@ extern "C" fn install_lod_file(pkg_path: *const std::os::raw::c_char) -> ResultC
 }
 
 #[no_mangle]
-extern "C" fn update_from_lod_file(
+extern "C" fn update_pkg_from_lod_file(
     pkg_name: *const std::os::raw::c_char,
     pkg_path: *const std::os::raw::c_char,
 ) -> ResultCode {
@@ -62,7 +62,7 @@ extern "C" fn update_from_lod_file(
         }
     };
 
-    if let Err(err) = core::update_from_lod_file(ctx, pkg_name, pkg_path) {
+    if let Err(err) = core::update_pkg_from_lod_file(ctx, pkg_name, pkg_path) {
         logger::error!("{:?}", err);
         return err.result_code;
     }

@@ -22,6 +22,8 @@ use min_sqlite3_sys::prelude::Database;
 use std::{
     fs::{self, create_dir_all, remove_file},
     path::Path,
+    sync::Arc,
+    thread,
 };
 
 trait PkgUpdateTasks {
@@ -161,7 +163,95 @@ impl PkgUpdateTasks for PkgDataFromDb {
     }
 }
 
-pub fn update_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
+pub fn update_pkgs_from_repository(ctx: Ctx) -> Result<(), LpmError<MainError>> {
+    enable_core_db_wal1(&ctx.core_db)?;
+
+    let pkgs = PkgDataFromDb::load_all_main_packages(&ctx.core_db)?;
+    let mut old_pkgs = vec![];
+
+    for pkg in pkgs {
+        let pkg_to_query = PkgToQuery {
+            name: pkg.meta_fields.meta.name.clone(),
+            condition: Default::default(),
+            major: None,
+            minor: None,
+            patch: None,
+            tag: None,
+        };
+
+        let index_db_list = db::get_repositories(&ctx.core_db)?;
+
+        if index_db_list.is_empty() {
+            info!("No repository has been found within the database.");
+            return Err(RepositoryErrorKind::PackageNotFound(pkg_to_query.name).to_lpm_err())?;
+        }
+
+        let index = find_pkg_index(&index_db_list, &pkg_to_query)?;
+
+        if pkg.meta_fields.meta.version.compare(&index.version) == std::cmp::Ordering::Less {
+            old_pkgs.push(pkg);
+        }
+    }
+
+    if old_pkgs.is_empty() {
+        info!("All packages are already up to date.");
+        return Ok(());
+    }
+
+    // TODO
+    // add new versions that will be installed
+    // package size is missing
+    // total installation size is missing
+    // use colors
+    println!("\nPackage list to be updated:");
+    for old_pkg in &old_pkgs {
+        println!("  - {}", old_pkg.group_id);
+    }
+    println!();
+    ctx_confirmation_check!(ctx);
+
+    let core_db = Arc::new(&ctx.core_db);
+    thread::scope(|s| -> Result<(), LpmError<MainError>> {
+        for mut old_pkg in old_pkgs {
+            let core_db = core_db.clone();
+
+            let index_db_list = db::get_repositories(&ctx.core_db)?;
+
+            s.spawn(move || -> Result<(), LpmError<MainError>> {
+                let pkg_to_query = PkgToQuery {
+                    name: old_pkg.meta_fields.meta.name.clone(),
+                    condition: Default::default(),
+                    major: None,
+                    minor: None,
+                    patch: None,
+                    tag: None,
+                };
+
+                if index_db_list.is_empty() {
+                    info!("No repository has been found within the database.");
+                    return Err(
+                        RepositoryErrorKind::PackageNotFound(pkg_to_query.name).to_lpm_err()
+                    )?;
+                }
+
+                let index = find_pkg_index(&index_db_list, &pkg_to_query)?;
+                let pkg_path = index.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
+
+                download_file(&index.pkg_url(), &pkg_path)?;
+                let mut requested_pkg = PkgDataFromFs::start_extract_task(&pkg_path)?;
+
+                info!("Package update started for {}", pkg_to_query.name);
+                old_pkg.start_update_task(&core_db, &mut requested_pkg)?;
+
+                Ok(())
+            });
+        }
+
+        Ok(())
+    })
+}
+
+pub fn update_pkg_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
     enable_core_db_wal1(&ctx.core_db)?;
 
     // ensure the pkg exists
@@ -216,7 +306,7 @@ pub fn update_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<M
     Ok(())
 }
 
-pub fn update_from_lod_file(
+pub fn update_pkg_from_lod_file(
     ctx: Ctx,
     pkg_name: &str,
     pkg_path: &str,

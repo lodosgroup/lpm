@@ -23,18 +23,44 @@ use std::path::Path;
 use std::path::PathBuf;
 
 pub trait DbOpsForInstalledPkg {
+    const PKG_ID_COL_PRE_ID: usize = 0;
+    const NAME_COL_PRE_ID: usize = 1;
+    const GROUP_ID_COL_PRE_ID: usize = 2;
+    const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
+    const V_MAJOR_COL_PRE_ID: usize = 4;
+    const V_MINOR_COL_PRE_ID: usize = 5;
+    const V_PATCH_COL_PRE_ID: usize = 6;
+    const V_TAG_COL_PRE_ID: usize = 7;
+    const V_READABLE_COL_PRE_ID: usize = 8;
+
     fn load(core_db: &Database, name: &str) -> Result<Self, LpmError<PackageError>>
     where
         Self: Sized;
+
+    /// Returns the packages that are not dependencies of any other packages.
+    fn load_all_main_packages(core_db: &Database) -> Result<Vec<Self>, LpmError<PackageError>>
+    where
+        Self: Sized;
+
     fn delete_from_db(&self, core_db: &Database) -> Result<(), LpmError<PackageError>>;
 }
 
 pub trait DbOpsForBuildFile {
+    const NAME_COL_PRE_ID: usize = 1;
+    const GROUP_ID_COL_PRE_ID: usize = 2;
+    const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
+    const V_MAJOR_COL_PRE_ID: usize = 4;
+    const V_MINOR_COL_PRE_ID: usize = 5;
+    const V_PATCH_COL_PRE_ID: usize = 6;
+    const V_TAG_COL_PRE_ID: usize = 7;
+    const V_READABLE_COL_PRE_ID: usize = 8;
+
     fn insert_to_db(
         &self,
         core_db: &Database,
         group_id: String,
     ) -> Result<i64, LpmError<PackageError>>;
+
     fn update_existing_pkg(
         &self,
         core_db: &Database,
@@ -49,53 +75,59 @@ impl DbOpsForBuildFile for PkgDataFromFs {
         core_db: &Database,
         group_id: String,
     ) -> Result<i64, LpmError<PackageError>> {
-        const NAME_COL_PRE_ID: usize = 1;
-        const GROUP_ID_COL_PRE_ID: usize = 2;
-        const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
-        const V_MAJOR_COL_PRE_ID: usize = 4;
-        const V_MINOR_COL_PRE_ID: usize = 5;
-        const V_PATCH_COL_PRE_ID: usize = 6;
-        const V_TAG_COL_PRE_ID: usize = 7;
-        const V_READABLE_COL_PRE_ID: usize = 8;
-
         let package_columns = vec![
-            Column::new(String::from("name"), NAME_COL_PRE_ID),
-            Column::new(String::from("group_id"), GROUP_ID_COL_PRE_ID),
-            Column::new(String::from("installed_size"), INSTALLED_SIZE_COL_PRE_ID),
-            Column::new(String::from("v_major"), V_MAJOR_COL_PRE_ID),
-            Column::new(String::from("v_minor"), V_MINOR_COL_PRE_ID),
-            Column::new(String::from("v_patch"), V_PATCH_COL_PRE_ID),
-            Column::new(String::from("v_tag"), V_TAG_COL_PRE_ID),
-            Column::new(String::from("v_readable"), V_READABLE_COL_PRE_ID),
+            Column::new(String::from("name"), Self::NAME_COL_PRE_ID),
+            Column::new(String::from("group_id"), Self::GROUP_ID_COL_PRE_ID),
+            Column::new(
+                String::from("installed_size"),
+                Self::INSTALLED_SIZE_COL_PRE_ID,
+            ),
+            Column::new(String::from("v_major"), Self::V_MAJOR_COL_PRE_ID),
+            Column::new(String::from("v_minor"), Self::V_MINOR_COL_PRE_ID),
+            Column::new(String::from("v_patch"), Self::V_PATCH_COL_PRE_ID),
+            Column::new(String::from("v_tag"), Self::V_TAG_COL_PRE_ID),
+            Column::new(String::from("v_readable"), Self::V_READABLE_COL_PRE_ID),
         ];
 
         let statement = Insert::new(Some(package_columns), String::from("packages")).to_string();
 
         let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
-        try_bind_val!(sql, NAME_COL_PRE_ID, &*self.meta_dir.meta.name);
+        try_bind_val!(sql, Self::NAME_COL_PRE_ID, &*self.meta_dir.meta.name);
 
-        try_bind_val!(sql, GROUP_ID_COL_PRE_ID, &*group_id);
+        try_bind_val!(sql, Self::GROUP_ID_COL_PRE_ID, &*group_id);
 
         try_bind_val!(
             sql,
-            INSTALLED_SIZE_COL_PRE_ID,
+            Self::INSTALLED_SIZE_COL_PRE_ID,
             self.meta_dir.meta.installed_size
         );
 
-        try_bind_val!(sql, V_MAJOR_COL_PRE_ID, self.meta_dir.meta.version.major);
-        try_bind_val!(sql, V_MINOR_COL_PRE_ID, self.meta_dir.meta.version.minor);
-        try_bind_val!(sql, V_PATCH_COL_PRE_ID, self.meta_dir.meta.version.patch);
+        try_bind_val!(
+            sql,
+            Self::V_MAJOR_COL_PRE_ID,
+            self.meta_dir.meta.version.major
+        );
+        try_bind_val!(
+            sql,
+            Self::V_MINOR_COL_PRE_ID,
+            self.meta_dir.meta.version.minor
+        );
+        try_bind_val!(
+            sql,
+            Self::V_PATCH_COL_PRE_ID,
+            self.meta_dir.meta.version.patch
+        );
 
         if let Some(vtag) = &self.meta_dir.meta.version.tag {
-            try_bind_val!(sql, V_TAG_COL_PRE_ID, &**vtag);
+            try_bind_val!(sql, Self::V_TAG_COL_PRE_ID, &**vtag);
         } else {
-            try_bind_val!(sql, V_TAG_COL_PRE_ID, SQLITE_NULL);
+            try_bind_val!(sql, Self::V_TAG_COL_PRE_ID, SQLITE_NULL);
         }
 
         try_bind_val!(
             sql,
-            V_READABLE_COL_PRE_ID,
+            Self::V_READABLE_COL_PRE_ID,
             &*self.meta_dir.meta.version.readable_format
         );
 
@@ -130,56 +162,62 @@ impl DbOpsForBuildFile for PkgDataFromFs {
 
         transaction_op(core_db, Transaction::Begin)?;
 
-        const NAME_COL_PRE_ID: usize = 1;
-        const GROUP_ID_COL_PRE_ID: usize = 2;
-        const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
-        const V_MAJOR_COL_PRE_ID: usize = 4;
-        const V_MINOR_COL_PRE_ID: usize = 5;
-        const V_PATCH_COL_PRE_ID: usize = 6;
-        const V_TAG_COL_PRE_ID: usize = 7;
-        const V_READABLE_COL_PRE_ID: usize = 8;
-
         let update_fields = vec![
-            Column::new(String::from("group_id"), GROUP_ID_COL_PRE_ID),
-            Column::new(String::from("installed_size"), INSTALLED_SIZE_COL_PRE_ID),
-            Column::new(String::from("v_major"), V_MAJOR_COL_PRE_ID),
-            Column::new(String::from("v_minor"), V_MINOR_COL_PRE_ID),
-            Column::new(String::from("v_patch"), V_PATCH_COL_PRE_ID),
-            Column::new(String::from("v_tag"), V_TAG_COL_PRE_ID),
-            Column::new(String::from("v_readable"), V_READABLE_COL_PRE_ID),
+            Column::new(String::from("group_id"), Self::GROUP_ID_COL_PRE_ID),
+            Column::new(
+                String::from("installed_size"),
+                Self::INSTALLED_SIZE_COL_PRE_ID,
+            ),
+            Column::new(String::from("v_major"), Self::V_MAJOR_COL_PRE_ID),
+            Column::new(String::from("v_minor"), Self::V_MINOR_COL_PRE_ID),
+            Column::new(String::from("v_patch"), Self::V_PATCH_COL_PRE_ID),
+            Column::new(String::from("v_tag"), Self::V_TAG_COL_PRE_ID),
+            Column::new(String::from("v_readable"), Self::V_READABLE_COL_PRE_ID),
         ];
 
         let statement = Update::new(update_fields, String::from("packages"))
-            .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
+            .where_condition(Where::Equal(Self::NAME_COL_PRE_ID, String::from("name")))
             .to_string();
 
         let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
 
-        try_bind_val!(sql, NAME_COL_PRE_ID, &*self.meta_dir.meta.name);
+        try_bind_val!(sql, Self::NAME_COL_PRE_ID, &*self.meta_dir.meta.name);
 
         // TODO
         // Update all of old group_ids to new one
-        try_bind_val!(sql, GROUP_ID_COL_PRE_ID, &*new_group_id);
+        try_bind_val!(sql, Self::GROUP_ID_COL_PRE_ID, &*new_group_id);
 
         try_bind_val!(
             sql,
-            INSTALLED_SIZE_COL_PRE_ID,
+            Self::INSTALLED_SIZE_COL_PRE_ID,
             self.meta_dir.meta.installed_size
         );
 
-        try_bind_val!(sql, V_MAJOR_COL_PRE_ID, self.meta_dir.meta.version.major);
-        try_bind_val!(sql, V_MINOR_COL_PRE_ID, self.meta_dir.meta.version.minor);
-        try_bind_val!(sql, V_PATCH_COL_PRE_ID, self.meta_dir.meta.version.patch);
+        try_bind_val!(
+            sql,
+            Self::V_MAJOR_COL_PRE_ID,
+            self.meta_dir.meta.version.major
+        );
+        try_bind_val!(
+            sql,
+            Self::V_MINOR_COL_PRE_ID,
+            self.meta_dir.meta.version.minor
+        );
+        try_bind_val!(
+            sql,
+            Self::V_PATCH_COL_PRE_ID,
+            self.meta_dir.meta.version.patch
+        );
 
         if let Some(vtag) = &self.meta_dir.meta.version.tag {
-            try_bind_val!(sql, V_TAG_COL_PRE_ID, &**vtag);
+            try_bind_val!(sql, Self::V_TAG_COL_PRE_ID, &**vtag);
         } else {
-            try_bind_val!(sql, V_TAG_COL_PRE_ID, SQLITE_NULL);
+            try_bind_val!(sql, Self::V_TAG_COL_PRE_ID, SQLITE_NULL);
         }
 
         try_bind_val!(
             sql,
-            V_READABLE_COL_PRE_ID,
+            Self::V_READABLE_COL_PRE_ID,
             &*self.meta_dir.meta.version.readable_format
         );
 
@@ -213,47 +251,37 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
     fn load(core_db: &Database, name: &str) -> Result<Self, LpmError<PackageError>> {
         info!("Loading '{}' from database..", name);
 
-        const PKG_ID_COL_PRE_ID: usize = 0;
-        const NAME_COL_PRE_ID: usize = 1;
-        const GROUP_ID_COL_PRE_ID: usize = 2;
-        const INSTALLED_SIZE_COL_PRE_ID: usize = 3;
-        const V_MAJOR_COL_PRE_ID: usize = 4;
-        const V_MINOR_COL_PRE_ID: usize = 5;
-        const V_PATCH_COL_PRE_ID: usize = 6;
-        const V_TAG_COL_PRE_ID: usize = 7;
-        const V_READABLE_COL_PRE_ID: usize = 8;
-
         let statement = Select::new(None, String::from("packages"))
-            .where_condition(Where::Equal(NAME_COL_PRE_ID, String::from("name")))
+            .where_condition(Where::Equal(Self::NAME_COL_PRE_ID, String::from("name")))
             .to_string();
         let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
-        try_bind_val!(sql, NAME_COL_PRE_ID, name);
+        try_bind_val!(sql, Self::NAME_COL_PRE_ID, name);
         try_execute_prepared!(
             sql,
             simple_e_fmt!("Error SELECT query on 'packages' table.")
         );
 
-        let id: i64 = sql.get_data(PKG_ID_COL_PRE_ID).unwrap_or(0);
+        let id: i64 = sql.get_data(Self::PKG_ID_COL_PRE_ID).unwrap_or(0);
 
         if id == 0 {
             return Err(PackageErrorKind::DoesNotExists(name.to_string()).to_lpm_err());
         }
 
-        let group_id = sql.get_data(GROUP_ID_COL_PRE_ID)?;
+        let group_id = sql.get_data(Self::GROUP_ID_COL_PRE_ID)?;
 
         let version = VersionStruct {
-            major: sql.get_data(V_MAJOR_COL_PRE_ID)?,
-            minor: sql.get_data(V_MINOR_COL_PRE_ID)?,
-            patch: sql.get_data(V_PATCH_COL_PRE_ID)?,
-            tag: sql.get_data(V_TAG_COL_PRE_ID)?,
-            readable_format: sql.get_data(V_READABLE_COL_PRE_ID)?,
+            major: sql.get_data(Self::V_MAJOR_COL_PRE_ID)?,
+            minor: sql.get_data(Self::V_MINOR_COL_PRE_ID)?,
+            patch: sql.get_data(Self::V_PATCH_COL_PRE_ID)?,
+            tag: sql.get_data(Self::V_TAG_COL_PRE_ID)?,
+            readable_format: sql.get_data(Self::V_READABLE_COL_PRE_ID)?,
             condition: Condition::default(),
         };
 
         let meta = Meta {
-            name: sql.get_data(NAME_COL_PRE_ID)?,
+            name: sql.get_data(Self::NAME_COL_PRE_ID)?,
             arch: String::new(),
-            installed_size: sql.get_data(INSTALLED_SIZE_COL_PRE_ID)?,
+            installed_size: sql.get_data(Self::INSTALLED_SIZE_COL_PRE_ID)?,
             version,
             dependencies: Vec::new(),
             suggestions: Vec::new(),
@@ -298,6 +326,82 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
             group_id,
             meta_fields,
         })
+    }
+
+    fn load_all_main_packages(core_db: &Database) -> Result<Vec<Self>, LpmError<PackageError>> {
+        let statement =
+            String::from("SELECT * FROM packages WHERE group_id = name || '@' || v_readable;");
+        let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+
+        let mut pkgs = vec![];
+        while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
+            let id: i64 = sql.get_data(Self::PKG_ID_COL_PRE_ID).unwrap_or(0);
+
+            if id == 0 {
+                continue;
+            }
+
+            let group_id = sql.get_data(Self::GROUP_ID_COL_PRE_ID)?;
+
+            let version = VersionStruct {
+                major: sql.get_data(Self::V_MAJOR_COL_PRE_ID)?,
+                minor: sql.get_data(Self::V_MINOR_COL_PRE_ID)?,
+                patch: sql.get_data(Self::V_PATCH_COL_PRE_ID)?,
+                tag: sql.get_data(Self::V_TAG_COL_PRE_ID)?,
+                readable_format: sql.get_data(Self::V_READABLE_COL_PRE_ID)?,
+                condition: Condition::default(),
+            };
+
+            let meta = Meta {
+                name: sql.get_data(Self::NAME_COL_PRE_ID)?,
+                arch: String::new(),
+                installed_size: sql.get_data(Self::INSTALLED_SIZE_COL_PRE_ID)?,
+                version,
+                dependencies: Vec::new(),
+                suggestions: Vec::new(),
+            };
+
+            const PACKAGE_ID_COL_PRE_ID: usize = 1;
+
+            let files_statement = Select::new(None, String::from("files"))
+                .where_condition(Where::Equal(
+                    PACKAGE_ID_COL_PRE_ID,
+                    String::from("package_id"),
+                ))
+                .to_string();
+            let mut sql = core_db.prepare(files_statement, super::SQL_NO_CALLBACK_FN)?;
+            try_bind_val!(sql, PACKAGE_ID_COL_PRE_ID, id);
+
+            let mut files: Vec<FileStruct> = Vec::new();
+
+            const PATH_COL_PRE_ID: usize = 2;
+            const CHECKSUM_COL_PRE_ID: usize = 3;
+            const CHECKSUM_ALGORITHM_COL_PRE_ID: usize = 4;
+            while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
+                let file = FileStruct {
+                    path: sql.get_data(PATH_COL_PRE_ID)?,
+                    checksum_algorithm: sql.get_data(CHECKSUM_ALGORITHM_COL_PRE_ID)?,
+                    checksum: sql.get_data(CHECKSUM_COL_PRE_ID)?,
+                };
+
+                files.push(file);
+            }
+
+            let files = Files(files);
+            let meta_fields = MetaDir {
+                path: PathBuf::default(),
+                meta,
+                files,
+            };
+
+            pkgs.push(PkgDataFromDb {
+                pkg_id: id,
+                group_id,
+                meta_fields,
+            });
+        }
+
+        Ok(pkgs)
     }
 
     fn delete_from_db<'lpkg>(&self, core_db: &Database) -> Result<(), LpmError<PackageError>> {
