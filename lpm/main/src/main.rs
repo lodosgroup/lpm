@@ -58,7 +58,9 @@ fn main() {
                     if let Some(pkg_name) = pkg_name {
                         try_or_error!(update_pkg_from_repository(ctx(), pkg_name));
                     } else {
-                        try_or_error!(update_pkgs_from_repository(ctx()))
+                        try_or_error!(update_database_migrations());
+                        try_or_error!(get_and_apply_repository_patches(&core_db()));
+                        try_or_error!(update_pkgs_from_repository(ctx()));
                     }
                 }
 
@@ -75,10 +77,13 @@ fn main() {
                             try_or_error!(get_and_apply_repository_patches(&core_db()))
                         }
                         UpdateSubcommand::Db => try_or_error!(update_database_migrations()),
-                        UpdateSubcommand::Packages => todo!(),
+                        UpdateSubcommand::Packages => {
+                            try_or_error!(update_pkgs_from_repository(ctx()))
+                        }
                         UpdateSubcommand::All => {
                             try_or_error!(update_database_migrations());
-                            try_or_error!(get_and_apply_repository_patches(&core_db()))
+                            try_or_error!(get_and_apply_repository_patches(&core_db()));
+                            try_or_error!(update_pkgs_from_repository(ctx()));
                         }
                         UpdateSubcommand::None => {
                             panic!("Invalid command on 'lpm --update'.");
