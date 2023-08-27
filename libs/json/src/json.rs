@@ -168,7 +168,7 @@ mod tests {
                 "other_accounts": {
                     "twitter": "onurozkan_dev",
                     "linkedin": "onurozkandev",
-                    "github": "ozkanonur"
+                    "github": "onur-ozkan"
                 },
                 "pets": [
                     {
@@ -202,7 +202,7 @@ mod tests {
             );
             other_accounts.insert(
                 "github".to_string(),
-                JsonValue::Plain("ozkanonur".to_string()),
+                JsonValue::Plain("onur-ozkan".to_string()),
             );
 
             let mut pets = vec![];
