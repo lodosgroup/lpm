@@ -100,4 +100,4 @@ After the building, you will be able to use the lpm executable under`target/{deb
     sudo lpm --delete lzip
     ```
 
-These steps cover the basic operations to quickly start using the LOD Package Manager. You can explore the advanced features of LPM from commands section on this website.
+These steps cover the basic operations to quickly start using the LOD Package Manager. You can explore the advanced features of LPM from the docs at https://lpm.lodosgroup.org.
