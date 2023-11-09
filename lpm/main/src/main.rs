@@ -1,4 +1,6 @@
-use cli_parser::{CliParser, Command, InstallSubcommand, ModuleSubcommand, UpdateSubcommand};
+use cli_parser::{
+    CliParser, Command, InstallSubcommand, ModuleSubcommand, RepositorySubcommand, UpdateSubcommand,
+};
 use common::some_or_error;
 use core::*;
 use std::{env, panic};
@@ -45,6 +47,11 @@ fn main() {
                         try_or_error!(install_from_lod_file(ctx(), pkg_name_or_filepath));
                     }
 
+                    InstallSubcommand::Help => {
+                        should_print_green_message = false;
+                        command.print_help();
+                    }
+
                     InstallSubcommand::None => {
                         try_or_error!(install_from_repository(ctx(), pkg_name_or_filepath));
                     }
@@ -85,6 +92,12 @@ fn main() {
                             try_or_error!(get_and_apply_repository_patches(&core_db()));
                             try_or_error!(update_pkgs_from_repository(ctx()));
                         }
+
+                        UpdateSubcommand::Help => {
+                            should_print_green_message = false;
+                            command.print_help();
+                        }
+
                         UpdateSubcommand::None => {
                             panic!("Invalid command on 'lpm --update'.");
                         }
@@ -94,13 +107,19 @@ fn main() {
 
             Command::Delete(pkg_name) => {
                 should_print_green_message = true;
-                try_or_error!(delete_lod(ctx(), pkg_name));
+                if ["-h", "--help"].contains(pkg_name) {
+                    should_print_green_message = false;
+                    command.print_help();
+                } else {
+                    try_or_error!(delete_lod(ctx(), pkg_name));
+                }
             }
 
             Command::Module(subcommand) => match subcommand {
                 ModuleSubcommand::None => {
                     try_or_error!(trigger_lpm_module(&core_db(), args.clone()))
                 }
+
                 ModuleSubcommand::Add(list) => {
                     should_print_green_message = true;
                     let (module_name, dylib_path) = (
@@ -109,17 +128,24 @@ fn main() {
                     );
                     try_or_error!(add_module(ctx(), module_name, dylib_path))
                 }
+
                 ModuleSubcommand::Delete(module_names) => {
                     should_print_green_message = true;
                     let module_names: Vec<String> =
                         module_names.iter().map(|t| t.to_string()).collect();
                     try_or_error!(delete_modules(ctx(), &module_names))
                 }
+
+                ModuleSubcommand::Help => {
+                    should_print_green_message = false;
+                    command.print_help();
+                }
+
                 ModuleSubcommand::List => try_or_error!(print_modules(ctx())),
             },
 
             Command::Repository(subcommand) => match subcommand {
-                cli_parser::RepositorySubcommand::Add(args) => {
+                RepositorySubcommand::Add(args) => {
                     should_print_green_message = true;
                     let (name, address) = (
                         some_or_error!(args.first(), "Repository name is missing"),
@@ -127,19 +153,32 @@ fn main() {
                     );
                     try_or_error!(add_repository(ctx(), name, address));
                 }
-                cli_parser::RepositorySubcommand::Delete(repository_names) => {
+
+                RepositorySubcommand::Delete(repository_names) => {
                     should_print_green_message = true;
                     let repository_names: Vec<String> =
                         repository_names.iter().map(|t| t.to_string()).collect();
                     try_or_error!(delete_repositories(ctx(), &repository_names))
                 }
-                cli_parser::RepositorySubcommand::List => {
+
+                RepositorySubcommand::List => {
                     try_or_error!(print_repositories(&core_db()))
                 }
-                cli_parser::RepositorySubcommand::None => {
+
+                RepositorySubcommand::Help => {
+                    should_print_green_message = false;
+                    command.print_help();
+                }
+
+                RepositorySubcommand::None => {
                     panic!("Invalid command on 'lpm --repository'.");
                 }
             },
+
+            Command::Help => {
+                should_print_green_message = false;
+                command.print_help();
+            }
 
             Command::Version => {
                 println!("lpm version: {}", LPM_VERSION);

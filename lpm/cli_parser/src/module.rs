@@ -3,6 +3,7 @@ pub enum ModuleSubcommand<'a> {
     Add(Vec<&'a str>),
     Delete(Vec<&'a str>),
     List,
+    Help,
     None,
 }
 
@@ -25,10 +26,25 @@ impl<'a> ModuleSubcommand<'a> {
                     Self::Delete(arguments)
                 }
                 "--list" | "-l" => Self::List,
+                "--help" | "-h" => Self::Help,
                 _ => Self::None,
             }
         } else {
             Self::None
         }
+    }
+
+    pub(crate) fn help() -> &'static str {
+        "Usage: lpm --module [FLAGS] <Module Name to Run>/[OPTION]
+
+Options:
+    -a, --add         <Module Name> <Dylib Path>              Add dynamic module
+    -d, --delete      [<Module Name>]                         Delete list of dynamic modules
+    -l, --list                                                List usable dynamic modules on system
+    -h, --help                                                Print help
+
+Flags:
+    -y, --yes                                                 Preaccept the confirmation prompts
+"
     }
 }

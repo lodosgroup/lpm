@@ -16,12 +16,63 @@ pub enum Command<'a> {
     Module(ModuleSubcommand<'a>),
     Repository(RepositorySubcommand<'a>),
     Version,
+    Help,
 }
 
 #[derive(Default)]
 pub struct CliParser<'a> {
     pub commands: Vec<Command<'a>>,
     pub force_yes: bool,
+}
+
+impl Command<'_> {
+    pub fn print_help(&self) {
+        match self {
+            Command::Install(_pkg_name_or_filepath, _subcommand) => {
+                println!("{}", InstallSubcommand::help());
+            }
+
+            Command::Update(_pkg_name, _subcommands) => {
+                println!("{}", UpdateSubcommand::help());
+            }
+
+            Command::Delete(_pkg_name) => {
+                let help = "Usage: lpm --delete [FLAGS] <Package Name]
+
+Flags:
+    -y, --yes                                                 Preaccept the confirmation prompts
+";
+                println!("{}", help);
+            }
+
+            Command::Module(_subcommand) => {
+                println!("{}", ModuleSubcommand::help());
+            }
+
+            Command::Repository(_subcommand) => {
+                println!("{}", RepositorySubcommand::help());
+            }
+
+            Command::Help => {
+                let help = "Lod Package Manager Command Line Interface
+
+Usage: lpm [SUBCOMMAND] [SUBCOMMAND FLAGS] [SUBCOMMAND OPTIONS]
+
+Subcommands:
+    -i, --install                                             Install package to system from remote repository or filesystem
+    -d, --delete                                              Delete package from system
+    -u, --update                                              Update operations(packages, repository index, lpm database migrations)
+    -r, --repository                                          Remote repository operations (add, delete, list)
+    -m, --module                                              Dynamic module operations (add, delete, list, run)
+
+For more specific help, go for `lpm [SUBCOMMAND] --help`
+";
+                println!("{}", help);
+            }
+
+            Command::Version => panic!("This should never happen. Seems like a bug."),
+        }
+    }
 }
 
 impl CliParser<'_> {
@@ -33,9 +84,15 @@ impl CliParser<'_> {
             match arg.as_str() {
                 "--install" | "-i" => {
                     if let Some(value) = iter.next() {
-                        cli_parser
-                            .commands
-                            .push(Command::Install(value, InstallSubcommand::parse(&mut iter)));
+                        if ["--help", "-h"].contains(&value.as_str()) {
+                            cli_parser
+                                .commands
+                                .push(Command::Install("", InstallSubcommand::Help));
+                        } else {
+                            cli_parser
+                                .commands
+                                .push(Command::Install(value, InstallSubcommand::parse(&mut iter)));
+                        }
                     }
                 }
                 "--update" | "-u" => {
@@ -75,6 +132,9 @@ impl CliParser<'_> {
                 }
                 "--version" | "-v" => {
                     cli_parser.commands.push(Command::Version);
+                }
+                "--help" | "-h" => {
+                    cli_parser.commands.push(Command::Help);
                 }
                 _ => {}
             }

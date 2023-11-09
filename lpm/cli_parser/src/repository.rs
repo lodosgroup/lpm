@@ -3,6 +3,7 @@ pub enum RepositorySubcommand<'a> {
     Add(Vec<&'a str>),
     Delete(Vec<&'a str>),
     List,
+    Help,
     None,
 }
 
@@ -25,10 +26,25 @@ impl<'a> RepositorySubcommand<'a> {
                     Self::Delete(arguments)
                 }
                 "--list" | "-l" => Self::List,
+                "--help" | "-h" => Self::Help,
                 _ => Self::None,
             }
         } else {
             Self::None
         }
+    }
+
+    pub(crate) fn help() -> &'static str {
+        "Usage: lpm --repository [FLAGS] [OPTION]
+
+Options:
+    -a, --add         <Repository Name> <Repository URL>      Add package repository
+    -d, --delete      [<Repository Name>]                     Delete list of package repositories
+    -l, --list                                                List active package repositories on system
+    -h, --help                                                Print help
+
+Flags:
+    -y, --yes                                                 Preaccept the confirmation prompts
+"
     }
 }

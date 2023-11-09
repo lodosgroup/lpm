@@ -5,6 +5,7 @@ pub enum UpdateSubcommand<'a> {
     Db,
     Packages,
     All,
+    Help,
     None,
 }
 
@@ -23,10 +24,27 @@ impl<'a> UpdateSubcommand<'a> {
                 "--packages" | "-p" => Self::Packages,
                 "--index" | "-i" => Self::Index,
                 "--db" | "-d" => Self::Db,
+                "--help" | "-h" => Self::Help,
                 _ => Self::None,
             }
         } else {
             Self::None
         }
+    }
+
+    pub(crate) fn help() -> &'static str {
+        "Usage: lpm --update [FLAGS] <Package Name or Path>/[OPTION]
+
+Options:
+    -a, --all                                                 Update everything(packages, repository index, db migrations)
+    -p, --packages                                            Update all the installed packages
+    -i, --index                                               Update repository index from remote
+    -d, --db                                                  Update lpm database(by applying remote migrations)
+    -h, --help                                                Print help
+
+Flags:
+    -l, --local                                               Activate updates from local *.lod file
+    -y, --yes                                                 Preaccept the confirmation prompts
+"
     }
 }
