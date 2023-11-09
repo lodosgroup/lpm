@@ -1,0 +1,36 @@
+# Compilation
+FROM docker.io/library/debian:bookworm-slim as build
+
+WORKDIR /usr/src/lpm
+
+## Install rust toolchain
+RUN apt-get update \
+	&& apt-get install -y build-essential curl \
+	&& rm -rf /var/lib/apt/lists/*
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable-2023-06-01 -y
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+COPY . .
+
+RUN cargo build --release
+
+# Runtime
+FROM docker.io/library/debian:bookworm-slim
+
+# we can install this with lpm
+RUN rm /usr/bin/which
+
+RUN apt-get update \
+	&& apt-get install -y git linux-perf \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /root/.local/share/min_sqlite3_sys /root/.local/share/min_sqlite3_sys
+COPY --from=build /root/.local/share/tiny_lz4_decoder_sys /root/.local/share/tiny_lz4_decoder_sys
+COPY --from=build /usr/src/lpm/target/release/lpm /usr/local/bin/lpm
+
+RUN lpm --yes --update --db
+RUN lpm --yes --repository --add linux-amd64-default linux-amd64-default.lpm.lodosgroup.org
+
+ENTRYPOINT ["/bin/bash"]
