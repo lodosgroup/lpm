@@ -1,6 +1,10 @@
-# LOD Package Manager
+<div align="center">
+<img src="https://lpm.lodosgroup.org/images/logo/lpm-logo.png" />
+</div>
 
-This is the main source code repository for Lod Package Manager.
+<br/>
+
+**This is the main source code repository for Lod Package Manager.**
 
 - Please refer to the documentation at [lpm.lodosgroup.org/docs](https://lpm.lodosgroup.org/docs/getting-started/introduction) for more information.
 
