@@ -40,6 +40,8 @@ impl Stage1Tasks for Vec<Stage1Script> {
                 }
                 .to_lpm_err())?;
             }
+
+            println!("\n{}\n", String::from_utf8_lossy(output.stdout.as_slice()));
         }
 
         Ok(())

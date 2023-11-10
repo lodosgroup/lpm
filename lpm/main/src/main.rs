@@ -32,7 +32,7 @@ fn main() {
     let ctx = || try_or_error!(Ctx::new_from_cli_parser(&cli_parser));
 
     if cli_parser.commands.is_empty() {
-        panic!("Invalid command on 'lpm'.");
+        Command::Help.print_help();
     }
 
     let mut should_print_green_message = false;
