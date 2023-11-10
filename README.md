@@ -22,6 +22,15 @@
 
 ## Quickstart
 
+
+<div align="center">
+   
+*Package install and delete demo in docker*
+   
+![2](https://github.com/lodosgroup/lpm/assets/39852038/d31b4467-b248-4aa0-a5f1-a0322603d065)
+
+</div>
+
 ### Install with Cargo
 
 To install LPM from a specific branch, run the following command:
