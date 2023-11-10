@@ -63,7 +63,23 @@ If you prefer building LPM from its source code (usually preferred for developme
 
 After the building, you will be able to use the lpm executable under`target/{debug/release}` directory.
 
-### Basic Usage
+### Try in Docker
+
+You don't need to install LPM on your host system just to play with it. You can use the docker image instead:
+
+```sh
+docker run -it ozkanonur/lpm:alpha
+```
+
+If you want to do some benchmarking with `perf` tool, you may need to add `--privileged` flag:
+
+```sh
+docker run -it --privileged ozkanonur/lpm:alpha
+```
+
+Now, you can play with LPM as you like in the container without touching your host system.
+
+### Database and Repository Setup (ignore this step if using docker):
 
 1. **Migrate LPM database**:
 
@@ -84,7 +100,9 @@ After the building, you will be able to use the lpm executable under`target/{deb
 
     Once you've added the repository, LPM will synchronize with the package indexes sourced from the added repository. This indicates that you are all set to install packages.
 
-3. **Install a package**:
+### Basic Usage
+
+1. **Install a package**:
 
     Installing packages using LPM is straightforward. Simply use the following command, replacing <package-name> with the name of the package you want to install.
 
@@ -95,7 +113,7 @@ After the building, you will be able to use the lpm executable under`target/{deb
 
     To confirm the successful completion of the installation, you can check by running the command `lzip --version`.
 
-4. **Delete the installed package**:
+2. **Delete the installed package**:
 
     If you want to delete a package from your system, use the delete command followed by the package name.
 
