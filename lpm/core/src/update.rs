@@ -77,7 +77,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
         to_pkg.start_validate_task()?;
         let source_path = get_pkg_tmp_output_path(&to_pkg.path).join("program");
 
-        if let Err(err) = scripts.execute_script(pre_script) {
+        if let Err(err) = scripts.execute_script(vec![], pre_script) {
             transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }
@@ -88,7 +88,7 @@ impl PkgUpdateTasks for PkgDataFromDb {
         info!("Syncing with package database..");
         to_pkg.update_existing_pkg(core_db, self.pkg_id, to_pkg.meta_dir.meta.get_group_id())?;
 
-        if let Err(err) = scripts.execute_script(post_script) {
+        if let Err(err) = scripts.execute_script(vec![], post_script) {
             transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }

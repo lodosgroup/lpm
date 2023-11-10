@@ -10,12 +10,20 @@ use std::{
 pub const PKG_SCRIPTS_DIR: &str = "/var/lib/lpm/pkg";
 
 pub(crate) trait Stage1Tasks {
-    fn execute_script(&self, caller_phase: ScriptPhase) -> Result<(), LpmError<MainError>>;
+    fn execute_script(
+        &self,
+        envs: Vec<(&str, &str)>,
+        caller_phase: ScriptPhase,
+    ) -> Result<(), LpmError<MainError>>;
 }
 
 impl Stage1Tasks for Vec<Stage1Script> {
     #[allow(unused_variables)]
-    fn execute_script(&self, caller_phase: ScriptPhase) -> Result<(), LpmError<MainError>> {
+    fn execute_script(
+        &self,
+        envs: Vec<(&str, &str)>,
+        caller_phase: ScriptPhase,
+    ) -> Result<(), LpmError<MainError>> {
         fn prepare_script(script: &Stage1Script) -> String {
             format!(
                 r#"
@@ -28,9 +36,11 @@ impl Stage1Tasks for Vec<Stage1Script> {
         }
 
         if let Some(script) = self.iter().find(|s| s.phase == caller_phase) {
+            let cmd = Command::new("bash");
             let output = Command::new("bash")
                 .arg("-c")
                 .arg(prepare_script(script))
+                .envs(envs)
                 .output()?;
 
             if !output.status.success() {
@@ -41,7 +51,7 @@ impl Stage1Tasks for Vec<Stage1Script> {
                 .to_lpm_err())?;
             }
 
-            println!("\n{}\n", String::from_utf8_lossy(output.stdout.as_slice()));
+            println!("{}", String::from_utf8_lossy(output.stdout.as_slice()));
         }
 
         Ok(())

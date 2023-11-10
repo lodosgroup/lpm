@@ -30,7 +30,7 @@ impl PkgDeleteTasks for PkgDataFromDb {
         let pkg_lib_dir = Path::new(PKG_SCRIPTS_DIR).join(&self.meta_fields.meta.name);
         let scripts = get_scripts(&pkg_lib_dir.join("scripts"))?;
 
-        if let Err(err) = scripts.execute_script(ScriptPhase::PreDelete) {
+        if let Err(err) = scripts.execute_script(vec![], ScriptPhase::PreDelete) {
             transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }
@@ -57,7 +57,7 @@ impl PkgDeleteTasks for PkgDataFromDb {
             fs::remove_dir_all(pkg_lib_dir)?;
         }
 
-        if let Err(err) = scripts.execute_script(ScriptPhase::PostDelete) {
+        if let Err(err) = scripts.execute_script(vec![], ScriptPhase::PostDelete) {
             transaction_op(core_db, Transaction::Rollback)?;
             return Err(err);
         }

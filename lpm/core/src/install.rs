@@ -127,13 +127,18 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 
     fn install_files(&self) -> Result<(), LpmError<MainError>> {
-        self.scripts.execute_script(ScriptPhase::PreInstall)?;
+        let pkg_output_root = get_pkg_tmp_output_path(&self.path);
+        let script_env = vec![("PKG_ROOT", pkg_output_root.to_str().unwrap())];
+
+        self.scripts
+            .execute_script(script_env.clone(), ScriptPhase::PreInstall)?;
 
         info!("Installing package files into system..");
         self.copy_scripts()?;
         self.copy_programs()?;
 
-        self.scripts.execute_script(ScriptPhase::PostInstall)?;
+        self.scripts
+            .execute_script(script_env, ScriptPhase::PostInstall)?;
 
         Ok(())
     }
