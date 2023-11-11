@@ -6,6 +6,8 @@
 
 **This is the main source code repository for Lod Package Manager.**
 
+- For a comprehensive understanding of the project, refer to this blog post [An Experimental Package Manager For Operating Systems: LPM](https://onurozkan.dev/read/an-experimental-system-package-manager-lpm/)
+
 - Please refer to the documentation at [lpm.lodosgroup.org/docs](https://lpm.lodosgroup.org/docs/getting-started/introduction) for more information.
 
 - If you'd like to add/update or propose packages for the lpm repositories, please visit [github.com/lodosgroup/package-builds](https://github.com/lodosgroup/package-builds).
@@ -23,9 +25,9 @@
 ## Quickstart
 
 <div align="center">
-   
+
 *Package install and delete demonstration in docker*
-   
+
 ![lpm-demo](https://lpm.lodosgroup.org/lpm-demo.svg)
 
 </div>
