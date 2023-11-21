@@ -1,4 +1,4 @@
-pub use install::InstallSubcommand;
+pub use install::InstallArgs;
 pub use module::ModuleSubcommand;
 pub use repository::RepositorySubcommand;
 pub use update::UpdateSubcommand;
@@ -10,7 +10,7 @@ mod update;
 
 #[derive(Debug, PartialEq)]
 pub enum Command<'a> {
-    Install(&'a str, InstallSubcommand),
+    Install(InstallArgs),
     Update(Option<&'a str>, Vec<UpdateSubcommand<'a>>),
     Delete(&'a str),
     Module(ModuleSubcommand<'a>),
@@ -28,8 +28,8 @@ pub struct CliParser<'a> {
 impl Command<'_> {
     pub fn print_help(&self) {
         match self {
-            Command::Install(_pkg_name_or_filepath, _subcommand) => {
-                println!("{}", InstallSubcommand::help());
+            Command::Install(_subcommand) => {
+                println!("{}", InstallArgs::help());
             }
 
             Command::Update(_pkg_name, _subcommands) => {
@@ -83,17 +83,9 @@ impl CliParser<'_> {
         while let Some(arg) = iter.next() {
             match arg.as_str() {
                 "--install" | "-i" => {
-                    if let Some(value) = iter.next() {
-                        if ["--help", "-h"].contains(&value.as_str()) {
-                            cli_parser
-                                .commands
-                                .push(Command::Install("", InstallSubcommand::Help));
-                        } else {
-                            cli_parser
-                                .commands
-                                .push(Command::Install(value, InstallSubcommand::parse(&mut iter)));
-                        }
-                    }
+                    cli_parser
+                        .commands
+                        .push(Command::Install(InstallArgs::parse(&mut iter)));
                 }
                 "--update" | "-u" => {
                     let mut pkg_name: Option<&String> = None;
@@ -149,18 +141,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_install_with_subcommands() {
+    #[allow(clippy::field_reassign_with_default)]
+    fn test_parse_install() {
         {
-            let args = vec![
-                String::from("--install"),
-                String::from("package_name"),
-                String::from("-L"),
-            ];
+            let args = vec![String::from("--install")];
             let cli_parser = CliParser::parse_args(&args);
             assert_eq!(cli_parser.commands.len(), 1);
-            assert!(cli_parser
-                .commands
-                .contains(&Command::Install("package_name", InstallSubcommand::Local)));
+
+            let mut args = InstallArgs::default();
+            args.print_help = true;
+
+            assert_eq!(cli_parser.commands[0], Command::Install(args));
         }
 
         {
@@ -171,9 +162,48 @@ mod tests {
             ];
             let cli_parser = CliParser::parse_args(&args);
             assert_eq!(cli_parser.commands.len(), 1);
-            assert!(cli_parser
-                .commands
-                .contains(&Command::Install("package_name", InstallSubcommand::Local)));
+
+            let mut args = InstallArgs::default();
+            args.packages = vec!["package_name".to_owned()];
+            args.from_local_package = true;
+
+            assert_eq!(cli_parser.commands[0], Command::Install(args));
+        }
+
+        {
+            let args = vec![
+                String::from("-i"),
+                String::from("package_name"),
+                String::from("--local"),
+            ];
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
+
+            let mut args = InstallArgs::default();
+            args.packages = vec!["package_name".to_owned()];
+            args.from_local_package = true;
+
+            assert!(cli_parser.commands.contains(&Command::Install(args)));
+        }
+
+        {
+            let args = vec![
+                String::from("--install"),
+                String::from("package_name"),
+                String::from("package_name2"),
+                String::from("package_name3"),
+            ];
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
+
+            let mut args = InstallArgs::default();
+            args.packages = vec![
+                "package_name".to_owned(),
+                "package_name2".to_owned(),
+                "package_name3".to_owned(),
+            ];
+
+            assert!(cli_parser.commands.contains(&Command::Install(args)));
         }
     }
 
@@ -302,23 +332,8 @@ mod tests {
 
     #[test]
     fn test_parse_invalid_commands() {
-        {
-            let args = vec![String::from("--bla-bla")];
-            let cli_parser = CliParser::parse_args(&args);
-            assert!(cli_parser.commands.is_empty());
-        }
-
-        {
-            let args = vec![
-                String::from("--install"),
-                String::from("package_name"),
-                String::from("--repository"),
-            ];
-            let cli_parser = CliParser::parse_args(&args);
-            assert_eq!(cli_parser.commands.len(), 1);
-            assert!(cli_parser
-                .commands
-                .contains(&Command::Install("package_name", InstallSubcommand::None)));
-        }
+        let args = vec![String::from("--bla-bla")];
+        let cli_parser = CliParser::parse_args(&args);
+        assert!(cli_parser.commands.is_empty());
     }
 }

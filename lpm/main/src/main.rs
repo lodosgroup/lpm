@@ -1,6 +1,4 @@
-use cli_parser::{
-    CliParser, Command, InstallSubcommand, ModuleSubcommand, RepositorySubcommand, UpdateSubcommand,
-};
+use cli_parser::{CliParser, Command, ModuleSubcommand, RepositorySubcommand, UpdateSubcommand};
 use common::some_or_error;
 use core::*;
 use std::{env, panic};
@@ -40,21 +38,20 @@ fn main() {
         .commands
         .iter()
         .for_each(|command| match command {
-            Command::Install(pkg_name_or_filepath, subcommand) => {
+            Command::Install(args) => {
                 should_print_green_message = true;
-                match subcommand {
-                    InstallSubcommand::Local => {
-                        try_or_error!(install_from_lod_file(ctx(), pkg_name_or_filepath));
-                    }
 
-                    InstallSubcommand::Help => {
-                        should_print_green_message = false;
-                        command.print_help();
-                    }
+                if args.print_help {
+                    should_print_green_message = false;
+                    command.print_help();
+                }
 
-                    InstallSubcommand::None => {
-                        try_or_error!(install_from_repository(ctx(), pkg_name_or_filepath));
-                    }
+                // TODO:
+                // pass InstallArgs to `core::install` functions
+                if args.from_local_package {
+                    try_or_error!(install_from_lod_file(ctx(), &args.packages[0]));
+                } else {
+                    try_or_error!(install_from_repository(ctx(), &args.packages[0]));
                 }
             }
 

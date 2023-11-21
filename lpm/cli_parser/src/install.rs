@@ -1,21 +1,31 @@
-#[derive(Debug, PartialEq)]
-pub enum InstallSubcommand {
-    Local,
-    Help,
-    None,
+#[derive(Debug, Default, PartialEq)]
+pub struct InstallArgs {
+    pub packages: Vec<String>,
+    pub from_local_package: bool,
+    pub print_help: bool,
+    // TODO:
+    // install_temporary: bool,
+    // repository: Option<String>,
+    // workspace: Option<String>,
 }
 
-impl InstallSubcommand {
+impl InstallArgs {
     pub(crate) fn parse(iter: &mut dyn Iterator<Item = &String>) -> Self {
-        if let Some(arg) = iter.next() {
+        let mut args = InstallArgs::default();
+
+        for arg in iter {
             match arg.as_str() {
-                "--help" | "-h" => Self::Help,
-                "--local" | "-L" => Self::Local,
-                _ => Self::None,
+                "--local" | "-L" => args.from_local_package = true,
+                "--help" | "-h" => args.print_help = true,
+                _ => args.packages.push(arg.to_owned()),
             }
-        } else {
-            Self::None
         }
+
+        if args.packages.is_empty() {
+            args.print_help = true;
+        }
+
+        args
     }
 
     pub(crate) fn help() -> &'static str {
