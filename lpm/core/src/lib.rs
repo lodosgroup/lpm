@@ -14,7 +14,7 @@ use std::path::Path;
 pub use ctx::Ctx;
 pub use delete::delete_lod;
 pub(crate) use extract::PkgExtractTasks;
-pub use install::{install_from_lod_file, install_from_repository};
+pub use install::install_package;
 pub use module::{add_module, delete_modules, print_modules, trigger_lpm_module};
 pub use repository::get_and_apply_repository_patches;
 pub use repository::{add_repository, delete_repositories, print_repositories};

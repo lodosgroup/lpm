@@ -1,3 +1,4 @@
+use cli_parser::InstallArgs;
 use ehandle::ResultCode;
 use std::ffi::CStr;
 
@@ -21,7 +22,14 @@ extern "C" fn install_lod_file(pkg_path: *const std::os::raw::c_char) -> ResultC
         }
     };
 
-    if let Err(err) = core::install_from_lod_file(ctx, pkg_path) {
+    if let Err(err) = core::install_package(
+        ctx,
+        &InstallArgs {
+            packages: vec![String::from(pkg_path)],
+            from_local_package: true,
+            print_help: false,
+        },
+    ) {
         logger::error!("{:?}", err);
         return err.result_code;
     }

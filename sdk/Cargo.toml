@@ -26,6 +26,7 @@ panic = "abort"
 codegen-units = 1
 
 [dependencies]
+cli_parser = { path = "../lpm/cli_parser" }
 common = { path = "../lpm/common" }
 core = { path = "../lpm/core" }
 ehandle = { path = "../lpm/ehandle", features = ["sdk"] }

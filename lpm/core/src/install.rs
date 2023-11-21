@@ -6,6 +6,7 @@ use crate::{
     Ctx,
 };
 
+use cli_parser::InstallArgs;
 use common::{
     ctx_confirmation_check, download_file,
     pkg::{PkgDataFromFs, PkgToQuery, ScriptPhase},
@@ -183,21 +184,26 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 }
 
-pub fn install_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
+fn install_from_repository(ctx: Ctx, pkg_names: &[String]) -> Result<(), LpmError<MainError>> {
     enable_core_db_wal1(&ctx.core_db)?;
 
-    let pkg_to_query = PkgToQuery::parse(pkg_name)
-        .ok_or_else(|| PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err())?;
+    let mut pkg_stacks = vec![];
 
-    if is_package_exists(&ctx.core_db, &pkg_to_query.name)? {
-        logger::info!(
-            "Package '{}' already installed on your machine.",
-            pkg_to_query.to_string()
-        );
-        return Ok(());
+    for pkg_name in pkg_names {
+        let pkg_to_query = PkgToQuery::parse(pkg_name).ok_or_else(|| {
+            PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err()
+        })?;
+
+        if is_package_exists(&ctx.core_db, &pkg_to_query.name)? {
+            logger::info!(
+                "Package '{}' already installed on your machine.",
+                pkg_to_query.to_string()
+            );
+            return Ok(());
+        }
+
+        pkg_stacks.push(PkgDataFromFs::get_pkg_stack(&ctx.core_db, pkg_to_query)?);
     }
-
-    let pkg_stack = PkgDataFromFs::get_pkg_stack(&ctx.core_db, pkg_to_query)?;
 
     {
         // TODO
@@ -205,8 +211,10 @@ pub fn install_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<
         // total installation size is missing
         // use colors
         println!("\nPackage list to be installed:");
-        pkg_stack.iter().for_each(|index| {
-            println!("  - {}", index.get_group_id());
+        pkg_stacks.iter().for_each(|pkg_stack| {
+            pkg_stack.iter().for_each(|index| {
+                println!("  - {}", index.get_group_id());
+            });
         });
         println!();
     }
@@ -215,24 +223,26 @@ pub fn install_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<
 
     let core_db = Arc::new(&ctx.core_db);
     thread::scope(|s| -> Result<(), LpmError<MainError>> {
-        for item in &pkg_stack {
-            let core_db = core_db.clone();
-            let pkg_path = item.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
-            let group_id = pkg_stack[0].get_group_id();
+        pkg_stacks.iter().for_each(|pkg_stack| {
+            for item in pkg_stack {
+                let core_db = core_db.clone();
+                let pkg_path = item.pkg_output_path(super::EXTRACTION_OUTPUT_PATH);
+                let group_id = pkg_stack[0].get_group_id();
 
-            s.spawn(move || -> Result<(), LpmError<MainError>> {
-                download_file(&item.pkg_url(), &pkg_path)?;
-                let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
+                s.spawn(move || -> Result<(), LpmError<MainError>> {
+                    download_file(&item.pkg_url(), &pkg_path)?;
+                    let pkg = PkgDataFromFs::pre_install_task(&pkg_path)?;
 
-                info!("Package installation started for {}", pkg_path.display());
-                pkg.install_files()?;
+                    info!("Package installation started for {}", pkg_path.display());
+                    pkg.install_files()?;
 
-                info!("Syncing with package database..");
-                let _id = pkg.insert_to_db(&core_db, group_id)?;
+                    info!("Syncing with package database..");
+                    let _id = pkg.insert_to_db(&core_db, group_id)?;
 
-                Ok(())
-            });
-        }
+                    Ok(())
+                });
+            }
+        });
 
         Ok(())
     })?;
@@ -241,7 +251,7 @@ pub fn install_from_repository(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<
 }
 
 /// Local installations ignores the sub-packages(dependencies) for now.
-pub fn install_from_lod_file(ctx: Ctx, pkg_path: &str) -> Result<(), LpmError<MainError>> {
+fn install_from_lod_file(ctx: Ctx, pkg_path: &str) -> Result<(), LpmError<MainError>> {
     enable_core_db_wal1(&ctx.core_db)?;
 
     info!("Package installation started for {}", pkg_path);
@@ -275,4 +285,17 @@ pub fn install_from_lod_file(ctx: Ctx, pkg_path: &str) -> Result<(), LpmError<Ma
     let _ = pkg.insert_to_db(&ctx.core_db, pkg.meta_dir.meta.get_group_id())?;
 
     Ok(())
+}
+
+pub fn install_package(ctx: Ctx, args: &InstallArgs) -> Result<(), LpmError<MainError>> {
+    if args.from_local_package {
+        if args.packages.len() > 1 {
+            logger::error!("Invalid arguments.\n\nCan only install one local package at once.");
+            std::process::exit(101);
+        }
+
+        install_from_lod_file(ctx, &args.packages[0])
+    } else {
+        install_from_repository(ctx, &args.packages)
+    }
 }

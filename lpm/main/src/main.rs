@@ -46,13 +46,7 @@ fn main() {
                     command.print_help();
                 }
 
-                // TODO:
-                // pass InstallArgs to `core::install` functions
-                if args.from_local_package {
-                    try_or_error!(install_from_lod_file(ctx(), &args.packages[0]));
-                } else {
-                    try_or_error!(install_from_repository(ctx(), &args.packages[0]));
-                }
+                try_or_error!(install_package(ctx(), args));
             }
 
             Command::Update(pkg_name, subcommands) => {
