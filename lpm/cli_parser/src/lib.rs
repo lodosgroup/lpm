@@ -164,7 +164,7 @@ mod tests {
             assert_eq!(cli_parser.commands.len(), 1);
 
             let mut args = InstallArgs::default();
-            args.packages = vec!["package_name"];
+            args.packages = HashSet::from(["package_name"]);
             args.from_local_package = true;
 
             assert_eq!(cli_parser.commands[0], Command::Install(args));
@@ -180,7 +180,7 @@ mod tests {
             assert_eq!(cli_parser.commands.len(), 1);
 
             let mut args = InstallArgs::default();
-            args.packages = vec!["package_name"];
+            args.packages = HashSet::from(["package_name"]);
             args.from_local_package = true;
 
             assert!(cli_parser.commands.contains(&Command::Install(args)));
@@ -197,7 +197,7 @@ mod tests {
             assert_eq!(cli_parser.commands.len(), 1);
 
             let mut args = InstallArgs::default();
-            args.packages = vec!["package_name", "package_name2", "package_name3"];
+            args.packages = HashSet::from(["package_name", "package_name2", "package_name3"]);
 
             assert!(cli_parser.commands.contains(&Command::Install(args)));
         }

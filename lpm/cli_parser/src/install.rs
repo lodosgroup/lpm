@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 #[derive(Debug, Default, PartialEq)]
 pub struct InstallArgs<'a> {
-    pub packages: Vec<&'a str>,
+    pub packages: HashSet<&'a str>,
     pub from_local_package: bool,
     pub print_help: bool,
     // TODO:
@@ -15,9 +17,15 @@ impl<'a> InstallArgs<'a> {
 
         for arg in iter {
             match arg.as_str() {
-                "--local" | "-L" => args.from_local_package = true,
-                "--help" | "-h" => args.print_help = true,
-                _ => args.packages.push(arg),
+                "--local" | "-L" => {
+                    args.from_local_package = true;
+                }
+                "--help" | "-h" => {
+                    args.print_help = true;
+                }
+                _ => {
+                    args.packages.insert(arg);
+                }
             }
         }
 

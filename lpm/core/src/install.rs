@@ -23,6 +23,7 @@ use ehandle::{
 use logger::{debug, info, warning};
 use min_sqlite3_sys::prelude::*;
 use std::{
+    collections::HashSet,
     fs::{self, create_dir_all},
     path::{Path, PathBuf},
     sync::Arc,
@@ -184,7 +185,7 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 }
 
-fn install_from_repository(ctx: Ctx, pkg_names: &[&str]) -> Result<(), LpmError<MainError>> {
+fn install_from_repository(ctx: Ctx, pkg_names: &HashSet<&str>) -> Result<(), LpmError<MainError>> {
     enable_core_db_wal1(&ctx.core_db)?;
 
     let mut pkg_stacks = vec![];
@@ -289,12 +290,15 @@ fn install_from_lod_file(ctx: Ctx, pkg_path: &str) -> Result<(), LpmError<MainEr
 
 pub fn install_package(ctx: Ctx, args: &InstallArgs) -> Result<(), LpmError<MainError>> {
     if args.from_local_package {
-        if args.packages.len() > 1 {
-            logger::error!("Invalid arguments.\n\nCan only install one local package at once.");
+        if args.packages.len() != 1 {
+            logger::error!(
+                "Invalid arguments.\n\nExpected 1 package path, found {}.",
+                args.packages.len()
+            );
             std::process::exit(101);
         }
 
-        install_from_lod_file(ctx, args.packages[0])
+        install_from_lod_file(ctx, args.packages.iter().next().unwrap())
     } else {
         install_from_repository(ctx, &args.packages)
     }
