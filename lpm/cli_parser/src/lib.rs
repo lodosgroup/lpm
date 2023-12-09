@@ -1,8 +1,10 @@
+pub use delete::DeleteArgs;
 pub use install::InstallArgs;
 pub use module::ModuleSubcommand;
 pub use repository::RepositorySubcommand;
 pub use update::UpdateSubcommand;
 
+mod delete;
 mod install;
 mod module;
 mod repository;
@@ -10,9 +12,9 @@ mod update;
 
 #[derive(Debug, PartialEq)]
 pub enum Command<'a> {
-    Install(InstallArgs),
+    Install(InstallArgs<'a>),
     Update(Option<&'a str>, Vec<UpdateSubcommand<'a>>),
-    Delete(&'a str),
+    Delete(DeleteArgs<'a>),
     Module(ModuleSubcommand<'a>),
     Repository(RepositorySubcommand<'a>),
     Version,
@@ -37,12 +39,7 @@ impl Command<'_> {
             }
 
             Command::Delete(_pkg_name) => {
-                let help = "Usage: lpm --delete [FLAGS] <Package Name]
-
-Flags:
-    -y, --yes                                                 Preaccept the confirmation prompts
-";
-                println!("{}", help);
+                println!("{}", DeleteArgs::help());
             }
 
             Command::Module(_subcommand) => {
@@ -105,9 +102,9 @@ impl CliParser<'_> {
                         .push(Command::Update(pkg_name.map(|t| t.as_str()), subcommands));
                 }
                 "--delete" | "-d" => {
-                    if let Some(value) = iter.next() {
-                        cli_parser.commands.push(Command::Delete(value));
-                    }
+                    cli_parser
+                        .commands
+                        .push(Command::Delete(DeleteArgs::parse(&mut iter)));
                 }
                 "--module" | "-m" => {
                     cli_parser
@@ -138,10 +135,13 @@ impl CliParser<'_> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::field_reassign_with_default)]
+
+    use std::collections::HashSet;
+
     use super::*;
 
     #[test]
-    #[allow(clippy::field_reassign_with_default)]
     fn test_parse_install() {
         {
             let args = vec![String::from("--install")];
@@ -164,7 +164,7 @@ mod tests {
             assert_eq!(cli_parser.commands.len(), 1);
 
             let mut args = InstallArgs::default();
-            args.packages = vec!["package_name".to_owned()];
+            args.packages = vec!["package_name"];
             args.from_local_package = true;
 
             assert_eq!(cli_parser.commands[0], Command::Install(args));
@@ -180,7 +180,7 @@ mod tests {
             assert_eq!(cli_parser.commands.len(), 1);
 
             let mut args = InstallArgs::default();
-            args.packages = vec!["package_name".to_owned()];
+            args.packages = vec!["package_name"];
             args.from_local_package = true;
 
             assert!(cli_parser.commands.contains(&Command::Install(args)));
@@ -197,11 +197,7 @@ mod tests {
             assert_eq!(cli_parser.commands.len(), 1);
 
             let mut args = InstallArgs::default();
-            args.packages = vec![
-                "package_name".to_owned(),
-                "package_name2".to_owned(),
-                "package_name3".to_owned(),
-            ];
+            args.packages = vec!["package_name", "package_name2", "package_name3"];
 
             assert!(cli_parser.commands.contains(&Command::Install(args)));
         }
@@ -236,12 +232,32 @@ mod tests {
 
     #[test]
     fn test_parse_delete() {
-        let args = vec![String::from("--delete"), String::from("package_name")];
-        let cli_parser = CliParser::parse_args(&args);
-        assert_eq!(cli_parser.commands.len(), 1);
-        assert!(cli_parser
-            .commands
-            .contains(&Command::Delete("package_name")));
+        {
+            let args = vec![String::from("--delete"), String::from("package_name")];
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
+
+            let mut args = DeleteArgs::default();
+            args.packages = HashSet::from(["package_name"]);
+
+            assert!(cli_parser.commands.contains(&Command::Delete(args)));
+        }
+
+        {
+            let args = vec![
+                String::from("--delete"),
+                String::from("package_name"),
+                String::from("package_name2"),
+                String::from("package_name3"),
+            ];
+            let cli_parser = CliParser::parse_args(&args);
+            assert_eq!(cli_parser.commands.len(), 1);
+
+            let mut args = DeleteArgs::default();
+            args.packages = HashSet::from(["package_name", "package_name2", "package_name3"]);
+
+            assert!(cli_parser.commands.contains(&Command::Delete(args)));
+        }
     }
 
     #[test]

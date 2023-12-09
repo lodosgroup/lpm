@@ -12,7 +12,7 @@ use db::enable_core_db_pragmas;
 use std::path::Path;
 
 pub use ctx::Ctx;
-pub use delete::delete_lod;
+pub use delete::delete_packages;
 pub(crate) use extract::PkgExtractTasks;
 pub use install::install_package;
 pub use module::{add_module, delete_modules, print_modules, trigger_lpm_module};

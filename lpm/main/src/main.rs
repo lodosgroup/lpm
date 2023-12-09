@@ -96,14 +96,15 @@ fn main() {
                 }
             }
 
-            Command::Delete(pkg_name) => {
+            Command::Delete(args) => {
                 should_print_green_message = true;
-                if ["-h", "--help"].contains(pkg_name) {
+
+                if args.print_help {
                     should_print_green_message = false;
                     command.print_help();
-                } else {
-                    try_or_error!(delete_lod(ctx(), pkg_name));
                 }
+
+                try_or_error!(delete_packages(ctx(), args));
             }
 
             Command::Module(subcommand) => match subcommand {

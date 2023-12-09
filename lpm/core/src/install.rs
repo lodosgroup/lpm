@@ -184,14 +184,14 @@ impl PkgInstallTasks for PkgDataFromFs {
     }
 }
 
-fn install_from_repository(ctx: Ctx, pkg_names: &[String]) -> Result<(), LpmError<MainError>> {
+fn install_from_repository(ctx: Ctx, pkg_names: &[&str]) -> Result<(), LpmError<MainError>> {
     enable_core_db_wal1(&ctx.core_db)?;
 
     let mut pkg_stacks = vec![];
 
     for pkg_name in pkg_names {
         let pkg_to_query = PkgToQuery::parse(pkg_name).ok_or_else(|| {
-            PackageErrorKind::InvalidPackageName(pkg_name.to_owned()).to_lpm_err()
+            PackageErrorKind::InvalidPackageName(pkg_name.to_string()).to_lpm_err()
         })?;
 
         if is_package_exists(&ctx.core_db, &pkg_to_query.name)? {
@@ -294,7 +294,7 @@ pub fn install_package(ctx: Ctx, args: &InstallArgs) -> Result<(), LpmError<Main
             std::process::exit(101);
         }
 
-        install_from_lod_file(ctx, &args.packages[0])
+        install_from_lod_file(ctx, args.packages[0])
     } else {
         install_from_repository(ctx, &args.packages)
     }

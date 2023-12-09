@@ -3,6 +3,7 @@ use crate::{
     Ctx,
 };
 
+use cli_parser::DeleteArgs;
 use common::{
     ctx_confirmation_check,
     pkg::{PkgDataFromDb, ScriptPhase},
@@ -14,7 +15,7 @@ use db::{
 use ehandle::{lpm::LpmError, pkg::PackageErrorKind, ErrorCommons, MainError};
 use logger::{info, warning};
 use min_sqlite3_sys::prelude::Database;
-use std::{fs, path::Path};
+use std::{fs, path::Path, sync::Arc, thread};
 
 trait PkgDeleteTasks {
     fn start_delete_task(&self, core_db: &Database) -> Result<(), LpmError<MainError>>;
@@ -69,18 +70,13 @@ impl PkgDeleteTasks for PkgDataFromDb {
     }
 }
 
-pub fn delete_lod(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
+pub fn delete_packages(ctx: Ctx, args: &DeleteArgs) -> Result<(), LpmError<MainError>> {
     enable_core_db_wal1(&ctx.core_db)?;
 
-    let pkg = PkgDataFromDb::load(&ctx.core_db, pkg_name)?;
-
-    if pkg.meta_fields.meta.get_group_id() != pkg.group_id {
-        return Err(PackageErrorKind::DependencyOfAnotherPackage {
-            package: pkg_name.to_owned(),
-            depends_on: pkg.group_id,
-        }
-        .to_lpm_err())?;
-    };
+    let mut pkgs = vec![];
+    for pkg_name in &args.packages {
+        pkgs.push(PkgDataFromDb::load(&ctx.core_db, pkg_name)?);
+    }
 
     {
         // TODO
@@ -88,12 +84,35 @@ pub fn delete_lod(ctx: Ctx, pkg_name: &str) -> Result<(), LpmError<MainError>> {
         // total size is missing
         // use colors
         println!("\nPackage list to be deleted:");
-        println!("  - {}", pkg.meta_fields.meta.get_group_id());
+        pkgs.iter().for_each(|pkg| {
+            println!("  - {}", pkg.meta_fields.meta.get_group_id());
+        });
         println!();
     }
+
     ctx_confirmation_check!(ctx);
 
-    info!("Package deletion started for {}", pkg_name);
-    pkg.start_delete_task(&ctx.core_db)?;
+    thread::scope(|s| -> Result<(), LpmError<MainError>> {
+        pkgs.iter().for_each(|pkg| {
+            let core_db = Arc::new(&ctx.core_db);
+            s.spawn(move || -> Result<(), LpmError<MainError>> {
+                if pkg.meta_fields.meta.get_group_id() != pkg.group_id {
+                    return Err(PackageErrorKind::DependencyOfAnotherPackage {
+                        package: pkg.meta_fields.meta.name.clone(),
+                        depends_on: pkg.group_id.clone(),
+                    }
+                    .to_lpm_err())?;
+                };
+
+                info!("Package deletion started for {}", pkg.meta_fields.meta.name);
+                pkg.start_delete_task(&core_db)?;
+
+                Ok(())
+            });
+        });
+
+        Ok(())
+    })?;
+
     Ok(())
 }
