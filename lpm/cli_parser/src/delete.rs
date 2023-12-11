@@ -29,7 +29,7 @@ impl<'a> DeleteArgs<'a> {
     }
 
     pub(crate) fn help() -> &'static str {
-        "Usage: lpm --deete [FLAGS] <List of package names>/[OPTION]
+        "Usage: lpm --delete [FLAGS] <List of package names>/[OPTION]
 
 Options:
     -h, --help                                                Print help
