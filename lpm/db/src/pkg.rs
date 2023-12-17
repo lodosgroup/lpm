@@ -428,6 +428,36 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
     }
 }
 
+pub fn find_path_owners(
+    core_db: &Database,
+    path: &Path,
+) -> Result<Vec<String>, LpmError<SqlError>> {
+    const COL_PRE_ID: usize = 1;
+
+    let statement = Select::new_distinct(
+        vec![String::from("packages.name")],
+        String::from("packages"),
+    )
+    .add_arg(SelectArg::InnerJoin(
+        String::from("files"),
+        String::from("files.package_id"),
+        String::from("packages.id"),
+    ))
+    .where_condition(Where::Like(COL_PRE_ID, String::from("files.absolute_path")))
+    .to_string();
+
+    let mut sql = core_db.prepare(statement, super::SQL_NO_CALLBACK_FN)?;
+
+    try_bind_val!(sql, COL_PRE_ID, format!("%{}%", path.display()));
+
+    let mut package_names: Vec<String> = vec![];
+    while let PreparedStatementStatus::FoundRow = sql.execute_prepared() {
+        package_names.push(sql.get_data(0)?);
+    }
+
+    Ok(package_names)
+}
+
 fn delete_pkg_files(
     core_db: &Database,
     pkg_id: i64,

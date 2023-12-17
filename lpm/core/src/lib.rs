@@ -1,3 +1,4 @@
+mod check_path;
 mod ctx;
 mod delete;
 mod extract;
@@ -11,6 +12,7 @@ mod validate;
 use db::enable_core_db_pragmas;
 use std::path::Path;
 
+pub use check_path::check_path;
 pub use ctx::Ctx;
 pub use delete::delete_packages;
 pub(crate) use extract::PkgExtractTasks;

@@ -1,9 +1,11 @@
+pub use check_path::CheckPathArgs;
 pub use delete::DeleteArgs;
 pub use install::InstallArgs;
 pub use module::ModuleSubcommand;
 pub use repository::RepositorySubcommand;
 pub use update::UpdateSubcommand;
 
+mod check_path;
 mod delete;
 mod install;
 mod module;
@@ -17,6 +19,7 @@ pub enum Command<'a> {
     Delete(DeleteArgs<'a>),
     Module(ModuleSubcommand<'a>),
     Repository(RepositorySubcommand<'a>),
+    CheckPath(CheckPathArgs<'a>),
     Version,
     Help,
 }
@@ -50,6 +53,10 @@ impl Command<'_> {
                 println!("{}", RepositorySubcommand::help());
             }
 
+            Command::CheckPath(_args) => {
+                println!("{}", CheckPathArgs::help());
+            }
+
             Command::Help => {
                 let help = "Lod Package Manager Command Line Interface
 
@@ -61,6 +68,8 @@ Subcommands:
     -u, --update                                              Update operations(packages, repository index, lpm database migrations)
     -r, --repository                                          Remote repository operations (add, delete, list)
     -m, --module                                              Dynamic module operations (add, delete, list, run)
+
+    --check-path                                              Check if the target path is owned by any of the lpm packages
 
 For more specific help, go for `lpm [SUBCOMMAND] --help`
 ";
@@ -115,6 +124,11 @@ impl CliParser<'_> {
                     cli_parser
                         .commands
                         .push(Command::Repository(RepositorySubcommand::parse(&mut iter)));
+                }
+                "--check-path" => {
+                    cli_parser
+                        .commands
+                        .push(Command::CheckPath(CheckPathArgs::parse(&mut iter)));
                 }
                 "--yes" | "-y" => {
                     cli_parser.force_yes = true;

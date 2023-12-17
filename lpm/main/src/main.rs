@@ -167,6 +167,17 @@ fn main() {
                 }
             },
 
+            Command::CheckPath(args) => {
+                should_print_green_message = false;
+
+                if args.print_help {
+                    command.print_help();
+                    return;
+                }
+
+                try_or_error!(check_path(ctx(), args))
+            }
+
             Command::Help => {
                 should_print_green_message = false;
                 command.print_help();
