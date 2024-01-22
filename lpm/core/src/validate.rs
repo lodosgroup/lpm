@@ -2,7 +2,6 @@ use crate::extract::get_pkg_tmp_output_path;
 
 use common::meta::Files;
 use common::pkg::PkgDataFromFs;
-use common::{NO_ARCH, SYSTEM_ARCH};
 use ehandle::lpm::LpmError;
 use ehandle::{
     pkg::{PackageError, PackageErrorKind},
@@ -48,13 +47,6 @@ pub(crate) trait PkgValidateTasks {
 
 impl PkgValidateTasks for PkgDataFromFs {
     fn start_validate_task(&self) -> Result<(), LpmError<MainError>> {
-        if self.meta_dir.meta.arch != NO_ARCH && self.meta_dir.meta.arch != SYSTEM_ARCH {
-            return Err(PackageErrorKind::UnsupportedPackageArchitecture(
-                self.meta_dir.meta.arch.clone(),
-            )
-            .to_lpm_err())?;
-        }
-
         let pkg_output_path = get_pkg_tmp_output_path(&self.path);
         check_program_checksums(&pkg_output_path, &self.meta_dir.files)
     }
