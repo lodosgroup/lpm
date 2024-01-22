@@ -280,7 +280,6 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
 
         let meta = Meta {
             name: sql.get_data(Self::NAME_COL_PRE_ID)?,
-            arch: String::new(),
             installed_size: sql.get_data(Self::INSTALLED_SIZE_COL_PRE_ID)?,
             version,
             dependencies: Vec::new(),
@@ -354,7 +353,6 @@ impl DbOpsForInstalledPkg for PkgDataFromDb {
 
             let meta = Meta {
                 name: sql.get_data(Self::NAME_COL_PRE_ID)?,
-                arch: String::new(),
                 installed_size: sql.get_data(Self::INSTALLED_SIZE_COL_PRE_ID)?,
                 version,
                 dependencies: Vec::new(),

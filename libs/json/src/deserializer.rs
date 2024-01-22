@@ -151,7 +151,6 @@ mod tests {
         let json_content = r#"
             {
                 "name": "gc-devel",
-                "arch": "amd64",
                 "installed_size": 3147,
                 "version": {
                     "readable_format": "8.2.4",
@@ -181,7 +180,6 @@ mod tests {
         let mut root_object: BTreeMap<String, JsonValue> = Default::default();
 
         root_object.insert("name".to_string(), JsonValue::Plain("gc-devel".to_string()));
-        root_object.insert("arch".to_string(), JsonValue::Plain("amd64".to_string()));
         root_object.insert(
             "installed_size".to_string(),
             JsonValue::Plain("3147".to_string()),
