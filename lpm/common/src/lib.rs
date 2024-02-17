@@ -22,6 +22,10 @@ pub const SYSTEM_ARCH: &str = "amd64";
 #[cfg(target_arch = "arm")]
 pub const SYSTEM_ARCH: &str = "arm";
 
+/// Just a temporary value, which will once https://github.com/lodosgroup/lpm/pull/68 is merged.
+#[cfg(not(any(target_arch = "x86_64", target_arch = "arm")))]
+pub const SYSTEM_ARCH: &str = "temporary-val";
+
 #[macro_export]
 macro_rules! de_required_field {
     ($json: expr, $field: expr) => {
