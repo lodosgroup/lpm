@@ -96,6 +96,15 @@ pub fn delete_repositories(
 
     info!("Deleting list of repositories: {:?}", repository_names);
     db::delete_repositories(&ctx.core_db, repository_names.to_vec())?;
+    repository_names.iter().for_each(|repository| {
+        if let Err(err) = fs::remove_file(Path::new(REPOSITORY_INDEX_DB_DIR).join(repository)) {
+            warning!(
+                "There was an error when deleting the index for the {} repository -> {}",
+                repository,
+                err
+            )
+        }
+    });
 
     Ok(())
 }
