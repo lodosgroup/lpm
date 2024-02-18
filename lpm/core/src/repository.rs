@@ -99,7 +99,7 @@ pub fn delete_repositories(
     repository_names.iter().for_each(|repository| {
         if let Err(err) = fs::remove_file(Path::new(REPOSITORY_INDEX_DB_DIR).join(repository)) {
             warning!(
-                "There was an error when deleting the index for the {} repository -> {}",
+                "Couldn't clean the index database of {}. Reason: {}",
                 repository,
                 err
             )
