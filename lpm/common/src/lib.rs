@@ -46,13 +46,19 @@ macro_rules! some_or_error {
     ($fn: expr, $log: expr, $($args: tt)+) => {
         match $fn {
             Some(val) => val,
-            None => panic!("{}", format!($log, $($args)+)),
+            None => {
+                logger::error!("{}", format!($log, $($args)+));
+                std::process::exit(101);
+            },
         }
     };
     ($fn: expr, $log: expr) => {
         match $fn {
             Some(val) => val,
-            None => panic!("{}", format!($log)),
+            None => {
+                logger::error!("{}", format!($log));
+                std::process::exit(101);
+            },
         }
 
     }

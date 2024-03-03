@@ -26,6 +26,7 @@ extern "C" fn install_lod_file(pkg_path: *const std::os::raw::c_char) -> ResultC
         ctx,
         &InstallArgs {
             packages: HashSet::from([pkg_path]),
+            destdir: "/",
             from_local_package: true,
             print_help: false,
         },

@@ -78,6 +78,8 @@ For more specific help, go for `lpm [SUBCOMMAND] --help`
 
             Command::Version => panic!("This should never happen. Seems like a bug."),
         }
+
+        std::process::exit(0);
     }
 }
 
