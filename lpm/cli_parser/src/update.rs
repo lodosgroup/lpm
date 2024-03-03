@@ -40,10 +40,10 @@ Options:
     -p, --packages                                            Update all the installed packages
     -i, --index                                               Update repository index from remote
     -d, --db                                                  Update lpm database(by applying remote migrations)
+    -l, --local         <Path of *.lod file>                  Updates from local *.lod file
     -h, --help                                                Print help
 
 Flags:
-    -l, --local                                               Activate updates from local *.lod file
     -y, --yes                                                 Preaccept the confirmation prompts
 "
     }
